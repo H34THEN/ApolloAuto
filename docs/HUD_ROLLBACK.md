@@ -7,6 +7,7 @@
 | Baseline commit | `7632dc81a4b437b9c47ab92a13539c7f15455e9f` |
 | Baseline tag | `apollo-pre-kenney-hud` |
 | Feature branch | `feature/kenney-cyberpunk-hud` |
+| Current tip | `18712052d465a4aa54646e30d6283962a27d9230` |
 | Package (debug) | `com.apolloauto.player.debug` |
 | Workspace | `/Users/Gengar/Desktop/local-github/ApolloAuto` |
 
