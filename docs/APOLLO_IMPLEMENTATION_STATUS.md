@@ -3,7 +3,7 @@
 **Codename:** APOLLO // AUDIO COMMAND SYSTEM  
 **Workspace:** `/Users/Gengar/Desktop/local-github/ApolloAuto`  
 **Package:** `com.apolloauto.player` (debug: `com.apolloauto.player.debug`)  
-**Last updated:** 2026-10-09 (Kenney HUD branch)
+**Last updated:** 2026-10-09 (Phase D.2 HUD UX refinement)
 
 ## Phase A — Existing Application Audit
 
@@ -46,9 +46,10 @@
 ### Checkpoint
 - Git baseline: `b29787a` — phase-2 baseline before HUD/EQ/theme expansion
 - Pre-Kenney tag: `apollo-pre-kenney-hud` → `7632dc8`
-- Feature branch: `feature/kenney-cyberpunk-hud`
+- Kenney branch: `feature/kenney-cyberpunk-hud` @ `5787582`
+- UX branch: `feature/apollo-hud-ux-refinement` (active)
 - Device: `00021157P002695` (authorized)
-- Rollback: `docs/HUD_ROLLBACK.md`
+- Rollback: `docs/UI_REDESIGN_ROLLBACK.md` (+ `docs/HUD_ROLLBACK.md` for Kenney)
 
 ---
 
@@ -125,3 +126,23 @@
 **Remaining risks:** Visualizer/EQ listening unverified; full-app Kenney skin (K5) incomplete; Android Auto DHU untested; Classic mode only swaps Settings panels + chrome selectively  
 
 **Next:** K5 full-app Kenney migration (library rows, Car Mode, EQ chrome) + visual QA screenshots
+
+### Phase D.2 — HUD UX reconstruction (in progress / installable)
+**Branch:** `feature/apollo-hud-ux-refinement` (not merged)  
+**Report:** `docs/APOLLO_UI_REDESIGN_REPORT.md`  
+**Rollback:** `docs/UI_REDESIGN_ROLLBACK.md`
+
+**Features completed:**
+- Spacing / type tokens (`ApolloSpace`, `ApolloTypeScale`)
+- Decorative font restricted; readable body face on controls/nav/rows
+- Compact header + bottom navigation (Home / Library / Lists / Car / Settings)
+- Redesigned Now Playing card (art fallback, primary vs secondary transport)
+- Library rows with hierarchy + overflow actions + playing accent
+- Responsive Car Mode landscape (art / playback / CAR·ALL·QUEUE)
+- Compact empty Car Favorites state
+- Device screenshots under `docs/screenshots/d2/`
+- Debug APK installed on Metroid A024
+
+**Acceptance progress:** Header density, nav readability, NP spacing, art fallback, library hierarchy, Car Mode clipping/empty state — addressed. Full §15 screenshot matrix and deep EQ/sleep/AA regression still open.
+
+**Next:** Extended visual QA (themes + Settings/EQ/sleep), optional Albums/Artists categories, merge approval gate

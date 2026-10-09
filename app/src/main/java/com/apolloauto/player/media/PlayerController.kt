@@ -28,6 +28,7 @@ data class PlaybackUiState(
     val mediaId: String = "",
     val title: String = "APOLLO STANDING BY",
     val artist: String = "Scan phone music or link USB later",
+    val album: String = "",
     val artworkUri: Uri? = null,
     val positionMs: Long = 0L,
     val durationMs: Long = 0L
@@ -134,9 +135,8 @@ class PlayerController(private val context: Context) {
             },
             mediaId = player.currentMediaItem?.mediaId.orEmpty(),
             title = meta.title?.toString() ?: "APOLLO STANDING BY",
-            artist = meta.artist?.toString()
-                ?: meta.albumTitle?.toString()
-                ?: "LIBRARY",
+            artist = meta.artist?.toString() ?: "LIBRARY",
+            album = meta.albumTitle?.toString().orEmpty(),
             artworkUri = meta.artworkUri ?: player.currentMediaItem?.mediaMetadata?.artworkUri,
             positionMs = player.currentPosition.coerceAtLeast(0L),
             durationMs = player.duration.coerceAtLeast(0L)

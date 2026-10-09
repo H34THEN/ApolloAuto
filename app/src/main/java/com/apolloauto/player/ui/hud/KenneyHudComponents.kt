@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.apolloauto.player.R
 import com.apolloauto.player.theme.InterfaceStyle
+import com.apolloauto.player.theme.LocalBodyFont
 import com.apolloauto.player.theme.LocalHudFont
 import com.apolloauto.player.theme.LocalHudPalette
 
@@ -77,7 +78,8 @@ fun ApolloHudButton(
     fontSize: androidx.compose.ui.unit.TextUnit = 14.sp
 ) {
     val p = LocalHudPalette.current
-    val font = LocalHudFont.current
+    // Interactive labels use body face for Unicode / readability (D2.1).
+    val font = LocalBodyFont.current
     Box(
         modifier = modifier
             .height(height)
@@ -101,7 +103,7 @@ fun ApolloHudButton(
             color = if (enabled) p.soft else p.dim,
             fontFamily = font,
             fontSize = fontSize,
-            letterSpacing = 1.sp,
+            letterSpacing = 0.8.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(horizontal = 8.dp)
@@ -251,7 +253,7 @@ fun ApolloHudTab(
     modifier: Modifier = Modifier
 ) {
     val p = LocalHudPalette.current
-    val font = LocalHudFont.current
+    val font = LocalBodyFont.current
     Box(
         modifier = modifier
             .height(40.dp)
@@ -274,7 +276,7 @@ fun ApolloHudTab(
             color = p.soft,
             fontFamily = font,
             fontSize = 12.sp,
-            letterSpacing = 1.sp,
+            letterSpacing = 0.6.sp,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = 6.dp)
         )
