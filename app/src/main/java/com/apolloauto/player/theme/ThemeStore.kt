@@ -71,6 +71,20 @@ class ThemeStore(context: Context) {
     )
     val motionProfile: StateFlow<MotionProfile> = _motion.asStateFlow()
 
+    private val _interfaceStyle = MutableStateFlow(
+        runCatching {
+            InterfaceStyle.valueOf(prefs.getString(KEY_INTERFACE, InterfaceStyle.CYBERPUNK_HUD.name)!!)
+        }.getOrDefault(InterfaceStyle.CYBERPUNK_HUD)
+    )
+    val interfaceStyle: StateFlow<InterfaceStyle> = _interfaceStyle.asStateFlow()
+
+    private val _playerLayout = MutableStateFlow(
+        runCatching {
+            PlayerLayoutMode.valueOf(prefs.getString(KEY_PLAYER_LAYOUT, PlayerLayoutMode.TACTICAL.name)!!)
+        }.getOrDefault(PlayerLayoutMode.TACTICAL)
+    )
+    val playerLayout: StateFlow<PlayerLayoutMode> = _playerLayout.asStateFlow()
+
     fun activePalette(): HudPalette =
         paletteFor(_themeId.value, _custom.value.toPalette(), _glow.value)
 
@@ -88,6 +102,16 @@ class ThemeStore(context: Context) {
     fun setMotion(profile: MotionProfile) {
         _motion.value = profile
         prefs.edit().putString(KEY_MOTION, profile.name).apply()
+    }
+
+    fun setInterfaceStyle(style: InterfaceStyle) {
+        _interfaceStyle.value = style
+        prefs.edit().putString(KEY_INTERFACE, style.name).apply()
+    }
+
+    fun setPlayerLayout(mode: PlayerLayoutMode) {
+        _playerLayout.value = mode
+        prefs.edit().putString(KEY_PLAYER_LAYOUT, mode.name).apply()
     }
 
     fun updateCustom(draft: CustomThemeDraft) {
@@ -152,5 +176,7 @@ class ThemeStore(context: Context) {
         private const val KEY_CUSTOM = "custom_json"
         private const val KEY_GLOW = "glow"
         private const val KEY_MOTION = "motion"
+        private const val KEY_INTERFACE = "interface_style"
+        private const val KEY_PLAYER_LAYOUT = "player_layout"
     }
 }

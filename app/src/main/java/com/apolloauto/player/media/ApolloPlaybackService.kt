@@ -40,13 +40,17 @@ class ApolloPlaybackService : MediaLibraryService() {
             .setHandleAudioBecomingNoisy(true)
             .build()
         player = exo
+        fun attachAudioFx(sessionId: Int) {
+            ApolloApp.instance.equalizerController.attach(sessionId)
+            ApolloApp.instance.visualizerController.attach(sessionId)
+        }
         exo.addListener(object : Player.Listener {
             override fun onAudioSessionIdChanged(audioSessionId: Int) {
-                ApolloApp.instance.equalizerController.attach(audioSessionId)
+                attachAudioFx(audioSessionId)
             }
         })
         if (exo.audioSessionId != C.AUDIO_SESSION_ID_UNSET) {
-            ApolloApp.instance.equalizerController.attach(exo.audioSessionId)
+            attachAudioFx(exo.audioSessionId)
         }
 
         ApolloApp.instance.playbackBridge = object : PlaybackBridge {
@@ -76,6 +80,8 @@ class ApolloPlaybackService : MediaLibraryService() {
                 }
                 return total.coerceAtLeast(1_000L)
             }
+
+            override fun audioSessionId(): Int = exo.audioSessionId
         }
 
         val sessionActivity = PendingIntent.getActivity(
@@ -98,6 +104,7 @@ class ApolloPlaybackService : MediaLibraryService() {
         if (ApolloApp.instance.playbackBridge != null) {
             ApolloApp.instance.playbackBridge = null
         }
+        ApolloApp.instance.visualizerController.release()
         ApolloApp.instance.equalizerController.release()
         librarySession?.release()
         librarySession = null

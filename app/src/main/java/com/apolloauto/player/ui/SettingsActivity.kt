@@ -45,12 +45,15 @@ import com.apolloauto.player.media.SleepTimerController
 import com.apolloauto.player.theme.ApolloCyberTheme
 import com.apolloauto.player.theme.CustomThemeDraft
 import com.apolloauto.player.theme.HudThemeId
+import com.apolloauto.player.theme.InterfaceStyle
 import com.apolloauto.player.theme.LocalHudPalette
 import com.apolloauto.player.theme.MotionProfile
 import com.apolloauto.player.theme.parseHexColor
 import com.apolloauto.player.theme.toHexRgb
 import com.apolloauto.player.ui.hud.ApolloHudPanel
 import com.apolloauto.player.ui.hud.ApolloSectionHeader
+import com.apolloauto.player.ui.hud.ApolloSciFiPanel
+import com.apolloauto.player.ui.hud.useKenneyChrome
 
 class SettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -140,10 +143,46 @@ private fun DisplaySettings() {
     val custom by app.themeStore.custom.collectAsState()
     val glow by app.themeStore.glowIntensity.collectAsState()
     val motion by app.themeStore.motionProfile.collectAsState()
+    val interfaceStyle by app.themeStore.interfaceStyle.collectAsState()
+    val kenney = useKenneyChrome(interfaceStyle)
     var draft by remember(custom) { mutableStateOf(custom) }
     var hexPrimary by remember(draft.primary) { mutableStateOf(draft.primary.toHexRgb()) }
 
-    ApolloHudPanel(title = "THEME PRESETS") {
+    val Panel: @Composable (String, @Composable () -> Unit) -> Unit = { title, content ->
+        if (kenney) {
+            ApolloSciFiPanel(title = title) { content() }
+        } else {
+            ApolloHudPanel(title = title) { content() }
+        }
+    }
+
+    Panel("INTERFACE STYLE") {
+        InterfaceStyle.entries.forEach { style ->
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .border(
+                        1.dp,
+                        if (interfaceStyle == style) p.accent else p.primary.copy(alpha = 0.25f),
+                        RoundedCornerShape(4.dp)
+                    )
+                    .clickable { app.themeStore.setInterfaceStyle(style) }
+                    .padding(10.dp)
+            ) {
+                Text(style.label, color = p.soft, modifier = Modifier.weight(1f))
+                if (interfaceStyle == style) Text("ACTIVE", color = p.accent, fontSize = 10.sp)
+            }
+        }
+        Text(
+            "Classic disables Kenney chrome while keeping themes, EQ, playlists, and timers.",
+            color = p.dim,
+            fontSize = 12.sp
+        )
+    }
+
+    Panel("THEME PRESETS") {
         HudThemeId.entries.filter { it != HudThemeId.CUSTOM }.forEach { id ->
             Row(
                 Modifier
@@ -169,7 +208,7 @@ private fun DisplaySettings() {
         }
     }
 
-    ApolloHudPanel(title = "CUSTOM THEME EDITOR") {
+    Panel("CUSTOM THEME EDITOR") {
         Text("Name", color = p.dim, fontSize = 11.sp)
         HexField(draft.name, onChange = { draft = draft.copy(name = it) }, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(8.dp))
@@ -223,7 +262,7 @@ private fun DisplaySettings() {
         }
     }
 
-    ApolloHudPanel(title = "MOTION / GLOW") {
+    Panel("MOTION / GLOW") {
         Text("Global glow", color = p.dim, fontSize = 11.sp)
         Slider(
             value = glow,

@@ -292,6 +292,9 @@ private fun ApolloHomeScreen() {
                     inCarFavorites = playback.mediaId.isNotBlank() &&
                         app.playlistStore.isInCarFavorites(playback.mediaId),
                     progress = progressOf(playback.positionMs, playback.durationMs),
+                    onOpenPlayer = {
+                        context.startActivity(Intent(context, NowPlayingActivity::class.java))
+                    },
                     onPrev = controller::skipPrevious,
                     onToggle = controller::togglePlayPause,
                     onNext = controller::skipNext,
@@ -646,6 +649,7 @@ private fun NowPlayingBar(
     repeatMode: RepeatModeUi,
     inCarFavorites: Boolean,
     progress: Float,
+    onOpenPlayer: () -> Unit,
     onPrev: () -> Unit,
     onToggle: () -> Unit,
     onNext: () -> Unit,
@@ -661,6 +665,7 @@ private fun NowPlayingBar(
             .fillMaxWidth()
             .border(1.dp, p.primary.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
             .background(p.panel.copy(alpha = 0.85f))
+            .clickable(onClick = onOpenPlayer)
             .padding(12.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {

@@ -5,6 +5,7 @@ import com.apolloauto.player.data.DeviceMusicScanner
 import com.apolloauto.player.data.FavoritesStore
 import com.apolloauto.player.data.LibraryStore
 import com.apolloauto.player.data.PlaylistStore
+import com.apolloauto.player.media.AudioVisualizerController
 import com.apolloauto.player.media.EqualizerController
 import com.apolloauto.player.media.SleepTimerController
 import com.apolloauto.player.theme.ThemeStore
@@ -13,7 +14,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 class ApolloApp : Application() {
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -34,6 +34,8 @@ class ApolloApp : Application() {
         private set
     lateinit var sleepTimerController: SleepTimerController
         private set
+    lateinit var visualizerController: AudioVisualizerController
+        private set
 
     /** Bound by playback service when live. */
     @Volatile
@@ -49,6 +51,7 @@ class ApolloApp : Application() {
         playlistStore = PlaylistStore(this)
         themeStore = ThemeStore(this)
         equalizerController = EqualizerController(this)
+        visualizerController = AudioVisualizerController()
         sleepTimerController = SleepTimerController(
             context = this,
             scope = appScope,
@@ -81,4 +84,5 @@ interface PlaybackBridge {
     fun setVolume(volume: Float)
     fun trackRemainingMs(): Long
     fun queueRemainingMs(): Long
+    fun audioSessionId(): Int
 }

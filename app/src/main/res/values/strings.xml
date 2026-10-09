@@ -3,6 +3,7 @@
     <string name="app_name">Apollo Auto</string>
     <string name="car_mode_label">Apollo Car Mode</string>
     <string name="settings_label">Apollo Command Center</string>
+    <string name="now_playing_label">Apollo Now Playing</string>
     <string name="browse_usb">Link USB SSD</string>
     <string name="car_mode">Enter Car Mode</string>
     <string name="scanning">Scanning neon grid…</string>

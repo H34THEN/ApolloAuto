@@ -22,6 +22,17 @@ enum class MotionProfile {
     SYSTEM
 }
 
+enum class InterfaceStyle(val label: String) {
+    CYBERPUNK_HUD("Apollo Cyberpunk HUD"),
+    CLASSIC("Classic Apollo")
+}
+
+enum class PlayerLayoutMode(val label: String) {
+    TACTICAL("Tactical HUD"),
+    IMMERSIVE("Immersive Artwork"),
+    TERMINAL("Minimal Terminal")
+}
+
 @Immutable
 data class HudPalette(
     val id: HudThemeId,

@@ -9,3 +9,7 @@
 *.apk
 .cxx/
 *.hprof
+
+# Kenney source pack (selected assets copied into app/src/main/res)
+/third_party/kenney/
+/docs/kenney_previews/*.png

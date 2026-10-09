@@ -3,7 +3,7 @@
 **Codename:** APOLLO // AUDIO COMMAND SYSTEM  
 **Workspace:** `/Users/Gengar/Desktop/local-github/ApolloAuto`  
 **Package:** `com.apolloauto.player` (debug: `com.apolloauto.player.debug`)  
-**Last updated:** 2026-10-09
+**Last updated:** 2026-10-09 (Kenney HUD branch)
 
 ## Phase A — Existing Application Audit
 
@@ -34,8 +34,10 @@
 | Motion profiles | Implemented | Full / Reduced / Static / System |
 | Equalizer (real) | Implemented | Session-linked + presets UI |
 | Sleep timer | Implemented | Service-scoped + fade-out |
-| Visualizers (real audio) | Missing | Phase D |
-| Now Playing layout modes | Missing | Phase D |
+| Visualizers (real audio) | Implemented / Device pending | Android Visualizer + RECORD_AUDIO |
+| Now Playing layout modes | Implemented | Tactical / Immersive / Terminal |
+| Kenney Sci-Fi HUD assets | Partial | Now Playing + HUD components; K5 app-wide pending |
+| Classic interface fallback | Implemented | Settings → Interface Style |
 | Smart playlists / M3U | Missing | Phase E/G |
 | Offline pin cache | Missing | Phase G |
 | Library maintenance | Missing | Phase E/G |
@@ -43,7 +45,10 @@
 
 ### Checkpoint
 - Git baseline: `b29787a` — phase-2 baseline before HUD/EQ/theme expansion
+- Pre-Kenney tag: `apollo-pre-kenney-hud` → `7632dc8`
+- Feature branch: `feature/kenney-cyberpunk-hud`
 - Device: `00021157P002695` (authorized)
+- Rollback: `docs/HUD_ROLLBACK.md`
 
 ---
 
@@ -97,3 +102,26 @@
 - Custom theme contrast guard is heuristic, not WCAG formal
 
 **Next implementation phase:** D — Now Playing HUD layouts + real audio visualizers
+
+### Kenney HUD K0–K4 / K6 (partial K5)
+**Branch:** `feature/kenney-cyberpunk-hud` (not merged to master)  
+**Files changed:** Kenney inventory tool, selected drawables/fonts, `KenneyHudComponents`, `NowPlayingActivity`, `AudioVisualizerController`, interface style flag, docs (`HUD_ROLLBACK`, `HUD_ASSET_MANIFEST`, `HUD_VISUAL_QA`, inventory JSON)
+
+**Features completed:**
+- Tag `apollo-pre-kenney-hud` + feature branch
+- Located `~/Downloads/kenney_ui-pack-space-expansion.zip` (Kenney UI Pack Sci-fi 2.0, CC0)
+- Asset inventory (1114 files) + recommendations
+- Curated runtime assets only (11 PNGs + 2 fonts)
+- Theme-tintable Kenney HUD components
+- Now Playing: Tactical / Immersive / Terminal (persisted)
+- Real Visualizer FFT/waveform/circular/level when RECORD_AUDIO granted
+- Classic Apollo interface style fallback (persisted)
+- Build + install + launch on Metroid A024
+
+**Tests executed:** `assembleDebug`, `adb install -r`, launch MainActivity  
+**Tests passed:** compile, install, launch  
+**Tests failed:** none this milestone  
+**Regressions discovered:** none at launch  
+**Remaining risks:** Visualizer/EQ listening unverified; full-app Kenney skin (K5) incomplete; Android Auto DHU untested; Classic mode only swaps Settings panels + chrome selectively  
+
+**Next:** K5 full-app Kenney migration (library rows, Car Mode, EQ chrome) + visual QA screenshots
