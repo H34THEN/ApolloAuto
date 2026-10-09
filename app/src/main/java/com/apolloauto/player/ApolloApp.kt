@@ -6,11 +6,14 @@ import com.apolloauto.player.data.FavoritesStore
 import com.apolloauto.player.data.LibraryStore
 import com.apolloauto.player.data.PlaylistStore
 import com.apolloauto.player.media.EqualizerController
+import com.apolloauto.player.media.SleepTimerController
 import com.apolloauto.player.theme.ThemeStore
 import com.apolloauto.player.usb.UsbMusicScanner
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class ApolloApp : Application() {
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -29,6 +32,12 @@ class ApolloApp : Application() {
         private set
     lateinit var equalizerController: EqualizerController
         private set
+    lateinit var sleepTimerController: SleepTimerController
+        private set
+
+    /** Bound by playback service when live. */
+    @Volatile
+    var playbackBridge: PlaybackBridge? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -40,10 +49,36 @@ class ApolloApp : Application() {
         playlistStore = PlaylistStore(this)
         themeStore = ThemeStore(this)
         equalizerController = EqualizerController(this)
+        sleepTimerController = SleepTimerController(
+            context = this,
+            scope = appScope,
+            pausePlayback = { playbackBridge?.pause() },
+            fadeAndPause = { fadeMs ->
+                val bridge = playbackBridge
+                if (bridge == null) return@SleepTimerController
+                val steps = 16
+                val step = fadeMs / steps
+                val startVol = bridge.volume()
+                for (i in 1..steps) {
+                    bridge.setVolume((startVol * (1f - i / steps.toFloat())).coerceIn(0f, 1f))
+                    delay(step)
+                }
+                bridge.pause()
+                bridge.setVolume(startVol)
+            }
+        )
     }
 
     companion object {
         lateinit var instance: ApolloApp
             private set
     }
+}
+
+interface PlaybackBridge {
+    fun pause()
+    fun volume(): Float
+    fun setVolume(volume: Float)
+    fun trackRemainingMs(): Long
+    fun queueRemainingMs(): Long
 }

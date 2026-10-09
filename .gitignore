@@ -7,6 +7,5 @@
 /app/build/
 /captures/
 *.apk
-!ApolloAuto-cyber-debug.apk
 .cxx/
 *.hprof

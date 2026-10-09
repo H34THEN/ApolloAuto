@@ -15,6 +15,7 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import com.apolloauto.player.ApolloApp
+import com.apolloauto.player.PlaybackBridge
 import com.apolloauto.player.data.PlaylistStore
 import com.apolloauto.player.data.Track
 import com.apolloauto.player.ui.CarModeActivity
@@ -48,6 +49,35 @@ class ApolloPlaybackService : MediaLibraryService() {
             ApolloApp.instance.equalizerController.attach(exo.audioSessionId)
         }
 
+        ApolloApp.instance.playbackBridge = object : PlaybackBridge {
+            override fun pause() {
+                exo.pause()
+            }
+
+            override fun volume(): Float = exo.volume
+
+            override fun setVolume(volume: Float) {
+                exo.volume = volume.coerceIn(0f, 1f)
+            }
+
+            override fun trackRemainingMs(): Long {
+                val dur = exo.duration
+                if (dur <= 0L || dur == C.TIME_UNSET) return 60_000L
+                return (dur - exo.currentPosition).coerceAtLeast(1_000L)
+            }
+
+            override fun queueRemainingMs(): Long {
+                var total = trackRemainingMs()
+                val current = exo.currentMediaItemIndex
+                val count = exo.mediaItemCount
+                for (i in (current + 1) until count) {
+                    // Unknown per-item durations without probing; estimate 3.5 min each
+                    total += 210_000L
+                }
+                return total.coerceAtLeast(1_000L)
+            }
+        }
+
         val sessionActivity = PendingIntent.getActivity(
             this,
             0,
@@ -65,6 +95,9 @@ class ApolloPlaybackService : MediaLibraryService() {
         librarySession
 
     override fun onDestroy() {
+        if (ApolloApp.instance.playbackBridge != null) {
+            ApolloApp.instance.playbackBridge = null
+        }
         ApolloApp.instance.equalizerController.release()
         librarySession?.release()
         librarySession = null

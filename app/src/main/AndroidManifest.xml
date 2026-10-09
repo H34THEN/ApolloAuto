@@ -56,6 +56,12 @@
                 android:value="true" />
         </activity>
 
+        <activity
+            android:name=".ui.SettingsActivity"
+            android:exported="false"
+            android:label="@string/settings_label"
+            android:theme="@style/Theme.ApolloAuto" />
+
         <service
             android:name=".media.ApolloPlaybackService"
             android:exported="true"

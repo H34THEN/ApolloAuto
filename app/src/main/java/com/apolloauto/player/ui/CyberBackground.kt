@@ -18,6 +18,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import com.apolloauto.player.theme.LocalHudPalette
+import com.apolloauto.player.theme.LocalMotionProfile
+import com.apolloauto.player.theme.MotionProfile
 
 @Composable
 fun CyberBackground(
@@ -25,21 +27,23 @@ fun CyberBackground(
     content: @Composable BoxScope.() -> Unit
 ) {
     val p = LocalHudPalette.current
+    val motion = LocalMotionProfile.current
+    val animated = motion == MotionProfile.FULL || motion == MotionProfile.REDUCED
     val pulse = rememberInfiniteTransition(label = "pulse")
     val glow by pulse.animateFloat(
-        initialValue = 0.25f,
-        targetValue = 0.55f,
+        initialValue = if (animated) 0.25f else 0.35f,
+        targetValue = if (animated) 0.55f * p.glowIntensity else 0.35f,
         animationSpec = infiniteRepeatable(
-            animation = tween(2400, easing = LinearEasing),
+            animation = tween(if (motion == MotionProfile.REDUCED) 4800 else 2400, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "glow"
     )
     val scan by pulse.animateFloat(
         initialValue = 0f,
-        targetValue = 1f,
+        targetValue = if (animated && motion != MotionProfile.STATIC) 1f else 0f,
         animationSpec = infiniteRepeatable(
-            animation = tween(4200, easing = LinearEasing),
+            animation = tween(if (motion == MotionProfile.REDUCED) 8000 else 4200, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "scan"

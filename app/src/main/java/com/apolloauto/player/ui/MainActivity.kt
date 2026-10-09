@@ -32,6 +32,8 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Pause
@@ -40,6 +42,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
@@ -78,6 +81,7 @@ import com.apolloauto.player.media.PlayerController
 import com.apolloauto.player.media.RepeatModeUi
 import com.apolloauto.player.theme.ApolloCyberTheme
 import com.apolloauto.player.theme.LocalHudPalette
+import com.apolloauto.player.ui.hud.ApolloStatusBar
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -108,6 +112,8 @@ private fun ApolloHomeScreen() {
     val status by app.libraryStore.status.collectAsState()
     val treeUri by app.libraryStore.treeUri.collectAsState()
     val playlists by app.playlistStore.playlists.collectAsState()
+    val themeId by app.themeStore.themeId.collectAsState()
+    val sleep by app.sleepTimerController.state.collectAsState()
     val controller = remember { PlayerController(context.applicationContext) }
     val playback by controller.state.collectAsState()
 
@@ -193,10 +199,32 @@ private fun ApolloHomeScreen() {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
                     .padding(18.dp)
             ) {
-                Text("APOLLO", color = p.primary, fontSize = 36.sp, letterSpacing = 2.sp)
-                Text("AUTO · PLAYLIST DECK", color = p.secondary, fontSize = 12.sp, letterSpacing = 2.sp)
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text("APOLLO II", color = p.primary, fontSize = 32.sp, letterSpacing = 2.sp)
+                        Text("AUDIO COMMAND SYSTEM", color = p.secondary, fontSize = 11.sp, letterSpacing = 2.sp)
+                    }
+                    IconButton(onClick = {
+                        context.startActivity(Intent(context, SettingsActivity::class.java))
+                    }) {
+                        Icon(Icons.Default.Settings, contentDescription = "Settings", tint = p.primary)
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                ApolloStatusBar(
+                    themeLabel = themeId.label.take(12).uppercase(),
+                    sourceLabel = source.name,
+                    playing = playback.playing,
+                    sleepLabel = if (sleep.running) "SLEEP ${sleep.remainingMs / 60000}m" else null
+                )
                 Spacer(Modifier.height(6.dp))
                 Text(status, color = p.dim, fontSize = 13.sp)
 
