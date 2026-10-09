@@ -7,6 +7,7 @@
 | Parent Kenney branch | `feature/kenney-cyberpunk-hud` |
 | Parent HEAD (pre-D2) | `57875824a3a5b7709fbe21018941905fc06ce8d4` |
 | UX feature branch | `feature/apollo-hud-ux-refinement` |
+| UX tip (D2 installable) | `4f50a5c2c3120147177d5b5fc4249a83bc57d7da` |
 | Pre-Kenney tag | `apollo-pre-kenney-hud` → `7632dc81a4b437b9c47ab92a13539c7f15455e9f` |
 | Master (theme/EQ/sleep) | `7632dc8` |
 | Package (debug) | `com.apolloauto.player.debug` |
