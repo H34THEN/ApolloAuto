@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.ApolloAuto" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">#FF05070D</item>
+        <item name="android:navigationBarColor">#FF05070D</item>
+        <item name="android:windowBackground">#FF05070D</item>
+        <item name="android:colorPrimary">#FF00F0FF</item>
+        <item name="android:colorAccent">#FFFF2D95</item>
+    </style>
+</resources>

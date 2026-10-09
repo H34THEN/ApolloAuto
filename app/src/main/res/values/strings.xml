@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Apollo Auto</string>
+    <string name="car_mode_label">Apollo Car Mode</string>
+    <string name="browse_usb">Link USB SSD</string>
+    <string name="car_mode">Enter Car Mode</string>
+    <string name="scanning">Scanning neon grid…</string>
+    <string name="no_tracks">No audio on USB yet. Attach SSD via USB-C and link the root folder.</string>
+    <string name="now_playing">NOW PLAYING</string>
+    <string name="usb_library">USB LIBRARY</string>
+    <string name="android_auto_hint">Appear in Android Auto as Apollo Auto after install. Grant USB folder access once on the phone.</string>
+</resources>
