@@ -25,6 +25,7 @@ fun ApolloCyberTheme(content: @Composable () -> Unit) {
     val custom by themeStore.custom.collectAsState()
     val glow by themeStore.glowIntensity.collectAsState()
     val motion by themeStore.motionProfile.collectAsState()
+    val fontOption by themeStore.hudFont.collectAsState()
     val context = LocalContext.current
 
     val animatorScale = remember {
@@ -40,10 +41,15 @@ fun ApolloCyberTheme(content: @Composable () -> Unit) {
         MotionProfile.SYSTEM -> if (animatorScale == 0f) MotionProfile.STATIC else MotionProfile.FULL
         else -> motion
     }
+    val displayFont = remember(fontOption) { fontFamilyFor(fontOption) }
+    // Metadata always keeps a Unicode-safe face; E1D1C/Kenney used for chrome/display.
+    val bodyFace = FontFamily.SansSerif
 
     CompositionLocalProvider(
         LocalHudPalette provides palette,
-        LocalMotionProfile provides effectiveMotion
+        LocalMotionProfile provides effectiveMotion,
+        LocalHudFont provides displayFont,
+        LocalBodyFont provides bodyFace
     ) {
         MaterialTheme(
             colorScheme = darkColorScheme(
@@ -60,36 +66,36 @@ fun ApolloCyberTheme(content: @Composable () -> Unit) {
             ),
             typography = MaterialTheme.typography.copy(
                 displayLarge = TextStyle(
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = displayFont,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 40.sp,
+                    fontSize = 42.sp,
                     letterSpacing = 2.sp,
                     color = palette.soft
                 ),
                 headlineMedium = TextStyle(
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = displayFont,
                     fontWeight = FontWeight.SemiBold,
-                    fontSize = 22.sp,
+                    fontSize = 24.sp,
                     letterSpacing = 1.5.sp,
                     color = palette.soft
                 ),
                 titleLarge = TextStyle(
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = displayFont,
                     fontWeight = FontWeight.Medium,
-                    fontSize = 17.sp,
+                    fontSize = 18.sp,
                     letterSpacing = 1.sp,
                     color = palette.soft
                 ),
                 bodyLarge = TextStyle(
-                    fontFamily = FontFamily.SansSerif,
+                    fontFamily = bodyFace,
                     fontWeight = FontWeight.Normal,
-                    fontSize = 15.sp,
+                    fontSize = 16.sp,
                     color = palette.soft
                 ),
                 labelLarge = TextStyle(
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = displayFont,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp,
+                    fontSize = 13.sp,
                     letterSpacing = 2.sp,
                     color = palette.primary
                 )

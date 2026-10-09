@@ -80,8 +80,16 @@ import com.apolloauto.player.data.Track
 import com.apolloauto.player.media.PlayerController
 import com.apolloauto.player.media.RepeatModeUi
 import com.apolloauto.player.theme.ApolloCyberTheme
+import com.apolloauto.player.theme.LocalBodyFont
+import com.apolloauto.player.theme.LocalHudFont
 import com.apolloauto.player.theme.LocalHudPalette
+import com.apolloauto.player.ui.hud.ApolloHudButton
+import com.apolloauto.player.ui.hud.ApolloHudIconButton
+import com.apolloauto.player.ui.hud.ApolloHudProgress
+import com.apolloauto.player.ui.hud.ApolloHudTab
+import com.apolloauto.player.ui.hud.ApolloSciFiPanel
 import com.apolloauto.player.ui.hud.ApolloStatusBar
+import com.apolloauto.player.ui.hud.useKenneyChrome
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -113,9 +121,13 @@ private fun ApolloHomeScreen() {
     val treeUri by app.libraryStore.treeUri.collectAsState()
     val playlists by app.playlistStore.playlists.collectAsState()
     val themeId by app.themeStore.themeId.collectAsState()
+    val interfaceStyle by app.themeStore.interfaceStyle.collectAsState()
     val sleep by app.sleepTimerController.state.collectAsState()
     val controller = remember { PlayerController(context.applicationContext) }
     val playback by controller.state.collectAsState()
+    val kenney = useKenneyChrome(interfaceStyle)
+    val hudFont = LocalHudFont.current
+    val bodyFont = LocalBodyFont.current
 
     var tab by remember { mutableStateOf(LibraryTab.ALL) }
     var selectedPlaylistId by remember { mutableStateOf<String?>(null) }
@@ -209,13 +221,33 @@ private fun ApolloHomeScreen() {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
-                        Text("APOLLO II", color = p.primary, fontSize = 32.sp, letterSpacing = 2.sp)
-                        Text("AUDIO COMMAND SYSTEM", color = p.secondary, fontSize = 11.sp, letterSpacing = 2.sp)
+                        Text(
+                            "APOLLO II",
+                            color = p.primary,
+                            fontSize = 32.sp,
+                            letterSpacing = 2.sp,
+                            fontFamily = hudFont
+                        )
+                        Text(
+                            "AUDIO COMMAND SYSTEM",
+                            color = p.secondary,
+                            fontSize = 11.sp,
+                            letterSpacing = 2.sp,
+                            fontFamily = hudFont
+                        )
                     }
-                    IconButton(onClick = {
-                        context.startActivity(Intent(context, SettingsActivity::class.java))
-                    }) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings", tint = p.primary)
+                    if (kenney) {
+                        ApolloHudIconButton(onClick = {
+                            context.startActivity(Intent(context, SettingsActivity::class.java))
+                        }) {
+                            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = p.soft)
+                        }
+                    } else {
+                        IconButton(onClick = {
+                            context.startActivity(Intent(context, SettingsActivity::class.java))
+                        }) {
+                            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = p.primary)
+                        }
                     }
                 }
                 Spacer(Modifier.height(8.dp))
@@ -226,56 +258,94 @@ private fun ApolloHomeScreen() {
                     sleepLabel = if (sleep.running) "SLEEP ${sleep.remainingMs / 60000}m" else null
                 )
                 Spacer(Modifier.height(6.dp))
-                Text(status, color = p.dim, fontSize = 13.sp)
+                Text(status, color = p.dim, fontSize = 13.sp, fontFamily = bodyFont)
 
                 Spacer(Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SourceChip("PHONE", source == LibrarySource.PHONE, Modifier.weight(1f)) {
-                        app.libraryStore.setSource(LibrarySource.PHONE)
-                    }
-                    SourceChip("USB SSD", source == LibrarySource.USB, Modifier.weight(1f)) {
-                        app.libraryStore.setSource(LibrarySource.USB)
-                    }
-                }
-
-                Spacer(Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    NeonButton(
-                        label = if (source == LibrarySource.PHONE) "SCAN PHONE" else "LINK USB SSD",
-                        accent = p.primary,
-                        modifier = Modifier.weight(1f),
-                        onClick = {
-                            if (source == LibrarySource.PHONE) requestPhoneScan()
-                            else openTree.launch(null)
-                        }
-                    ) {
-                        Icon(
-                            if (source == LibrarySource.PHONE) Icons.Default.PhoneAndroid else Icons.Default.Usb,
-                            null,
-                            tint = p.soft
+                if (kenney) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ApolloHudTab(
+                            "PHONE",
+                            source == LibrarySource.PHONE,
+                            onClick = { app.libraryStore.setSource(LibrarySource.PHONE) },
+                            modifier = Modifier.weight(1f)
+                        )
+                        ApolloHudTab(
+                            "USB SSD",
+                            source == LibrarySource.USB,
+                            onClick = { app.libraryStore.setSource(LibrarySource.USB) },
+                            modifier = Modifier.weight(1f)
                         )
                     }
-                    NeonButton(
-                        label = "CAR MODE",
-                        accent = p.secondary,
-                        modifier = Modifier.weight(1f),
-                        onClick = {
-                            context.startActivity(Intent(context, CarModeActivity::class.java))
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        ApolloHudButton(
+                            label = if (source == LibrarySource.PHONE) "SCAN PHONE" else "LINK USB",
+                            onClick = {
+                                if (source == LibrarySource.PHONE) requestPhoneScan()
+                                else openTree.launch(null)
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                        ApolloHudButton(
+                            label = "CAR MODE",
+                            onClick = {
+                                context.startActivity(Intent(context, CarModeActivity::class.java))
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                } else {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SourceChip("PHONE", source == LibrarySource.PHONE, Modifier.weight(1f)) {
+                            app.libraryStore.setSource(LibrarySource.PHONE)
                         }
-                    ) {
-                        Icon(Icons.Default.DirectionsCar, null, tint = p.soft)
+                        SourceChip("USB SSD", source == LibrarySource.USB, Modifier.weight(1f)) {
+                            app.libraryStore.setSource(LibrarySource.USB)
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        NeonButton(
+                            label = if (source == LibrarySource.PHONE) "SCAN PHONE" else "LINK USB SSD",
+                            accent = p.primary,
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                if (source == LibrarySource.PHONE) requestPhoneScan()
+                                else openTree.launch(null)
+                            }
+                        ) {
+                            Icon(
+                                if (source == LibrarySource.PHONE) Icons.Default.PhoneAndroid else Icons.Default.Usb,
+                                null,
+                                tint = p.soft
+                            )
+                        }
+                        NeonButton(
+                            label = "CAR MODE",
+                            accent = p.secondary,
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                context.startActivity(Intent(context, CarModeActivity::class.java))
+                            }
+                        ) {
+                            Icon(Icons.Default.DirectionsCar, null, tint = p.soft)
+                        }
                     }
                 }
 
                 if (scanning) {
                     Spacer(Modifier.height(10.dp))
-                    LinearProgressIndicator(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(3.dp),
-                        color = p.accent,
-                        trackColor = p.panel
-                    )
+                    if (kenney) {
+                        ApolloHudProgress(0.45f, height = 14.dp)
+                    } else {
+                        LinearProgressIndicator(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(3.dp),
+                            color = p.accent,
+                            trackColor = p.panel
+                        )
+                    }
                 }
 
                 Spacer(Modifier.height(12.dp))
@@ -283,6 +353,7 @@ private fun ApolloHomeScreen() {
 
                 Spacer(Modifier.height(12.dp))
                 NowPlayingBar(
+                    kenney = kenney,
                     playbackTitle = playback.title,
                     playbackArtist = playback.artist,
                     artworkUri = playback.artworkUri,
@@ -315,16 +386,30 @@ private fun ApolloHomeScreen() {
 
                 Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TabChip("ALL", tab == LibraryTab.ALL, Modifier.weight(1f)) {
-                        tab = LibraryTab.ALL
-                        selectedPlaylistId = null
-                    }
-                    TabChip("CAR ★", tab == LibraryTab.CAR_FAVORITES, Modifier.weight(1f)) {
-                        tab = LibraryTab.CAR_FAVORITES
-                        selectedPlaylistId = null
-                    }
-                    TabChip("LISTS", tab == LibraryTab.PLAYLISTS, Modifier.weight(1f)) {
-                        tab = LibraryTab.PLAYLISTS
+                    if (kenney) {
+                        ApolloHudTab("ALL", tab == LibraryTab.ALL, onClick = {
+                            tab = LibraryTab.ALL
+                            selectedPlaylistId = null
+                        }, modifier = Modifier.weight(1f))
+                        ApolloHudTab("CAR", tab == LibraryTab.CAR_FAVORITES, onClick = {
+                            tab = LibraryTab.CAR_FAVORITES
+                            selectedPlaylistId = null
+                        }, modifier = Modifier.weight(1f))
+                        ApolloHudTab("LISTS", tab == LibraryTab.PLAYLISTS, onClick = {
+                            tab = LibraryTab.PLAYLISTS
+                        }, modifier = Modifier.weight(1f))
+                    } else {
+                        TabChip("ALL", tab == LibraryTab.ALL, Modifier.weight(1f)) {
+                            tab = LibraryTab.ALL
+                            selectedPlaylistId = null
+                        }
+                        TabChip("CAR ★", tab == LibraryTab.CAR_FAVORITES, Modifier.weight(1f)) {
+                            tab = LibraryTab.CAR_FAVORITES
+                            selectedPlaylistId = null
+                        }
+                        TabChip("LISTS", tab == LibraryTab.PLAYLISTS, Modifier.weight(1f)) {
+                            tab = LibraryTab.PLAYLISTS
+                        }
                     }
                 }
 
@@ -641,6 +726,7 @@ private fun NeonButton(
 
 @Composable
 private fun NowPlayingBar(
+    kenney: Boolean,
     playbackTitle: String,
     playbackArtist: String,
     artworkUri: Uri?,
@@ -659,15 +745,12 @@ private fun NowPlayingBar(
     onAddToPlaylist: () -> Unit
 ) {
     val p = LocalHudPalette.current
+    val hudFont = LocalHudFont.current
+    val bodyFont = LocalBodyFont.current
     val animated by animateFloatAsState(progress, label = "progress")
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(1.dp, p.primary.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
-            .background(p.panel.copy(alpha = 0.85f))
-            .clickable(onClick = onOpenPlayer)
-            .padding(12.dp)
-    ) {
+
+    @Composable
+    fun MetaAndControls() {
         Row(verticalAlignment = Alignment.CenterVertically) {
             AsyncImage(
                 model = artworkUri,
@@ -681,58 +764,147 @@ private fun NowPlayingBar(
             )
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
-                Text("NOW PLAYING", color = p.primary, fontSize = 11.sp, letterSpacing = 2.sp)
-                Text(playbackTitle, color = p.soft, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(playbackArtist, color = p.dim, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 12.sp)
-            }
-            IconButton(onClick = onToggleCarFavorite) {
-                Icon(
-                    Icons.Default.DirectionsCar,
-                    contentDescription = "Save to Car Favorites",
-                    tint = if (inCarFavorites) p.secondary else p.dim
+                Text(
+                    "NOW PLAYING",
+                    color = p.primary,
+                    fontSize = 11.sp,
+                    letterSpacing = 2.sp,
+                    fontFamily = hudFont
+                )
+                Text(
+                    playbackTitle,
+                    color = p.soft,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontFamily = bodyFont
+                )
+                Text(
+                    playbackArtist,
+                    color = p.dim,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontSize = 12.sp,
+                    fontFamily = bodyFont
                 )
             }
-            IconButton(onClick = onAddToPlaylist) {
-                Icon(Icons.Default.PlaylistAdd, contentDescription = "Add to playlist", tint = p.primary)
+            if (kenney) {
+                ApolloHudIconButton(onClick = onToggleCarFavorite, size = 36.dp) {
+                    Icon(
+                        Icons.Default.DirectionsCar,
+                        contentDescription = "Save to Car Favorites",
+                        tint = if (inCarFavorites) p.secondary else p.dim,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                ApolloHudIconButton(onClick = onAddToPlaylist, size = 36.dp) {
+                    Icon(
+                        Icons.Default.PlaylistAdd,
+                        contentDescription = "Add to playlist",
+                        tint = p.soft,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            } else {
+                IconButton(onClick = onToggleCarFavorite) {
+                    Icon(
+                        Icons.Default.DirectionsCar,
+                        contentDescription = "Save to Car Favorites",
+                        tint = if (inCarFavorites) p.secondary else p.dim
+                    )
+                }
+                IconButton(onClick = onAddToPlaylist) {
+                    Icon(Icons.Default.PlaylistAdd, contentDescription = "Add to playlist", tint = p.primary)
+                }
             }
         }
         Spacer(Modifier.height(8.dp))
-        LinearProgressIndicator(
-            progress = { animated },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(4.dp),
-            color = p.secondary,
-            trackColor = p.soft.copy(alpha = 0.12f)
-        )
+        if (kenney) {
+            ApolloHudProgress(animated, height = 14.dp)
+        } else {
+            LinearProgressIndicator(
+                progress = { animated },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(4.dp),
+                color = p.secondary,
+                trackColor = p.soft.copy(alpha = 0.12f)
+            )
+        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onShuffle) {
-                Icon(Icons.Default.Shuffle, null, tint = if (shuffle) p.accent else p.dim)
+            if (kenney) {
+                ApolloHudIconButton(onClick = onShuffle, size = 34.dp) {
+                    Icon(Icons.Default.Shuffle, null, tint = if (shuffle) p.accent else p.dim, modifier = Modifier.size(16.dp))
+                }
+                ApolloHudIconButton(onClick = onPrev, size = 38.dp) {
+                    Icon(Icons.Default.SkipPrevious, null, tint = p.primary, modifier = Modifier.size(20.dp))
+                }
+                ApolloHudIconButton(onClick = onToggle, size = 44.dp) {
+                    Icon(
+                        if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        null,
+                        tint = p.accent,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                ApolloHudIconButton(onClick = onNext, size = 38.dp) {
+                    Icon(Icons.Default.SkipNext, null, tint = p.primary, modifier = Modifier.size(20.dp))
+                }
+                ApolloHudIconButton(onClick = onRepeat, size = 34.dp) {
+                    Icon(
+                        if (repeatMode == RepeatModeUi.ONE) Icons.Default.RepeatOne else Icons.Default.Repeat,
+                        null,
+                        tint = if (repeatMode == RepeatModeUi.OFF) p.dim else p.secondary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            } else {
+                IconButton(onClick = onShuffle) {
+                    Icon(Icons.Default.Shuffle, null, tint = if (shuffle) p.accent else p.dim)
+                }
+                IconButton(onClick = onPrev) {
+                    Icon(Icons.Default.SkipPrevious, null, tint = p.primary)
+                }
+                IconButton(onClick = onToggle) {
+                    Icon(
+                        if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        null,
+                        tint = p.accent
+                    )
+                }
+                IconButton(onClick = onNext) {
+                    Icon(Icons.Default.SkipNext, null, tint = p.primary)
+                }
+                IconButton(onClick = onRepeat) {
+                    Icon(
+                        if (repeatMode == RepeatModeUi.ONE) Icons.Default.RepeatOne else Icons.Default.Repeat,
+                        null,
+                        tint = if (repeatMode == RepeatModeUi.OFF) p.dim else p.secondary
+                    )
+                }
             }
-            IconButton(onClick = onPrev) {
-                Icon(Icons.Default.SkipPrevious, null, tint = p.primary)
+        }
+    }
+
+    if (kenney) {
+        Box(Modifier.clickable(onClick = onOpenPlayer)) {
+            ApolloSciFiPanel(title = null) {
+                MetaAndControls()
             }
-            IconButton(onClick = onToggle) {
-                Icon(
-                    if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    null,
-                    tint = p.accent
-                )
-            }
-            IconButton(onClick = onNext) {
-                Icon(Icons.Default.SkipNext, null, tint = p.primary)
-            }
-            IconButton(onClick = onRepeat) {
-                Icon(
-                    if (repeatMode == RepeatModeUi.ONE) Icons.Default.RepeatOne else Icons.Default.Repeat,
-                    null,
-                    tint = if (repeatMode == RepeatModeUi.OFF) p.dim else p.secondary
-                )
-            }
+        }
+    } else {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, p.primary.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                .background(p.panel.copy(alpha = 0.85f))
+                .clickable(onClick = onOpenPlayer)
+                .padding(12.dp)
+        ) {
+            MetaAndControls()
         }
     }
 }

@@ -64,8 +64,8 @@ import com.apolloauto.player.media.PlayerController
 import com.apolloauto.player.media.RepeatModeUi
 import com.apolloauto.player.media.VisualizerMode
 import com.apolloauto.player.theme.ApolloCyberTheme
-import com.apolloauto.player.theme.KenneyFuture
-import com.apolloauto.player.theme.KenneyFutureNarrow
+import com.apolloauto.player.theme.LocalBodyFont
+import com.apolloauto.player.theme.LocalHudFont
 import com.apolloauto.player.theme.LocalHudPalette
 import com.apolloauto.player.theme.PlayerLayoutMode
 import com.apolloauto.player.ui.hud.ApolloArtworkFrame
@@ -98,6 +98,7 @@ private fun NowPlayingScreen(onClose: () -> Unit) {
     val controller = remember { PlayerController(context.applicationContext) }
     val playback by controller.state.collectAsState()
     val capturing by app.visualizerController.capturing.collectAsState()
+    val hudFont = LocalHudFont.current
     val mode by app.visualizerController.mode.collectAsState()
     var addSheet by remember { mutableStateOf(false) }
     val playlists by app.playlistStore.playlists.collectAsState()
@@ -163,8 +164,8 @@ private fun NowPlayingScreen(onClose: () -> Unit) {
                 Text(
                     "NOW PLAYING",
                     color = p.primary,
-                    fontFamily = KenneyFuture,
-                    fontSize = 14.sp,
+                    fontFamily = hudFont,
+                    fontSize = 16.sp,
                     letterSpacing = 2.sp
                 )
                 Text(
@@ -174,8 +175,8 @@ private fun NowPlayingScreen(onClose: () -> Unit) {
                         .border(1.dp, p.dim.copy(alpha = 0.4f), RoundedCornerShape(3.dp))
                         .clickable(onClick = onClose)
                         .padding(horizontal = 10.dp, vertical = 6.dp),
-                    fontFamily = KenneyFutureNarrow,
-                    fontSize = 11.sp
+                    fontFamily = hudFont,
+                    fontSize = 13.sp
                 )
             }
             Spacer(Modifier.height(8.dp))
@@ -308,8 +309,10 @@ private fun TacticalLayout(
     onMode: (VisualizerMode) -> Unit
 ) {
     val p = LocalHudPalette.current
-    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    val hudFont = LocalHudFont.current
+    val bodyFont = LocalBodyFont.current
+    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             ApolloArtworkFrame(
                 Modifier
                     .weight(0.9f)
@@ -324,17 +327,17 @@ private fun TacticalLayout(
             }
             ApolloSciFiPanel(Modifier.weight(1.1f), title = "SIGNAL") {
                 Text(
-                    if (capturing) "LIVE FFT" else "NO CAPTURE",
+                    if (capturing) "LIVE FFT" else "IDLE SWEEP",
                     color = if (capturing) p.accent else p.dim,
-                    fontFamily = KenneyFutureNarrow,
-                    fontSize = 11.sp
+                    fontFamily = hudFont,
+                    fontSize = 12.sp
                 )
                 Spacer(Modifier.height(6.dp))
                 ApolloVisualizerSurface(
                     playing = playing,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(110.dp)
+                        .height(120.dp)
                         .border(1.dp, p.primary.copy(alpha = 0.3f))
                         .background(p.voidBlack)
                 )
@@ -349,7 +352,8 @@ private fun TacticalLayout(
                         Text(
                             label,
                             color = if (mode == m) p.soft else p.dim,
-                            fontSize = 9.sp,
+                            fontFamily = hudFont,
+                            fontSize = 11.sp,
                             modifier = Modifier
                                 .border(1.dp, if (mode == m) p.accent else p.dim.copy(alpha = 0.3f), RoundedCornerShape(2.dp))
                                 .clickable { onMode(m) }
@@ -361,58 +365,96 @@ private fun TacticalLayout(
         }
 
         ApolloSciFiPanel(title = "TRACK DATA") {
-            Text(playbackTitle, color = p.soft, fontSize = 20.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(artist, color = p.dim, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                playbackTitle,
+                color = p.soft,
+                fontSize = 22.sp,
+                fontFamily = bodyFont,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                artist,
+                color = p.dim,
+                fontSize = 15.sp,
+                fontFamily = bodyFont,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
             Spacer(Modifier.height(8.dp))
-            ApolloHudProgress(progress)
+            ApolloHudProgress(progress, height = 14.dp)
             Spacer(Modifier.height(4.dp))
             Text(
                 "${fmt(position)} / ${fmt(duration)}",
                 color = p.dim,
-                fontFamily = KenneyFutureNarrow,
-                fontSize = 12.sp
+                fontFamily = hudFont,
+                fontSize = 13.sp
             )
         }
 
         Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            ApolloHudIconButton(onClick = onShuffle) {
-                Icon(Icons.Default.Shuffle, null, tint = if (shuffle) p.accent else p.dim, modifier = Modifier.size(22.dp))
+            ApolloHudIconButton(onClick = onShuffle, size = 36.dp) {
+                Icon(Icons.Default.Shuffle, null, tint = if (shuffle) p.accent else p.dim, modifier = Modifier.size(16.dp))
             }
-            ApolloHudIconButton(onClick = onPrev) {
-                Icon(Icons.Default.SkipPrevious, null, tint = p.soft, modifier = Modifier.size(28.dp))
+            ApolloHudIconButton(onClick = onPrev, size = 40.dp) {
+                Icon(Icons.Default.SkipPrevious, null, tint = p.soft, modifier = Modifier.size(22.dp))
             }
-            ApolloHudIconButton(onClick = onToggle, modifier = Modifier.size(64.dp)) {
+            ApolloHudIconButton(onClick = onToggle, size = 48.dp) {
                 Icon(
                     if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
                     null,
                     tint = p.soft,
-                    modifier = Modifier.size(34.dp)
+                    modifier = Modifier.size(26.dp)
                 )
             }
-            ApolloHudIconButton(onClick = onNext) {
-                Icon(Icons.Default.SkipNext, null, tint = p.soft, modifier = Modifier.size(28.dp))
+            ApolloHudIconButton(onClick = onNext, size = 40.dp) {
+                Icon(Icons.Default.SkipNext, null, tint = p.soft, modifier = Modifier.size(22.dp))
             }
-            ApolloHudIconButton(onClick = onRepeat) {
+            ApolloHudIconButton(onClick = onRepeat, size = 36.dp) {
                 Icon(
                     if (repeatMode == RepeatModeUi.ONE) Icons.Default.RepeatOne else Icons.Default.Repeat,
                     null,
                     tint = if (repeatMode == RepeatModeUi.OFF) p.dim else p.secondary,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(16.dp)
                 )
             }
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ApolloHudButton(if (inCar) "IN CAR" else "SAVE CAR", onClick = onCar, modifier = Modifier.weight(1f))
-            ApolloHudButton("ADD LIST", onClick = onAdd, modifier = Modifier.weight(1f))
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ApolloHudButton("EQ", onClick = onEq, modifier = Modifier.weight(1f))
-            ApolloHudButton("TIMER", onClick = onTimer, modifier = Modifier.weight(1f))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            ApolloHudButton(
+                if (inCar) "IN CAR" else "SAVE CAR",
+                onClick = onCar,
+                modifier = Modifier.weight(1f),
+                height = 40.dp,
+                fontSize = 13.sp
+            )
+            ApolloHudButton(
+                "ADD LIST",
+                onClick = onAdd,
+                modifier = Modifier.weight(1f),
+                height = 40.dp,
+                fontSize = 13.sp
+            )
+            ApolloHudButton(
+                "EQ",
+                onClick = onEq,
+                modifier = Modifier.weight(0.7f),
+                height = 40.dp,
+                fontSize = 13.sp
+            )
+            ApolloHudButton(
+                "TIMER",
+                onClick = onTimer,
+                modifier = Modifier.weight(0.85f),
+                height = 40.dp,
+                fontSize = 13.sp
+            )
         }
     }
 }
@@ -466,19 +508,30 @@ private fun ImmersiveLayout(
             Spacer(Modifier.height(10.dp))
             ApolloHudProgress(progress)
             Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                ApolloHudIconButton(onClick = onPrev) {
-                    Icon(Icons.Default.SkipPrevious, null, tint = p.soft)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                ApolloHudIconButton(onClick = onPrev, size = 42.dp) {
+                    Icon(Icons.Default.SkipPrevious, null, tint = p.soft, modifier = Modifier.size(22.dp))
                 }
-                ApolloHudIconButton(onClick = onToggle, modifier = Modifier.size(68.dp)) {
-                    Icon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow, null, tint = p.soft, modifier = Modifier.size(36.dp))
+                ApolloHudIconButton(onClick = onToggle, size = 52.dp) {
+                    Icon(
+                        if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        null,
+                        tint = p.soft,
+                        modifier = Modifier.size(28.dp)
+                    )
                 }
-                ApolloHudIconButton(onClick = onNext) {
-                    Icon(Icons.Default.SkipNext, null, tint = p.soft)
+                ApolloHudIconButton(onClick = onNext, size = 42.dp) {
+                    Icon(Icons.Default.SkipNext, null, tint = p.soft, modifier = Modifier.size(22.dp))
                 }
             }
             Spacer(Modifier.height(8.dp))
-            ApolloHudButton(if (inCar) "IN CAR ★" else "SAVE TO CAR", onClick = onCar, modifier = Modifier.fillMaxWidth(0.6f))
+            ApolloHudButton(
+                if (inCar) "IN CAR ★" else "SAVE TO CAR",
+                onClick = onCar,
+                modifier = Modifier.fillMaxWidth(0.65f),
+                height = 42.dp,
+                fontSize = 14.sp
+            )
         }
     }
 }
@@ -515,13 +568,19 @@ private fun TerminalLayout(
             Spacer(Modifier.width(10.dp))
             Column {
                 ApolloHudLabel("TERMINAL MODE")
-                Text(playbackTitle, color = p.soft, fontFamily = KenneyFutureNarrow, fontSize = 16.sp, maxLines = 2)
-                Text(artist, color = p.dim, fontFamily = KenneyFutureNarrow, fontSize = 12.sp)
+                Text(
+                    playbackTitle,
+                    color = p.soft,
+                    fontFamily = LocalHudFont.current,
+                    fontSize = 17.sp,
+                    maxLines = 2
+                )
+                Text(artist, color = p.dim, fontFamily = LocalBodyFont.current, fontSize = 13.sp)
                 Text(
                     "POS ${fmt(position)}  DUR ${fmt(duration)}  VIZ ${if (capturing) "ON" else "OFF"}",
                     color = p.dim,
-                    fontFamily = KenneyFutureNarrow,
-                    fontSize = 11.sp
+                    fontFamily = LocalHudFont.current,
+                    fontSize = 12.sp
                 )
             }
         }

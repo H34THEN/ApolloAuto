@@ -38,18 +38,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.apolloauto.player.ApolloApp
 import com.apolloauto.player.media.SleepTimerController
+import com.apolloauto.player.media.VisualizerMode
 import com.apolloauto.player.theme.ApolloCyberTheme
 import com.apolloauto.player.theme.CustomThemeDraft
+import com.apolloauto.player.theme.HudFontOption
 import com.apolloauto.player.theme.HudThemeId
 import com.apolloauto.player.theme.InterfaceStyle
 import com.apolloauto.player.theme.LocalHudPalette
 import com.apolloauto.player.theme.MotionProfile
+import com.apolloauto.player.theme.fontFamilyFor
 import com.apolloauto.player.theme.parseHexColor
 import com.apolloauto.player.theme.toHexRgb
+import com.apolloauto.player.ui.hud.ApolloHudButton
 import com.apolloauto.player.ui.hud.ApolloHudPanel
 import com.apolloauto.player.ui.hud.ApolloSectionHeader
 import com.apolloauto.player.ui.hud.ApolloSciFiPanel
@@ -144,6 +149,7 @@ private fun DisplaySettings() {
     val glow by app.themeStore.glowIntensity.collectAsState()
     val motion by app.themeStore.motionProfile.collectAsState()
     val interfaceStyle by app.themeStore.interfaceStyle.collectAsState()
+    val hudFont by app.themeStore.hudFont.collectAsState()
     val kenney = useKenneyChrome(interfaceStyle)
     var draft by remember(custom) { mutableStateOf(custom) }
     var hexPrimary by remember(draft.primary) { mutableStateOf(draft.primary.toHexRgb()) }
@@ -177,6 +183,51 @@ private fun DisplaySettings() {
         }
         Text(
             "Classic disables Kenney chrome while keeping themes, EQ, playlists, and timers.",
+            color = p.dim,
+            fontSize = 12.sp
+        )
+    }
+
+    Panel("HUD FONT") {
+        HudFontOption.entries.forEach { option ->
+            val previewFace = fontFamilyFor(option)
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .border(
+                        1.dp,
+                        if (hudFont == option) p.accent else p.primary.copy(alpha = 0.25f),
+                        RoundedCornerShape(4.dp)
+                    )
+                    .background(if (hudFont == option) p.accent.copy(alpha = 0.12f) else Color.Transparent)
+                    .clickable { app.themeStore.setHudFont(option) }
+                    .padding(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        option.label.uppercase(),
+                        color = p.soft,
+                        fontFamily = previewFace,
+                        fontSize = 16.sp,
+                        letterSpacing = 1.sp
+                    )
+                    Text(option.subtitle, color = p.dim, fontSize = 12.sp)
+                    Text(
+                        "APOLLO II · AUDIO CMD",
+                        color = p.primary,
+                        fontFamily = previewFace,
+                        fontSize = 12.sp,
+                        letterSpacing = 1.5.sp
+                    )
+                }
+                if (hudFont == option) Text("ACTIVE", color = p.accent, fontSize = 10.sp)
+            }
+        }
+        Text(
+            "E1D1C Text is baked into the APK (ttf). Track titles keep a Unicode-safe body face.",
             color = p.dim,
             fontSize = 12.sp
         )
@@ -295,17 +346,80 @@ private fun AudioSettings() {
     val app = ApolloApp.instance
     val p = LocalHudPalette.current
     val eq by app.equalizerController.state.collectAsState()
+    val mode by app.visualizerController.mode.collectAsState()
+    val capturing by app.visualizerController.capturing.collectAsState()
+    val interfaceStyle by app.themeStore.interfaceStyle.collectAsState()
+    val kenney = useKenneyChrome(interfaceStyle)
     var customName by remember { mutableStateOf("") }
 
-    ApolloHudPanel(title = "EQUALIZER") {
+    val Panel: @Composable (String, @Composable () -> Unit) -> Unit = { title, content ->
+        if (kenney) ApolloSciFiPanel(title = title) { content() }
+        else ApolloHudPanel(title = title) { content() }
+    }
+
+    Panel("SIGNAL SCOPE") {
+        Text(
+            if (capturing) "LIVE CAPTURE" else "DECORATIVE IDLE · start playback for live FFT",
+            color = if (capturing) p.accent else p.dim,
+            fontSize = 13.sp
+        )
+        Spacer(Modifier.height(8.dp))
+        ApolloVisualizerSurface(
+            playing = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(160.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .border(1.dp, p.primary.copy(alpha = 0.35f), RoundedCornerShape(4.dp))
+                .background(p.voidBlack)
+        )
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            listOf(
+                VisualizerMode.SPECTRUM to "FFT",
+                VisualizerMode.WAVEFORM to "WAVE",
+                VisualizerMode.CIRCULAR to "ORB",
+                VisualizerMode.LEVEL to "LVL"
+            ).forEach { (m, label) ->
+                Text(
+                    label,
+                    color = if (mode == m) p.soft else p.dim,
+                    fontSize = 12.sp,
+                    letterSpacing = 1.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(3.dp))
+                        .border(
+                            1.dp,
+                            if (mode == m) p.accent else p.primary.copy(alpha = 0.25f),
+                            RoundedCornerShape(3.dp)
+                        )
+                        .background(if (mode == m) p.accent.copy(alpha = 0.12f) else Color.Transparent)
+                        .clickable { app.visualizerController.setMode(m) }
+                        .padding(vertical = 8.dp)
+                )
+            }
+        }
+    }
+
+    Panel("EQUALIZER") {
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column {
-                Text(if (eq.attached) "Linked to audio session" else "Start playback to attach EQ", color = p.dim, fontSize = 12.sp)
-                Text(if (eq.enabled) "ENGAGED" else "BYPASSED", color = if (eq.enabled) p.accent else p.dim)
+                Text(
+                    if (eq.attached) "Linked to audio session" else "Start playback to attach EQ",
+                    color = p.dim,
+                    fontSize = 13.sp
+                )
+                Text(
+                    if (eq.enabled) "ENGAGED" else "BYPASSED",
+                    color = if (eq.enabled) p.accent else p.dim,
+                    fontSize = 15.sp
+                )
             }
             Switch(
                 checked = eq.enabled,
@@ -329,12 +443,12 @@ private fun AudioSettings() {
                     .padding(10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(preset.name, color = p.soft, modifier = Modifier.weight(1f))
+                Text(preset.name, color = p.soft, fontSize = 15.sp, modifier = Modifier.weight(1f))
                 if (!preset.builtIn) {
                     Text(
                         "DEL",
                         color = p.danger,
-                        fontSize = 10.sp,
+                        fontSize = 12.sp,
                         modifier = Modifier.clickable { app.equalizerController.deleteCustomPreset(preset.id) }
                     )
                 }
@@ -342,7 +456,7 @@ private fun AudioSettings() {
         }
         Spacer(Modifier.height(8.dp))
         eq.bands.forEach { band ->
-            Text("${band.centerHz} Hz  ${band.levelMillibels} mB", color = p.dim, fontSize = 11.sp)
+            Text("${band.centerHz} Hz  ${band.levelMillibels} mB", color = p.dim, fontSize = 12.sp)
             Slider(
                 value = band.levelMillibels.toFloat(),
                 onValueChange = { app.equalizerController.setBand(band.index, it.toInt().toShort()) },
@@ -351,7 +465,7 @@ private fun AudioSettings() {
                 colors = SliderDefaults.colors(thumbColor = p.primary, activeTrackColor = p.primary)
             )
         }
-        Text("Bass boost", color = p.dim, fontSize = 11.sp)
+        Text("Bass boost", color = p.dim, fontSize = 12.sp)
         Slider(
             value = eq.bassStrength.toFloat(),
             onValueChange = { app.equalizerController.setBass(it.toInt()) },
@@ -359,13 +473,39 @@ private fun AudioSettings() {
             enabled = eq.attached,
             colors = SliderDefaults.colors(thumbColor = p.secondary, activeTrackColor = p.secondary)
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            HexField(customName, onChange = { customName = it }, modifier = Modifier.weight(1f))
-            ActionChip("SAVE PRESET") {
-                app.equalizerController.saveCustomPreset(customName)
-                customName = ""
+        Spacer(Modifier.height(8.dp))
+        Text("Preset name", color = p.dim, fontSize = 12.sp)
+        HexField(customName, onChange = { customName = it }, modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(10.dp))
+        if (kenney) {
+            ApolloHudButton(
+                "SAVE PRESET",
+                onClick = {
+                    app.equalizerController.saveCustomPreset(customName)
+                    customName = ""
+                },
+                modifier = Modifier.fillMaxWidth(),
+                height = 46.dp,
+                fontSize = 14.sp
+            )
+            Spacer(Modifier.height(8.dp))
+            ApolloHudButton(
+                "RESET FLAT",
+                onClick = { app.equalizerController.resetFlat() },
+                modifier = Modifier.fillMaxWidth(),
+                height = 46.dp,
+                fontSize = 14.sp
+            )
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                ActionChip("SAVE PRESET", Modifier.fillMaxWidth()) {
+                    app.equalizerController.saveCustomPreset(customName)
+                    customName = ""
+                }
+                ActionChip("RESET FLAT", Modifier.fillMaxWidth()) {
+                    app.equalizerController.resetFlat()
+                }
             }
-            ActionChip("FLAT") { app.equalizerController.resetFlat() }
         }
     }
 }
@@ -432,18 +572,19 @@ private fun PlaybackSettings() {
 }
 
 @Composable
-private fun ActionChip(label: String, onClick: () -> Unit) {
+private fun ActionChip(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val p = LocalHudPalette.current
     Text(
         label,
         color = p.voidBlack,
-        fontSize = 10.sp,
+        fontSize = 13.sp,
         letterSpacing = 1.sp,
-        modifier = Modifier
+        textAlign = TextAlign.Center,
+        modifier = modifier
             .clip(RoundedCornerShape(3.dp))
             .background(p.primary)
             .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 8.dp)
+            .padding(horizontal = 12.dp, vertical = 10.dp)
     )
 }
 

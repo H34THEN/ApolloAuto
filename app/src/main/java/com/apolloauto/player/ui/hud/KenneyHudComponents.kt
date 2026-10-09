@@ -35,8 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.apolloauto.player.R
 import com.apolloauto.player.theme.InterfaceStyle
-import com.apolloauto.player.theme.KenneyFuture
-import com.apolloauto.player.theme.KenneyFutureNarrow
+import com.apolloauto.player.theme.LocalHudFont
 import com.apolloauto.player.theme.LocalHudPalette
 
 @Composable
@@ -46,6 +45,7 @@ fun ApolloSciFiPanel(
     content: @Composable ColumnScope.() -> Unit
 ) {
     val p = LocalHudPalette.current
+    val font = LocalHudFont.current
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(4.dp))
@@ -57,8 +57,8 @@ fun ApolloSciFiPanel(
             Text(
                 title.uppercase(),
                 color = p.primary,
-                fontFamily = KenneyFutureNarrow,
-                fontSize = 11.sp,
+                fontFamily = font,
+                fontSize = 13.sp,
                 letterSpacing = 2.sp
             )
             Spacer(Modifier.height(8.dp))
@@ -72,12 +72,15 @@ fun ApolloHudButton(
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    height: Dp = 44.dp,
+    fontSize: androidx.compose.ui.unit.TextUnit = 14.sp
 ) {
     val p = LocalHudPalette.current
+    val font = LocalHudFont.current
     Box(
         modifier = modifier
-            .height(48.dp)
+            .height(height)
             .clip(RoundedCornerShape(2.dp))
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center
@@ -96,12 +99,12 @@ fun ApolloHudButton(
         Text(
             label.uppercase(),
             color = if (enabled) p.soft else p.dim,
-            fontFamily = KenneyFuture,
-            fontSize = 11.sp,
+            fontFamily = font,
+            fontSize = fontSize,
             letterSpacing = 1.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 10.dp)
+            modifier = Modifier.padding(horizontal = 8.dp)
         )
     }
 }
@@ -110,13 +113,14 @@ fun ApolloHudButton(
 fun ApolloHudIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    size: Dp = 40.dp,
     enabled: Boolean = true,
     content: @Composable BoxScope.() -> Unit
 ) {
     val p = LocalHudPalette.current
     Box(
         modifier = modifier
-            .size(52.dp)
+            .size(size)
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
@@ -228,11 +232,12 @@ fun ApolloArtworkFrame(
 @Composable
 fun ApolloHudLabel(text: String, modifier: Modifier = Modifier, accent: Boolean = true) {
     val p = LocalHudPalette.current
+    val font = LocalHudFont.current
     Text(
         text.uppercase(),
         color = if (accent) p.primary else p.dim,
-        fontFamily = KenneyFutureNarrow,
-        fontSize = 11.sp,
+        fontFamily = font,
+        fontSize = 13.sp,
         letterSpacing = 2.sp,
         modifier = modifier
     )
@@ -246,6 +251,7 @@ fun ApolloHudTab(
     modifier: Modifier = Modifier
 ) {
     val p = LocalHudPalette.current
+    val font = LocalHudFont.current
     Box(
         modifier = modifier
             .height(40.dp)
@@ -266,8 +272,8 @@ fun ApolloHudTab(
         Text(
             label.uppercase(),
             color = p.soft,
-            fontFamily = KenneyFuture,
-            fontSize = 10.sp,
+            fontFamily = font,
+            fontSize = 12.sp,
             letterSpacing = 1.sp,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = 6.dp)

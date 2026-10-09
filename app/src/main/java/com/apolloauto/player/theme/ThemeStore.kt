@@ -85,6 +85,13 @@ class ThemeStore(context: Context) {
     )
     val playerLayout: StateFlow<PlayerLayoutMode> = _playerLayout.asStateFlow()
 
+    private val _hudFont = MutableStateFlow(
+        runCatching {
+            HudFontOption.valueOf(prefs.getString(KEY_FONT, HudFontOption.E1D1C_TEXT.name)!!)
+        }.getOrDefault(HudFontOption.E1D1C_TEXT)
+    )
+    val hudFont: StateFlow<HudFontOption> = _hudFont.asStateFlow()
+
     fun activePalette(): HudPalette =
         paletteFor(_themeId.value, _custom.value.toPalette(), _glow.value)
 
@@ -112,6 +119,11 @@ class ThemeStore(context: Context) {
     fun setPlayerLayout(mode: PlayerLayoutMode) {
         _playerLayout.value = mode
         prefs.edit().putString(KEY_PLAYER_LAYOUT, mode.name).apply()
+    }
+
+    fun setHudFont(option: HudFontOption) {
+        _hudFont.value = option
+        prefs.edit().putString(KEY_FONT, option.name).apply()
     }
 
     fun updateCustom(draft: CustomThemeDraft) {
@@ -178,5 +190,6 @@ class ThemeStore(context: Context) {
         private const val KEY_MOTION = "motion"
         private const val KEY_INTERFACE = "interface_style"
         private const val KEY_PLAYER_LAYOUT = "player_layout"
+        private const val KEY_FONT = "hud_font"
     }
 }
