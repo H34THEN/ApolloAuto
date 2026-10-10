@@ -323,8 +323,24 @@ private fun CarDeckScreen(onExit: () -> Unit) {
                                         .border(1.dp, p.primary.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
                                         .background(p.voidBlack.copy(alpha = 0.55f))
                                 ) {
+                                    val bgMode by app.themeStore.vizBackgroundMode.collectAsState()
+                                    val albumBlur by app.themeStore.albumBlur.collectAsState()
+                                    val albumDark by app.themeStore.albumDarkness.collectAsState()
+                                    val albumSat by app.themeStore.albumSaturation.collectAsState()
+                                    val effectiveBg = remember(bgMode, vizMode) {
+                                        com.apolloauto.player.media.VisualizerBackgroundPolicy.resolve(bgMode, vizMode)
+                                    }
+                                    VisualizerBackgroundLayer(
+                                        effective = effectiveBg,
+                                        artworkUri = playback.artworkUri,
+                                        albumBlur = albumBlur,
+                                        albumDarkness = albumDark,
+                                        albumSaturation = albumSat,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
                                     ApolloVisualizerSurface(
                                         playing = playback.playing,
+                                        clearBackdrop = true,
                                         modifier = Modifier.fillMaxSize()
                                     )
                                     // Corner tech marks

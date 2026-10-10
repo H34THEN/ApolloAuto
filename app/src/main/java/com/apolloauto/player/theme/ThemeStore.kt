@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import com.apolloauto.player.media.TranceResponseProfile
+import com.apolloauto.player.media.VisualizerBackgroundMode
 import com.apolloauto.player.media.VisualizerMode
 import com.apolloauto.player.media.VizPaletteMode
 import com.apolloauto.player.media.VizQualityTier
@@ -198,6 +199,27 @@ class ThemeStore(context: Context) {
     private val _obsidianPreset = MutableStateFlow(prefs.getString(KEY_OBSIDIAN, "violet") ?: "violet")
     val obsidianPreset: StateFlow<String> = _obsidianPreset.asStateFlow()
 
+    private val _vizBackgroundMode = MutableStateFlow(
+        runCatching {
+            VisualizerBackgroundMode.valueOf(
+                prefs.getString(KEY_VIZ_BG, VisualizerBackgroundMode.AUTO.name)!!
+            )
+        }.getOrDefault(VisualizerBackgroundMode.AUTO)
+    )
+    val vizBackgroundMode: StateFlow<VisualizerBackgroundMode> = _vizBackgroundMode.asStateFlow()
+
+    private val _albumBlur = MutableStateFlow(prefs.getFloat(KEY_ALBUM_BLUR, 0.55f))
+    val albumBlur: StateFlow<Float> = _albumBlur.asStateFlow()
+
+    private val _albumDarkness = MutableStateFlow(prefs.getFloat(KEY_ALBUM_DARK, 0.62f))
+    val albumDarkness: StateFlow<Float> = _albumDarkness.asStateFlow()
+
+    private val _albumSaturation = MutableStateFlow(prefs.getFloat(KEY_ALBUM_SAT, 0.55f))
+    val albumSaturation: StateFlow<Float> = _albumSaturation.asStateFlow()
+
+    private val _vizDebugOverlay = MutableStateFlow(prefs.getBoolean(KEY_VIZ_DEBUG, false))
+    val vizDebugOverlay: StateFlow<Boolean> = _vizDebugOverlay.asStateFlow()
+
     fun activePalette(): HudPalette =
         paletteFor(_themeId.value, _custom.value.toPalette(), _glow.value)
 
@@ -235,6 +257,34 @@ class ThemeStore(context: Context) {
     fun setVisualizerMode(mode: VisualizerMode) {
         _visualizerMode.value = mode
         prefs.edit().putString(KEY_VIZ_MODE, mode.name).apply()
+    }
+
+    fun setVizBackgroundMode(mode: VisualizerBackgroundMode) {
+        _vizBackgroundMode.value = mode
+        prefs.edit().putString(KEY_VIZ_BG, mode.name).apply()
+    }
+
+    fun setAlbumBlur(value: Float) {
+        val v = value.coerceIn(0f, 1f)
+        _albumBlur.value = v
+        prefs.edit().putFloat(KEY_ALBUM_BLUR, v).apply()
+    }
+
+    fun setAlbumDarkness(value: Float) {
+        val v = value.coerceIn(0.2f, 0.92f)
+        _albumDarkness.value = v
+        prefs.edit().putFloat(KEY_ALBUM_DARK, v).apply()
+    }
+
+    fun setAlbumSaturation(value: Float) {
+        val v = value.coerceIn(0f, 1.5f)
+        _albumSaturation.value = v
+        prefs.edit().putFloat(KEY_ALBUM_SAT, v).apply()
+    }
+
+    fun setVizDebugOverlay(enabled: Boolean) {
+        _vizDebugOverlay.value = enabled
+        prefs.edit().putBoolean(KEY_VIZ_DEBUG, enabled).apply()
     }
 
     fun setVizRandomizer(enabled: Boolean) {
@@ -561,5 +611,10 @@ class ThemeStore(context: Context) {
         private const val KEY_SPIRAL_VAR = "spiral_variant"
         private const val KEY_SPIRAL_COLOR = "spiral_color_preset"
         private const val KEY_OBSIDIAN = "obsidian_preset"
+        private const val KEY_VIZ_BG = "viz_background_mode"
+        private const val KEY_ALBUM_BLUR = "album_bg_blur"
+        private const val KEY_ALBUM_DARK = "album_bg_darkness"
+        private const val KEY_ALBUM_SAT = "album_bg_saturation"
+        private const val KEY_VIZ_DEBUG = "viz_debug_overlay"
     }
 }

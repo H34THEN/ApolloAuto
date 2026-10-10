@@ -89,7 +89,8 @@ class ApolloApp : Application() {
         themeStore = ThemeStore(this)
         equalizerController = EqualizerController(this)
         visualizerController = AudioVisualizerController().also {
-            it.setMode(themeStore.visualizerMode.value)
+            it.setMode(themeStore.visualizerMode.value, reason = "boot")
+            it.debugLogging = false
         }
         stablePlaybackQueue = StablePlaybackQueue()
         albumArtColors = AlbumArtColorStore(this, appScope)

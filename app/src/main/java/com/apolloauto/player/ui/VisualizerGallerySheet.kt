@@ -29,6 +29,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.apolloauto.player.ApolloApp
+import com.apolloauto.player.media.VisualizerBackgroundMode
 import com.apolloauto.player.media.VisualizerMode
 import com.apolloauto.player.theme.LocalBodyFont
 import com.apolloauto.player.theme.LocalHudFont
@@ -48,6 +49,7 @@ fun VisualizerGallerySheet(
     val current by app.themeStore.visualizerMode.collectAsState()
     val favorites by app.themeStore.favoriteVizModes.collectAsState()
     val quality by app.themeStore.vizQuality.collectAsState()
+    val bgMode by app.themeStore.vizBackgroundMode.collectAsState()
     var query by remember { mutableStateOf("") }
     var group by remember { mutableStateOf(VisualizerCategory.TRANCE) }
 
@@ -87,12 +89,30 @@ fun VisualizerGallerySheet(
             )
         }
         Text(
-            "Quality ${quality.name} · ${favorites.size} favorites",
+            "Quality ${quality.name} · ${favorites.size} favorites · BG ${bgMode.name}",
             color = p.dim,
             fontFamily = body,
             fontSize = 10.sp,
             modifier = Modifier.padding(top = 4.dp)
         )
+        Spacer(Modifier.height(6.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            VisualizerBackgroundMode.entries.forEach { m ->
+                val on = bgMode == m
+                Text(
+                    m.name.replace('_', ' '),
+                    color = if (on) p.voidBlack else p.soft,
+                    fontFamily = body,
+                    fontSize = 10.sp,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (on) p.primary else p.voidBlack.copy(alpha = 0.35f))
+                        .border(1.dp, p.primary.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                        .clickable { app.themeStore.setVizBackgroundMode(m) }
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
+        }
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(
             value = query,

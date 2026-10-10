@@ -27,6 +27,8 @@ import androidx.compose.ui.unit.sp
 import com.apolloauto.player.ApolloApp
 import com.apolloauto.player.companion.CompanionVoice
 import com.apolloauto.player.media.TranceResponseProfile
+import com.apolloauto.player.media.VisualizerBackgroundMode
+import com.apolloauto.player.media.VisualizerBackgroundPolicy
 import com.apolloauto.player.media.VisualizerMode
 import com.apolloauto.player.media.VizPaletteMode
 import com.apolloauto.player.media.VizQualityTier
@@ -59,7 +61,13 @@ fun VisualizerSettingsPanel() {
     val photosensitive by app.themeStore.photosensitiveMode.collectAsState()
     val autoDjSec by app.themeStore.autoDjIntervalSec.collectAsState()
     val autoDjTrack by app.themeStore.autoDjOnTrackChange.collectAsState()
+    val bgMode by app.themeStore.vizBackgroundMode.collectAsState()
+    val albumBlur by app.themeStore.albumBlur.collectAsState()
+    val albumDark by app.themeStore.albumDarkness.collectAsState()
+    val albumSat by app.themeStore.albumSaturation.collectAsState()
+    val debugOverlay by app.themeStore.vizDebugOverlay.collectAsState()
     val kenney = useKenneyChrome(interfaceStyle)
+    val effectiveBg = VisualizerBackgroundPolicy.resolve(bgMode, mode)
 
     val Panel: @Composable (String, @Composable () -> Unit) -> Unit = { title, content ->
         if (kenney) ApolloSciFiPanel(title = title) { content() }
@@ -117,6 +125,96 @@ fun VisualizerSettingsPanel() {
                     app.themeStore.speak(
                         if (it) CompanionVoice.driveOnLine() else CompanionVoice.driveOffLine()
                     )
+                },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = p.accent,
+                    checkedTrackColor = p.accent.copy(alpha = 0.45f),
+                    uncheckedThumbColor = p.dim,
+                    uncheckedTrackColor = p.dim.copy(alpha = 0.35f)
+                )
+            )
+        }
+    }
+
+    Panel("BACKGROUND") {
+        Text("BACKGROUND", color = p.soft, fontFamily = body, fontSize = 13.sp)
+        Spacer(Modifier.height(4.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            VisualizerBackgroundMode.entries.forEach { m ->
+                QuickFilterChip(m.name.replace('_', ' ')) {
+                    app.themeStore.setVizBackgroundMode(m)
+                }
+            }
+        }
+        Text(
+            "Active: ${bgMode.name} → ${effectiveBg.preference.name}",
+            color = p.accent,
+            fontFamily = body,
+            fontSize = 11.sp,
+            modifier = Modifier.padding(top = 6.dp)
+        )
+        Text(effectiveBg.note, color = p.dim, fontFamily = body, fontSize = 10.sp)
+        if (bgMode == VisualizerBackgroundMode.ALBUM_ART ||
+            (bgMode == VisualizerBackgroundMode.AUTO && effectiveBg.showAlbumArt)
+        ) {
+            Spacer(Modifier.height(6.dp))
+            Text("Album blur", color = p.soft, fontFamily = body, fontSize = 12.sp)
+            Slider(
+                value = albumBlur,
+                onValueChange = { app.themeStore.setAlbumBlur(it) },
+                colors = SliderDefaults.colors(
+                    thumbColor = p.accent,
+                    activeTrackColor = p.primary,
+                    inactiveTrackColor = p.dim.copy(alpha = 0.35f)
+                )
+            )
+            Text("Darkness", color = p.soft, fontFamily = body, fontSize = 12.sp)
+            Slider(
+                value = albumDark,
+                onValueChange = { app.themeStore.setAlbumDarkness(it) },
+                valueRange = 0.2f..0.92f,
+                colors = SliderDefaults.colors(
+                    thumbColor = p.accent,
+                    activeTrackColor = p.primary,
+                    inactiveTrackColor = p.dim.copy(alpha = 0.35f)
+                )
+            )
+            Text("Saturation", color = p.soft, fontFamily = body, fontSize = 12.sp)
+            Slider(
+                value = albumSat,
+                onValueChange = { app.themeStore.setAlbumSaturation(it) },
+                valueRange = 0f..1.5f,
+                colors = SliderDefaults.colors(
+                    thumbColor = p.accent,
+                    activeTrackColor = p.primary,
+                    inactiveTrackColor = p.dim.copy(alpha = 0.35f)
+                )
+            )
+        }
+        if (bgMode == VisualizerBackgroundMode.BLACK) {
+            Text(
+                "Pure #000000 — rainbow geometry stays full color",
+                color = p.dim,
+                fontFamily = body,
+                fontSize = 11.sp,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Capture diagnostics", color = p.soft, fontFamily = body, fontSize = 13.sp)
+                Text("Dev overlay in immersive", color = p.dim, fontFamily = body, fontSize = 11.sp)
+            }
+            Switch(
+                checked = debugOverlay,
+                onCheckedChange = {
+                    app.themeStore.setVizDebugOverlay(it)
+                    app.visualizerController.debugLogging = it
                 },
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = p.accent,

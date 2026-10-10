@@ -3,7 +3,6 @@ package com.apolloauto.player.ui
 import android.Manifest
 import android.app.Activity
 import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -51,11 +50,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.contentDescription
@@ -66,7 +63,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import coil.compose.AsyncImage
 import com.apolloauto.player.ApolloApp
 import com.apolloauto.player.companion.CompanionVoice
 import com.apolloauto.player.data.LrcDocument
@@ -126,12 +122,11 @@ private fun ImmersiveVisualizerScreen(onExit: () -> Unit) {
     var showGallery by remember { mutableStateOf(false) }
     var hudVisible by remember { mutableStateOf(true) }
     val lyricsAvailable = lyricsDoc != null && lyricsDoc!!.lines.isNotEmpty()
-    val autoDjInterval by app.themeStore.autoDjIntervalSec.collectAsState()
     val autoDjOnTrack by app.themeStore.autoDjOnTrackChange.collectAsState()
 
-    fun applyMode(next: com.apolloauto.player.media.VisualizerMode) {
+    fun applyMode(next: com.apolloauto.player.media.VisualizerMode, reason: String = "user") {
         app.themeStore.setVisualizerMode(next)
-        app.visualizerController.setMode(next)
+        app.visualizerController.setMode(next, reason = reason)
     }
 
     fun cycleNext() {
@@ -155,9 +150,10 @@ private fun ImmersiveVisualizerScreen(onExit: () -> Unit) {
     }
 
     DisposableEffect(Unit) {
-        app.visualizerController.setMode(app.themeStore.visualizerMode.value)
+        app.visualizerController.setMode(app.themeStore.visualizerMode.value, reason = "immersive_enter")
         controller.connect()
         onDispose {
+            // Soft-pause capture; do not release session (avoids recreate thrash).
             app.visualizerController.setEnabled(false)
             controller.release()
         }
@@ -180,82 +176,97 @@ private fun ImmersiveVisualizerScreen(onExit: () -> Unit) {
     }
 
     LaunchedEffect(playback.playing) {
-        if (playback.playing) {
-            val granted = ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.RECORD_AUDIO
-            ) == PackageManager.PERMISSION_GRANTED
-            if (granted) {
+        val granted = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!granted) {
+            if (playback.playing) micPermission.launch(Manifest.permission.RECORD_AUDIO)
+            return@LaunchedEffect
+        }
+        val session = app.playbackBridge?.audioSessionId() ?: 0
+        if (session != 0) app.visualizerController.attach(session)
+        // Keep analyzer attached while paused — soft decay only (fixes frozen reactivity).
+        app.visualizerController.setEnabled(playback.playing)
+    }
+
+    // Stale-frame recovery loop — does not recreate scenes.
+    LaunchedEffect(Unit) {
+        while (isActive) {
+            delay(1000)
+            if (controller.state.value.playing) {
                 val session = app.playbackBridge?.audioSessionId() ?: 0
-                if (session != 0) app.visualizerController.attach(session)
-                app.visualizerController.setEnabled(true)
-            } else {
-                micPermission.launch(Manifest.permission.RECORD_AUDIO)
+                app.visualizerController.recoverIfStale(session)
             }
-        } else {
-            app.visualizerController.setEnabled(false)
         }
     }
 
-    LaunchedEffect(randomizer, playback.playing, autoDjInterval) {
+    // Auto DJ interval — keyed only on randomizer enable, not playing/metadata (avoids timer resets).
+    LaunchedEffect(randomizer) {
         if (!randomizer) return@LaunchedEffect
         while (isActive && app.themeStore.vizRandomizer.value) {
             val waitMs = (app.themeStore.autoDjIntervalSec.value * 1000L)
                 .coerceIn(10_000L, 300_000L)
             delay(waitMs)
             if (!app.themeStore.vizRandomizer.value) break
+            if (!controller.state.value.playing) continue
             val current = app.visualizerController.mode.value
             val pool = app.themeStore.autoDjPool().filter { it != current }.ifEmpty {
                 app.themeStore.autoDjPool()
             }
-            if (pool.isNotEmpty()) applyMode(pool.random())
+            if (pool.isNotEmpty()) applyMode(pool.random(), reason = "autodj_interval")
         }
     }
 
-    LaunchedEffect(playback.mediaId, autoDjOnTrack, randomizer) {
+    LaunchedEffect(autoDjOnTrack, randomizer) {
         if (!randomizer || !autoDjOnTrack) return@LaunchedEffect
-        // Skip first composition — only rotate when mediaId changes after load.
-        var lastId = playback.mediaId
+        var lastId = controller.state.value.mediaId
+        var primed = false
         while (isActive) {
             delay(500)
             val id = controller.state.value.mediaId
+            if (!primed) {
+                lastId = id
+                primed = true
+                continue
+            }
             if (id.isNotBlank() && id != lastId) {
                 lastId = id
                 if (app.themeStore.vizRandomizer.value && app.themeStore.autoDjOnTrackChange.value) {
                     val current = app.visualizerController.mode.value
                     val pool = app.themeStore.autoDjPool().filter { it != current }
                         .ifEmpty { app.themeStore.autoDjPool() }
-                    if (pool.isNotEmpty()) applyMode(pool.random())
+                    if (pool.isNotEmpty()) applyMode(pool.random(), reason = "autodj_track")
                 }
             }
         }
     }
 
-    val canBlur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    val bgMode by app.themeStore.vizBackgroundMode.collectAsState()
+    val albumBlur by app.themeStore.albumBlur.collectAsState()
+    val albumDark by app.themeStore.albumDarkness.collectAsState()
+    val albumSat by app.themeStore.albumSaturation.collectAsState()
+    val debugOverlay by app.themeStore.vizDebugOverlay.collectAsState()
+    val effectiveBg = remember(bgMode, mode) {
+        com.apolloauto.player.media.VisualizerBackgroundPolicy.resolve(bgMode, mode)
+    }
+    LaunchedEffect(debugOverlay) {
+        app.visualizerController.debugLogging = debugOverlay
+    }
 
     Box(
         Modifier
             .fillMaxSize()
             .background(p.voidBlack)
     ) {
-        // Full-bleed blurred album art — Crop so there are no letterbox gaps.
-        if (playback.artworkUri != null) {
-            AsyncImage(
-                model = playback.artworkUri,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .then(if (canBlur) Modifier.blur(28.dp) else Modifier)
-            )
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(
-                        p.voidBlack.copy(alpha = if (canBlur) 0.32f else 0.48f)
-                    )
-            )
-        }
+        VisualizerBackgroundLayer(
+            effective = effectiveBg,
+            artworkUri = playback.artworkUri,
+            albumBlur = albumBlur,
+            albumDarkness = albumDark,
+            albumSaturation = albumSat,
+            modifier = Modifier.fillMaxSize()
+        )
 
         ApolloVisualizerSurface(
             playing = playback.playing,
@@ -377,7 +388,7 @@ private fun ImmersiveVisualizerScreen(onExit: () -> Unit) {
         if (showGallery && hudVisible) {
             VisualizerGallerySheet(
                 onSelect = {
-                    applyMode(it)
+                    applyMode(it, reason = "gallery")
                     showGallery = false
                 },
                 onClose = { showGallery = false },
@@ -385,6 +396,15 @@ private fun ImmersiveVisualizerScreen(onExit: () -> Unit) {
                     .align(Alignment.Center)
                     .fillMaxWidth(0.92f)
                     .padding(16.dp)
+            )
+        }
+
+        if (debugOverlay) {
+            VisualizerDiagnosticsOverlay(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .statusBarsPadding()
+                    .padding(10.dp)
             )
         }
 

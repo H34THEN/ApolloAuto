@@ -67,3 +67,34 @@ Package id (debug): `com.apolloauto.player.debug`
 
 Rollback does **not** clear SharedPreferences, library cache files, or playlists.
 To clear app data: Android Settings → Apps → Apollo II → Clear storage (manual).
+
+
+## V4.2 finalization baseline
+
+| Item | Value |
+|---|---|
+| V4 tip | `689a0c6` on `feature/apollo-trance-reactor-v4` |
+| Tag | `apollo-pre-trance-v4-2` → `689a0c6` |
+| Continuation branch | `feature/apollo-trance-v4-2-finalization` |
+
+### Restore V4 tip (pre-hardening)
+
+```bash
+git checkout apollo-pre-trance-v4-2
+# or
+git checkout feature/apollo-trance-reactor-v4
+```
+
+### Restore earlier pre-V4 tip
+
+```bash
+git checkout apollo-pre-trance-v4
+```
+
+### Reinstall prior APK
+
+```bash
+adb install -r /path/to/previous-app-debug.apk
+```
+
+Package: `com.apolloauto.player.debug`

@@ -13,8 +13,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -33,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import com.apolloauto.player.ApolloApp
 import com.apolloauto.player.R
 import com.apolloauto.player.media.AudioFeatures
+import com.apolloauto.player.media.VisualizerBackgroundPolicy
 import com.apolloauto.player.media.VisualizerMode
 import com.apolloauto.player.theme.LocalHudPalette
 import com.apolloauto.player.theme.LocalMotionProfile
@@ -44,7 +50,7 @@ import kotlin.math.sin
 fun ApolloVisualizerSurface(
     playing: Boolean,
     modifier: Modifier = Modifier,
-    /** Skip opaque void fills so album art can show through (immersive). */
+    /** Skip opaque void fills so album art / black can show through. */
     clearBackdrop: Boolean = false
 ) {
     val themePalette = LocalHudPalette.current
@@ -76,19 +82,17 @@ fun ApolloVisualizerSurface(
     val features = featuresRaw.withProfile(tranceProfile)
     val capturing by viz.capturing.collectAsState()
     val mode by viz.mode.collectAsState()
+    val bgMode by app.themeStore.vizBackgroundMode.collectAsState()
     val animate = motion != MotionProfile.STATIC
     val cinematicAmt = if (cinematic) 1f else 0f
+    val effectiveBg = remember(bgMode, mode) {
+        VisualizerBackgroundPolicy.resolve(bgMode, mode)
+    }
+    // Force clear backdrop when BLACK/ALBUM or AUTO→BLACK so scenes don't paint opaque void.
+    val resolvedClear = clearBackdrop || effectiveBg.clearSceneBackdrop
 
+    // Seamless decorative pulse only — never used as absolute scene phase.
     val spin = rememberInfiniteTransition(label = "vizSpin")
-    val spinAngle by spin.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(9000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "angle"
-    )
     val pulse by spin.animateFloat(
         initialValue = 0.85f,
         targetValue = 1.15f,
@@ -98,16 +102,26 @@ fun ApolloVisualizerSurface(
         ),
         label = "pulse"
     )
-    // Faster clock for warp / ocean motion so scenes feel alive.
-    val warpClock by spin.animateFloat(
-        initialValue = 0f,
-        targetValue = 1000f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(3200, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "warp"
-    )
+    /**
+     * Monotonic animation clocks (V4.2 root-cause fix).
+     * Previous warpClock tween Restart every 3200ms snapped all TR/cosmic phases to 0.
+     */
+    var monoMs by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(Unit) {
+        viz.sceneRuntime.ensureRenderClock()
+        var last = 0L
+        while (true) {
+            withFrameNanos { nanos ->
+                if (last != 0L) {
+                    val dtMs = ((nanos - last) / 1_000_000f).coerceIn(0f, 48f)
+                    monoMs += dtMs
+                }
+                last = nanos
+            }
+        }
+    }
+    val spinAngle = (monoMs * 0.04f) % 360f
+    val warpClock = monoMs * 0.12f // continuous; never restarts
 
     Box(modifier = modifier) {
         Canvas(Modifier.fillMaxSize()) {
@@ -158,7 +172,7 @@ fun ApolloVisualizerSurface(
                 VisualizerMode.VISSONANCE_MATRIX -> true
                 else -> false
             }
-            if (!cosmicScene && !clearBackdrop) {
+            if (!cosmicScene && !resolvedClear) {
                 val gridStep = size.width / 12f
                 for (i in 0..12) {
                     val x = i * gridStep
@@ -480,7 +494,7 @@ fun ApolloVisualizerSurface(
                     pulse = pulse,
                     fft = spectrum,
                     playing = playing,
-                    clearBackdrop = clearBackdrop
+                    clearBackdrop = resolvedClear
                 )
 
                 VisualizerMode.NEBULA -> drawNebulaScene(
@@ -488,7 +502,7 @@ fun ApolloVisualizerSurface(
                     palette = p,
                     phase = fastPhase,
                     pulse = pulse,
-                    clearBackdrop = clearBackdrop
+                    clearBackdrop = resolvedClear
                 )
 
                 VisualizerMode.RAVE_CORE -> drawRaveCoreScene(
@@ -496,7 +510,7 @@ fun ApolloVisualizerSurface(
                     palette = p,
                     phase = fastPhase,
                     fft = spectrum,
-                    clearBackdrop = clearBackdrop
+                    clearBackdrop = resolvedClear
                 )
 
                 VisualizerMode.SIGNAL_OCEAN -> drawSignalOceanScene(
@@ -504,7 +518,7 @@ fun ApolloVisualizerSurface(
                     palette = p,
                     phase = fastPhase,
                     wave = waveData,
-                    clearBackdrop = clearBackdrop
+                    clearBackdrop = resolvedClear
                 )
 
                 VisualizerMode.PLASMA_HEART -> drawPlasmaHeartScene(
@@ -512,7 +526,7 @@ fun ApolloVisualizerSurface(
                     palette = p,
                     phase = fastPhase,
                     pulse = pulse,
-                    clearBackdrop = clearBackdrop
+                    clearBackdrop = resolvedClear
                 )
 
                 VisualizerMode.FRACTURE -> drawFractureScene(
@@ -521,7 +535,7 @@ fun ApolloVisualizerSurface(
                     phase = fastPhase,
                     fft = spectrum,
                     spin = spinAngle + fastPhase * 0.05f,
-                    clearBackdrop = clearBackdrop
+                    clearBackdrop = resolvedClear
                 )
 
                 VisualizerMode.WAVEBARS -> drawWavebarsScene(
@@ -529,7 +543,7 @@ fun ApolloVisualizerSurface(
                     palette = p,
                     wave = waveData,
                     playing = playing,
-                    clearBackdrop = clearBackdrop
+                    clearBackdrop = resolvedClear
                 )
 
                 VisualizerMode.MIRROR_BARS -> drawMirrorBarsScene(
@@ -537,7 +551,7 @@ fun ApolloVisualizerSurface(
                     palette = p,
                     fft = spectrum,
                     playing = playing,
-                    clearBackdrop = clearBackdrop
+                    clearBackdrop = resolvedClear
                 )
 
                 VisualizerMode.PULSE -> drawPulseScene(
@@ -545,14 +559,14 @@ fun ApolloVisualizerSurface(
                     palette = p,
                     phase = fastPhase,
                     playing = playing,
-                    clearBackdrop = clearBackdrop
+                    clearBackdrop = resolvedClear
                 )
 
                 VisualizerMode.PARTICLES -> drawParticlesScene(
                     features = liveFeatures,
                     palette = p,
                     playing = playing,
-                    clearBackdrop = clearBackdrop
+                    clearBackdrop = resolvedClear
                 )
 
                 VisualizerMode.BASS_NATION -> drawBassNationScene(
@@ -560,7 +574,7 @@ fun ApolloVisualizerSurface(
                     palette = p,
                     fft = spectrum,
                     playing = playing,
-                    clearBackdrop = clearBackdrop
+                    clearBackdrop = resolvedClear
                 )
 
                 VisualizerMode.BUBBLE_BASS -> drawBubbleBassScene(
@@ -569,7 +583,7 @@ fun ApolloVisualizerSurface(
                     fft = spectrum,
                     phase = fastPhase,
                     playing = playing,
-                    clearBackdrop = clearBackdrop
+                    clearBackdrop = resolvedClear
                 )
 
                 VisualizerMode.CIRCULAR_PULSE -> drawCircularPulseMvScene(
@@ -577,7 +591,7 @@ fun ApolloVisualizerSurface(
                     palette = p,
                     fft = spectrum,
                     playing = playing,
-                    clearBackdrop = clearBackdrop
+                    clearBackdrop = resolvedClear
                 )
 
                 VisualizerMode.COLOR_SIGNAL -> drawColorSignalScene(
@@ -585,7 +599,7 @@ fun ApolloVisualizerSurface(
                     palette = p,
                     fft = spectrum,
                     playing = playing,
-                    clearBackdrop = clearBackdrop
+                    clearBackdrop = resolvedClear
                 )
 
                 VisualizerMode.DUAL_SIGNAL -> drawDualSignalScene(
@@ -593,7 +607,7 @@ fun ApolloVisualizerSurface(
                     palette = p,
                     fft = spectrum,
                     playing = playing,
-                    clearBackdrop = clearBackdrop
+                    clearBackdrop = resolvedClear
                 )
 
                 VisualizerMode.MIXED_WAVE -> drawMixedWaveScene(
@@ -602,7 +616,7 @@ fun ApolloVisualizerSurface(
                     fft = spectrum,
                     phase = fastPhase,
                     playing = playing,
-                    clearBackdrop = clearBackdrop
+                    clearBackdrop = resolvedClear
                 )
 
                 VisualizerMode.SHAPE_WAVE -> drawShapeWaveScene(
@@ -610,7 +624,7 @@ fun ApolloVisualizerSurface(
                     palette = p,
                     phase = fastPhase,
                     playing = playing,
-                    clearBackdrop = clearBackdrop
+                    clearBackdrop = resolvedClear
                 )
 
                 VisualizerMode.STAR_FIELD -> drawStarFieldScene(
@@ -618,7 +632,7 @@ fun ApolloVisualizerSurface(
                     palette = p,
                     phase = fastPhase,
                     playing = playing,
-                    clearBackdrop = clearBackdrop
+                    clearBackdrop = resolvedClear
                 )
 
                 VisualizerMode.STARS2 -> drawStars2Scene(
@@ -626,7 +640,7 @@ fun ApolloVisualizerSurface(
                     palette = p,
                     fft = spectrum,
                     playing = playing,
-                    clearBackdrop = clearBackdrop
+                    clearBackdrop = resolvedClear
                 )
 
                 VisualizerMode.DNA_HELIX -> drawDnaHelixScene(
@@ -635,7 +649,7 @@ fun ApolloVisualizerSurface(
                     wave = waveData,
                     phase = fastPhase,
                     playing = playing,
-                    clearBackdrop = clearBackdrop,
+                    clearBackdrop = resolvedClear,
                     cinematic = cinematicAmt
                 )
 
@@ -645,7 +659,7 @@ fun ApolloVisualizerSurface(
                     fft = spectrum,
                     phase = fastPhase,
                     playing = playing,
-                    clearBackdrop = clearBackdrop
+                    clearBackdrop = resolvedClear
                 )
 
                 VisualizerMode.BEAT_TUNNEL -> drawBeatTunnelScene(
@@ -653,7 +667,7 @@ fun ApolloVisualizerSurface(
                     palette = p,
                     phase = fastPhase,
                     playing = playing,
-                    clearBackdrop = clearBackdrop,
+                    clearBackdrop = resolvedClear,
                     beatFlash = beatFlash,
                     cinematic = cinematicAmt
                 )
@@ -664,7 +678,7 @@ fun ApolloVisualizerSurface(
                     fft = spectrum,
                     phase = fastPhase,
                     playing = playing,
-                    clearBackdrop = clearBackdrop,
+                    clearBackdrop = resolvedClear,
                     beatFlash = beatFlash
                 )
 
@@ -673,7 +687,7 @@ fun ApolloVisualizerSurface(
                     palette = p,
                     wave = waveData,
                     playing = playing,
-                    clearBackdrop = clearBackdrop
+                    clearBackdrop = resolvedClear
                 )
 
                 VisualizerMode.XR3_CIRCLE -> drawXr3CircleScene(
@@ -682,7 +696,7 @@ fun ApolloVisualizerSurface(
                     spectrum = spectrum,
                     phase = fastPhase,
                     playing = playing,
-                    clearBackdrop = clearBackdrop
+                    clearBackdrop = resolvedClear
                 )
 
                 VisualizerMode.XR3_POLY -> drawXr3PolyScene(
@@ -691,7 +705,7 @@ fun ApolloVisualizerSurface(
                     spectrum = spectrum,
                     phase = fastPhase,
                     playing = playing,
-                    clearBackdrop = clearBackdrop
+                    clearBackdrop = resolvedClear
                 )
 
                 VisualizerMode.XR3_BARS -> drawXr3BarsScene(
@@ -699,7 +713,7 @@ fun ApolloVisualizerSurface(
                     palette = p,
                     spectrum = spectrum,
                     playing = playing,
-                    clearBackdrop = clearBackdrop
+                    clearBackdrop = resolvedClear
                 )
 
                 VisualizerMode.XR3_VU -> drawXr3VuScene(
@@ -708,7 +722,7 @@ fun ApolloVisualizerSurface(
                     level = lvl,
                     bass = bassLvl,
                     playing = playing,
-                    clearBackdrop = clearBackdrop
+                    clearBackdrop = resolvedClear
                 )
 
                 VisualizerMode.XR3_SIERPINSKI -> drawXr3SierpinskiScene(
@@ -717,7 +731,7 @@ fun ApolloVisualizerSurface(
                     spectrum = spectrum,
                     phase = fastPhase,
                     playing = playing,
-                    clearBackdrop = clearBackdrop
+                    clearBackdrop = resolvedClear
                 )
 
                 VisualizerMode.XR3_JULIA -> drawXr3JuliaScene(
@@ -725,7 +739,7 @@ fun ApolloVisualizerSurface(
                     palette = p,
                     phase = fastPhase,
                     playing = playing,
-                    clearBackdrop = clearBackdrop
+                    clearBackdrop = resolvedClear
                 )
 
                 VisualizerMode.XR3_SPRITE -> drawXr3SpriteScene(
@@ -734,68 +748,68 @@ fun ApolloVisualizerSurface(
                     spectrum = spectrum,
                     phase = fastPhase,
                     playing = playing,
-                    clearBackdrop = clearBackdrop
+                    clearBackdrop = resolvedClear
                 )
 
                 VisualizerMode.CHROMATIC_PHI -> drawChromaticPhiScene(
-                    liveFeatures, p, spectrum, fastPhase, playing, clearBackdrop,
+                    liveFeatures, p, spectrum, fastPhase, playing, resolvedClear,
                     paletteMode, quality, vizSat, vizGlow
                 )
                 VisualizerMode.ECTOPLASM -> drawEctoplasmScene(
-                    liveFeatures, p, fastPhase, playing, clearBackdrop,
+                    liveFeatures, p, fastPhase, playing, resolvedClear,
                     paletteMode, quality, vizSat, vizGlow
                 )
                 VisualizerMode.CIRC_INFINITY -> drawCircInfinityScene(
-                    liveFeatures, p, spectrum, fastPhase, playing, clearBackdrop,
+                    liveFeatures, p, spectrum, fastPhase, playing, resolvedClear,
                     paletteMode, quality, vizSat, vizGlow
                 )
                 VisualizerMode.PRISM_RAIN -> drawPrismRainScene(
-                    liveFeatures, p, spectrum, fastPhase, playing, clearBackdrop,
+                    liveFeatures, p, spectrum, fastPhase, playing, resolvedClear,
                     paletteMode, quality, vizSat, vizGlow
                 )
                 VisualizerMode.SYNTH_SMOKE -> drawSynthSmokeScene(
-                    liveFeatures, p, fastPhase, playing, clearBackdrop,
+                    liveFeatures, p, fastPhase, playing, resolvedClear,
                     paletteMode, quality, vizSat, vizGlow
                 )
                 VisualizerMode.NOTE_SWARM -> drawNoteSwarmScene(
-                    liveFeatures, p, spectrum, fastPhase, playing, clearBackdrop,
+                    liveFeatures, p, spectrum, fastPhase, playing, resolvedClear,
                     paletteMode, quality, vizSat, vizGlow
                 )
                 VisualizerMode.HARMONIC_MANDALA -> drawHarmonicMandalaScene(
-                    liveFeatures, p, spectrum, fastPhase, playing, clearBackdrop,
+                    liveFeatures, p, spectrum, fastPhase, playing, resolvedClear,
                     paletteMode, quality, vizSat, vizGlow
                 )
                 VisualizerMode.LIQUID_SPECTRUM -> drawLiquidSpectrumScene(
-                    liveFeatures, p, spectrum, fastPhase, playing, clearBackdrop,
+                    liveFeatures, p, spectrum, fastPhase, playing, resolvedClear,
                     paletteMode, quality, vizSat, vizGlow
                 )
                 VisualizerMode.AUDIBLE_SPIRALS -> drawAudibleSpiralsScene(
-                    liveFeatures, p, spectrum, fastPhase, playing, clearBackdrop,
+                    liveFeatures, p, spectrum, fastPhase, playing, resolvedClear,
                     paletteMode, quality, vizSat, vizGlow,
                     variant = spiralVariant,
                     spiralPreset = spiralColor
                 )
                 VisualizerMode.FLUCTUS_FLOW -> drawFluctusFlowScene(
-                    liveFeatures, p, spectrum, fastPhase, playing, clearBackdrop,
+                    liveFeatures, p, spectrum, fastPhase, playing, resolvedClear,
                     paletteMode, quality, vizSat, vizGlow
                 )
                 VisualizerMode.WAVEFORM_VOID -> drawWaveformVoidScene(
-                    liveFeatures, p, spectrum, waveData, fastPhase, playing, clearBackdrop,
+                    liveFeatures, p, spectrum, waveData, fastPhase, playing, resolvedClear,
                     paletteMode, quality, vizSat, vizGlow
                 )
                 VisualizerMode.OBSIDIAN_REACTOR -> drawObsidianReactorScene(
-                    liveFeatures, p, spectrum, fastPhase, playing, clearBackdrop,
+                    liveFeatures, p, spectrum, fastPhase, playing, resolvedClear,
                     paletteMode, quality, vizSat, vizGlow,
                     crystalPreset = obsidianPreset
                 )
                 VisualizerMode.VISSONANCE_MATRIX -> drawVissonanceMatrixScene(
-                    liveFeatures, p, spectrum, fastPhase, playing, clearBackdrop,
+                    liveFeatures, p, spectrum, fastPhase, playing, resolvedClear,
                     paletteMode, quality, vizSat, vizGlow,
                     submode = vissonSub
                 )
             }
         }
-        if (!clearBackdrop) {
+        if (!resolvedClear) {
             Image(
                 painter = painterResource(R.drawable.apollo_crosshair_c),
                 contentDescription = null,

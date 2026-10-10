@@ -1,6 +1,8 @@
 package com.apolloauto.player.media
 
 import android.media.audiofx.Visualizer
+import android.os.SystemClock
+import android.util.Log
 import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.sqrt
@@ -97,6 +99,7 @@ enum class VisualizerMode {
 class AudioVisualizerController {
     private var visualizer: Visualizer? = null
     private var lastSession = 0
+    val sceneRuntime = VisualizerSceneRuntime()
 
     private val bands = 48
     private val wavePoints = 96
@@ -119,6 +122,18 @@ class AudioVisualizerController {
     private var smoothedSilence = 1f
     private var prevEnergy = 0f
     private var wavePeak = 0f
+    private var lastFrameUptimeMs = 0L
+    private var frameCountWindow = 0
+    private var frameWindowStartedAt = 0L
+    private var analysisFps = 0f
+    private var attachCount = 0
+    private var captureInterruptCount = 0
+    private var playbackPaused = false
+    @Volatile var debugLogging: Boolean = false
+        set(value) {
+            field = value
+            sceneRuntime.debugEnabled = value
+        }
 
     private val _fft = MutableStateFlow(FloatArray(bands))
     val fft: StateFlow<FloatArray> = _fft.asStateFlow()
@@ -144,9 +159,24 @@ class AudioVisualizerController {
     private val _mode = MutableStateFlow(VisualizerMode.SPECTRUM)
     val mode: StateFlow<VisualizerMode> = _mode.asStateFlow()
 
-    fun setMode(mode: VisualizerMode) {
+    private val _captureDiag = MutableStateFlow(CaptureDiagnostics())
+    val captureDiagnostics: StateFlow<CaptureDiagnostics> = _captureDiag.asStateFlow()
+
+    fun setMode(mode: VisualizerMode, reason: String = "user") {
         _mode.value = mode
+        sceneRuntime.onModeSelected(mode, reason)
+        // Mode changes must NEVER rebuild the Visualizer capture session.
     }
+
+    fun audioSessionId(): Int = lastSession
+
+    fun frameAgeMs(): Long {
+        if (lastFrameUptimeMs == 0L) return Long.MAX_VALUE
+        return SystemClock.elapsedRealtime() - lastFrameUptimeMs
+    }
+
+    fun isFrameStale(thresholdMs: Long = 750L): Boolean =
+        _active.value && frameAgeMs() > thresholdMs
 
     fun attach(audioSessionId: Int) {
         if (audioSessionId == 0) return
@@ -154,10 +184,13 @@ class AudioVisualizerController {
             runCatching { visualizer?.enabled = true }
             _active.value = visualizer != null
             if (_active.value) _captureSource.value = CaptureSource.PLAYBACK_SESSION
+            publishCaptureDiag()
             return
         }
-        release()
+        // Only rebuild when the Media3 session id actually changes.
+        releaseCaptureOnly()
         lastSession = audioSessionId
+        attachCount++
         runCatching {
             val viz = Visualizer(audioSessionId)
             val range = Visualizer.getCaptureSizeRange()
@@ -196,6 +229,7 @@ class AudioVisualizerController {
                         }
                         _waveform.value = smoothedWave.copyOf()
                         _level.value = smoothedLevel.coerceIn(0f, 1f)
+                        markFrame()
                         publishFeatures(rms = rms.coerceIn(0f, 1f))
                     }
 
@@ -257,6 +291,7 @@ class AudioVisualizerController {
 
                         _fft.value = smoothedFft.copyOf()
                         _bass.value = smoothedBass
+                        markFrame()
                         publishFeatures()
                     }
                 },
@@ -268,50 +303,115 @@ class AudioVisualizerController {
             visualizer = viz
             _active.value = true
             _captureSource.value = CaptureSource.PLAYBACK_SESSION
+            if (debugLogging) Log.d(TAG, "capture attached session=$audioSessionId attachCount=$attachCount")
+            publishCaptureDiag()
         }.onFailure {
+            captureInterruptCount++
             _active.value = false
             _captureSource.value = CaptureSource.DECORATIVE
+            if (debugLogging) Log.w(TAG, "capture attach failed session=$audioSessionId", it)
+            publishCaptureDiag()
         }
     }
 
+    /**
+     * Pause/resume reactivity without tearing down the Visualizer object.
+     * Hard-disabling capture every pause caused intermittent stale/frozen analysis.
+     */
     fun setEnabled(enabled: Boolean) {
-        runCatching { visualizer?.enabled = enabled }
-        if (enabled && visualizer != null) {
-            _captureSource.value = CaptureSource.PLAYBACK_SESSION
+        playbackPaused = !enabled
+        if (enabled) {
+            runCatching { visualizer?.enabled = true }
+            if (visualizer != null) {
+                _active.value = true
+                _captureSource.value = CaptureSource.PLAYBACK_SESSION
+            }
         } else {
-            _captureSource.value = CaptureSource.DECORATIVE
-        }
-        if (!enabled) {
-            // Soft decay instead of hard zero so pause doesn't look dead.
-            smoothedLevel *= 0.35f
-            smoothedSubBass *= 0.35f
-            smoothedBass *= 0.35f
-            smoothedLowMid *= 0.35f
-            smoothedUpperMid *= 0.35f
-            smoothedPresence *= 0.35f
-            smoothedTreble *= 0.35f
-            smoothedMid *= 0.35f
-            smoothedHigh *= 0.35f
-            smoothedRms *= 0.35f
-            smoothedPeak *= 0.35f
-            smoothedFlux *= 0.35f
-            for (i in smoothedFft.indices) smoothedFft[i] *= 0.4f
+            // Keep capture attached; soft-decay features for visual continuity.
+            softDecay(0.55f)
             _level.value = smoothedLevel
             _bass.value = smoothedBass
             _fft.value = smoothedFft.copyOf()
             publishFeatures()
         }
+        publishCaptureDiag()
+    }
+
+    /** Attempt recovery if frames go stale while playback claims to be live. */
+    fun recoverIfStale(audioSessionId: Int, staleMs: Long = 900L) {
+        if (audioSessionId == 0) return
+        if (!isFrameStale(staleMs)) return
+        captureInterruptCount++
+        if (debugLogging) Log.w(TAG, "stale frame age=${frameAgeMs()}ms — reattach session=$audioSessionId")
+        if (audioSessionId == lastSession && visualizer != null) {
+            runCatching {
+                visualizer?.enabled = false
+                visualizer?.enabled = true
+            }
+        } else {
+            attach(audioSessionId)
+        }
+        publishCaptureDiag()
     }
 
     fun release() {
+        releaseCaptureOnly()
+        lastSession = 0
+    }
+
+    private fun releaseCaptureOnly() {
         runCatching {
             visualizer?.enabled = false
             visualizer?.release()
         }
         visualizer = null
-        lastSession = 0
         _active.value = false
         _captureSource.value = CaptureSource.DECORATIVE
+        publishCaptureDiag()
+    }
+
+    private fun markFrame() {
+        val now = SystemClock.elapsedRealtime()
+        lastFrameUptimeMs = now
+        if (frameWindowStartedAt == 0L) frameWindowStartedAt = now
+        frameCountWindow++
+        val elapsed = now - frameWindowStartedAt
+        if (elapsed >= 1000L) {
+            analysisFps = frameCountWindow * 1000f / elapsed
+            frameCountWindow = 0
+            frameWindowStartedAt = now
+        }
+        publishCaptureDiag()
+    }
+
+    private fun softDecay(factor: Float) {
+        smoothedLevel *= factor
+        smoothedSubBass *= factor
+        smoothedBass *= factor
+        smoothedLowMid *= factor
+        smoothedUpperMid *= factor
+        smoothedPresence *= factor
+        smoothedTreble *= factor
+        smoothedMid *= factor
+        smoothedHigh *= factor
+        smoothedRms *= factor
+        smoothedPeak *= factor
+        smoothedFlux *= factor
+        for (i in smoothedFft.indices) smoothedFft[i] *= factor
+    }
+
+    private fun publishCaptureDiag() {
+        _captureDiag.value = CaptureDiagnostics(
+            captureSource = _captureSource.value,
+            audioSessionId = lastSession,
+            capturing = _active.value,
+            playbackPaused = playbackPaused,
+            lastFrameAgeMs = frameAgeMs().let { if (it == Long.MAX_VALUE) -1L else it },
+            analysisFps = analysisFps,
+            attachCount = attachCount,
+            interruptCount = captureInterruptCount,
+            stale = isFrameStale()
+        )
     }
 
     private fun smoothToward(current: Float, target: Float, attack: Float, release: Float): Float =
@@ -351,5 +451,22 @@ class AudioVisualizerController {
             onset = smoothedOnset.coerceIn(0f, 1f),
             silence = smoothedSilence.coerceIn(0f, 1f)
         )
+        publishCaptureDiag()
+    }
+
+    companion object {
+        private const val TAG = "ApolloVizCapture"
     }
 }
+
+data class CaptureDiagnostics(
+    val captureSource: CaptureSource = CaptureSource.DECORATIVE,
+    val audioSessionId: Int = 0,
+    val capturing: Boolean = false,
+    val playbackPaused: Boolean = false,
+    val lastFrameAgeMs: Long = -1L,
+    val analysisFps: Float = 0f,
+    val attachCount: Int = 0,
+    val interruptCount: Int = 0,
+    val stale: Boolean = false
+)

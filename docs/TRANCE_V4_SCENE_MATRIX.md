@@ -1,7 +1,7 @@
 # Trance Reactor V4 — Scene Matrix
 
 **Branch:** `feature/apollo-trance-reactor-v4`  
-**Updated:** 2026-10-09  
+**Updated:** 2026-10-09 (V4.2 hardening on `feature/apollo-trance-v4-2-finalization`)  
 **Renderer:** Jetpack Compose Canvas (shared `AudioVisualizerController`)  
 **Statuses:** Planned · Implementing · Rendering · Audio reactive · Tested · Verified · Blocked
 
@@ -59,3 +59,10 @@ SPECTR (WAVEBARS/MIRROR/PULSE/PARTICLES), MV2/STARS2, DNA, DROP, XR3, MINIMAL, D
 
 Physical landscape screenshot capture and FPS telemetry: **not completed this pass**. Do not treat as Verified.
 APK assemble + adb install: recorded in implementation status when run.
+
+
+## V4.2 hardening notes
+
+- Animation clock is monotonic (no Restart warp snap).
+- Background AUTO defaults rainbow scenes to BLACK.
+- Device Verified column still N until soak QA.

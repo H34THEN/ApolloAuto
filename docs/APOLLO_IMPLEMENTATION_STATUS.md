@@ -189,3 +189,15 @@
 - Do not label TR scenes "Verified" until device QA
 
 **Next:** Device landscape QA, optional GPU path, merge approval gate
+
+
+### Phase Trance Reactor V4.2
+**Branch:** `feature/apollo-trance-v4-2-finalization` (not merged)  
+**Docs:** `docs/TRANCE_V4_2_*.md`
+
+**Critical fixes:**
+- Monotonic viz clock (removed 3.2s Restart snap)
+- Capture soft-pause + stale recovery + diagnostics overlay
+- Background engine AUTO/BLACK/ALBUM_ART
+
+**Honest gaps:** device soak FPS/screenshots not yet Verified.
