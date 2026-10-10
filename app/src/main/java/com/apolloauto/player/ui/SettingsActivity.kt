@@ -43,7 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.apolloauto.player.ApolloApp
 import com.apolloauto.player.media.SleepTimerController
-import com.apolloauto.player.media.VisualizerMode
+import com.apolloauto.player.media.shortLabel
 import com.apolloauto.player.theme.ApolloCyberTheme
 import com.apolloauto.player.theme.CustomThemeDraft
 import com.apolloauto.player.theme.HudFontOption
@@ -72,7 +72,7 @@ class SettingsActivity : ComponentActivity() {
     }
 }
 
-private enum class SettingsTab { DISPLAY, AUDIO, PLAYBACK }
+private enum class SettingsTab { DISPLAY, LIBRARY, AUDIO, PLAYBACK }
 
 @Composable
 private fun SettingsScreen(onClose: () -> Unit) {
@@ -132,6 +132,7 @@ private fun SettingsScreen(onClose: () -> Unit) {
             ) {
                 when (tab) {
                     SettingsTab.DISPLAY -> DisplaySettings()
+                    SettingsTab.LIBRARY -> LibrarySettingsPanel()
                     SettingsTab.AUDIO -> AudioSettings()
                     SettingsTab.PLAYBACK -> PlaybackSettings()
                 }
@@ -349,6 +350,7 @@ private fun AudioSettings() {
     val eq by app.equalizerController.state.collectAsState()
     val mode by app.visualizerController.mode.collectAsState()
     val capturing by app.visualizerController.capturing.collectAsState()
+    val captureSource by app.visualizerController.captureSource.collectAsState()
     val interfaceStyle by app.themeStore.interfaceStyle.collectAsState()
     val kenney = useKenneyChrome(interfaceStyle)
     var customName by remember { mutableStateOf("") }
@@ -360,7 +362,7 @@ private fun AudioSettings() {
 
     Panel("SIGNAL SCOPE") {
         Text(
-            if (capturing) "LIVE CAPTURE" else "DECORATIVE IDLE · start playback for live FFT",
+            if (capturing) captureSource.shortLabel() else "${captureSource.shortLabel()} · start playback for live FFT",
             color = if (capturing) p.accent else p.dim,
             fontSize = 13.sp
         )
@@ -375,46 +377,13 @@ private fun AudioSettings() {
                 .background(p.voidBlack)
         )
         Spacer(Modifier.height(8.dp))
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            listOf(
-                listOf(
-                    VisualizerMode.SPECTRUM to "FFT",
-                    VisualizerMode.BARS to "BARS",
-                    VisualizerMode.WAVEFORM to "WAVE"
-                ),
-                listOf(
-                    VisualizerMode.CIRCULAR to "ORB",
-                    VisualizerMode.RINGS to "RINGS",
-                    VisualizerMode.LEVEL to "VU"
-                )
-            ).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    row.forEach { (m, label) ->
-                        Text(
-                            label,
-                            color = if (mode == m) p.soft else p.dim,
-                            fontSize = 12.sp,
-                            letterSpacing = 1.sp,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(3.dp))
-                                .border(
-                                    1.dp,
-                                    if (mode == m) p.accent else p.primary.copy(alpha = 0.25f),
-                                    RoundedCornerShape(3.dp)
-                                )
-                                .background(if (mode == m) p.accent.copy(alpha = 0.12f) else Color.Transparent)
-                                .clickable {
-                                    app.themeStore.setVisualizerMode(m)
-                                    app.visualizerController.setMode(m)
-                                }
-                                .padding(vertical = 8.dp)
-                        )
-                    }
-                }
+        VisualizerModeSelector(
+            selected = mode,
+            onSelect = { m ->
+                app.themeStore.setVisualizerMode(m)
+                app.visualizerController.setMode(m)
             }
-        }
+        )
     }
 
     Panel("EQUALIZER") {

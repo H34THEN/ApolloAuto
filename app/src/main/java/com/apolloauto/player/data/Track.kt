@@ -11,5 +11,10 @@ data class Track(
     val folder: String,
     val durationMs: Long = 0L,
     val artworkUri: Uri? = null,
-    val albumId: Long = -1L
+    val albumId: Long = -1L,
+    val sourceId: String = MusicSourceStore.PHONE_MEDIASTORE_ID,
+    val sourceKind: MusicSourceKind = MusicSourceKind.PHONE_MEDIASTORE,
+    /** Path relative to the SAF root (forward slashes), used for M3U resolution. */
+    val relativePath: String = "",
+    val available: Boolean = true
 )

@@ -16,7 +16,13 @@ enum class VisualizerMode {
     RINGS,
     LEVEL,
     MINIMAL,
-    DECORATIVE
+    DECORATIVE,
+    HYPERDRIVE,
+    NEBULA,
+    RAVE_CORE,
+    SIGNAL_OCEAN,
+    PLASMA_HEART,
+    FRACTURE
 }
 
 /**
@@ -33,6 +39,12 @@ class AudioVisualizerController {
     private val smoothedWave = FloatArray(wavePoints)
     private var smoothedLevel = 0f
     private var smoothedBass = 0f
+    private var smoothedMid = 0f
+    private var smoothedHigh = 0f
+    private var smoothedRms = 0f
+    private var smoothedOnset = 0f
+    private var smoothedSilence = 1f
+    private var prevEnergy = 0f
 
     private val _fft = MutableStateFlow(FloatArray(bands))
     val fft: StateFlow<FloatArray> = _fft.asStateFlow()
@@ -49,6 +61,12 @@ class AudioVisualizerController {
     private val _active = MutableStateFlow(false)
     val capturing: StateFlow<Boolean> = _active.asStateFlow()
 
+    private val _captureSource = MutableStateFlow(CaptureSource.DECORATIVE)
+    val captureSource: StateFlow<CaptureSource> = _captureSource.asStateFlow()
+
+    private val _features = MutableStateFlow(AudioFeatures())
+    val features: StateFlow<AudioFeatures> = _features.asStateFlow()
+
     private val _mode = MutableStateFlow(VisualizerMode.SPECTRUM)
     val mode: StateFlow<VisualizerMode> = _mode.asStateFlow()
 
@@ -61,6 +79,7 @@ class AudioVisualizerController {
         if (audioSessionId == lastSession && visualizer != null) {
             runCatching { visualizer?.enabled = true }
             _active.value = visualizer != null
+            if (_active.value) _captureSource.value = CaptureSource.PLAYBACK_SESSION
             return
         }
         release()
@@ -102,6 +121,7 @@ class AudioVisualizerController {
                         }
                         _waveform.value = smoothedWave.copyOf()
                         _level.value = smoothedLevel.coerceIn(0f, 1f)
+                        publishFeatures(rms = rms.coerceIn(0f, 1f))
                     }
 
                     override fun onFftDataCapture(
@@ -156,8 +176,23 @@ class AudioVisualizerController {
                         } else {
                             smoothedBass * 0.85f + bassInstant * 0.15f
                         }
+                        val midStart = bassBands
+                        val midEnd = (bands * 0.55f).toInt().coerceAtMost(bands)
+                        var midSum = 0f
+                        for (i in midStart until midEnd) midSum += smoothedFft[i]
+                        val midCount = (midEnd - midStart).coerceAtLeast(1)
+                        val midInstant = (midSum / midCount).coerceIn(0f, 1f)
+                        smoothedMid = smoothToward(smoothedMid, midInstant, attack = 0.55f, release = 0.22f)
+
+                        var highSum = 0f
+                        for (i in midEnd until bands) highSum += smoothedFft[i]
+                        val highCount = (bands - midEnd).coerceAtLeast(1)
+                        val highInstant = (highSum / highCount).coerceIn(0f, 1f)
+                        smoothedHigh = smoothToward(smoothedHigh, highInstant, attack = 0.5f, release = 0.2f)
+
                         _fft.value = smoothedFft.copyOf()
                         _bass.value = smoothedBass
+                        publishFeatures()
                     }
                 },
                 Visualizer.getMaxCaptureRate(),
@@ -167,21 +202,32 @@ class AudioVisualizerController {
             viz.enabled = true
             visualizer = viz
             _active.value = true
+            _captureSource.value = CaptureSource.PLAYBACK_SESSION
         }.onFailure {
             _active.value = false
+            _captureSource.value = CaptureSource.DECORATIVE
         }
     }
 
     fun setEnabled(enabled: Boolean) {
         runCatching { visualizer?.enabled = enabled }
+        if (enabled && visualizer != null) {
+            _captureSource.value = CaptureSource.PLAYBACK_SESSION
+        } else {
+            _captureSource.value = CaptureSource.DECORATIVE
+        }
         if (!enabled) {
             // Soft decay instead of hard zero so pause doesn't look dead.
             smoothedLevel *= 0.35f
             smoothedBass *= 0.35f
+            smoothedMid *= 0.35f
+            smoothedHigh *= 0.35f
+            smoothedRms *= 0.35f
             for (i in smoothedFft.indices) smoothedFft[i] *= 0.4f
             _level.value = smoothedLevel
             _bass.value = smoothedBass
             _fft.value = smoothedFft.copyOf()
+            publishFeatures()
         }
     }
 
@@ -193,5 +239,31 @@ class AudioVisualizerController {
         visualizer = null
         lastSession = 0
         _active.value = false
+        _captureSource.value = CaptureSource.DECORATIVE
+    }
+
+    private fun smoothToward(current: Float, target: Float, attack: Float, release: Float): Float =
+        if (target > current) {
+            current * (1f - attack) + target * attack
+        } else {
+            current * (1f - release) + target * release
+        }
+
+    private fun publishFeatures(rms: Float? = null) {
+        rms?.let { smoothedRms = smoothToward(smoothedRms, it, attack = 0.6f, release = 0.25f) }
+        val energy = (smoothedLevel * 0.45f + smoothedBass * 0.35f + smoothedRms * 0.2f).coerceIn(0f, 1f)
+        val spike = (energy - prevEnergy).coerceAtLeast(0f)
+        prevEnergy = energy * 0.92f + prevEnergy * 0.08f
+        smoothedOnset = smoothToward(smoothedOnset, spike * 2.2f, attack = 0.72f, release = 0.18f)
+        val silenceTarget = (1f - energy * 1.15f).coerceIn(0f, 1f)
+        smoothedSilence = smoothToward(smoothedSilence, silenceTarget, attack = 0.12f, release = 0.08f)
+        _features.value = AudioFeatures(
+            bass = smoothedBass.coerceIn(0f, 1f),
+            mid = smoothedMid.coerceIn(0f, 1f),
+            high = smoothedHigh.coerceIn(0f, 1f),
+            rms = smoothedRms.coerceIn(0f, 1f),
+            onset = smoothedOnset.coerceIn(0f, 1f),
+            silence = smoothedSilence.coerceIn(0f, 1f)
+        )
     }
 }

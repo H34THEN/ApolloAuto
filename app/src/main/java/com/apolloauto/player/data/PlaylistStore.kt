@@ -7,11 +7,22 @@ import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONArray
 import org.json.JSONObject
 
+enum class PlaylistOrigin {
+    APOLLO,
+    IMPORTED_M3U,
+    SMART
+}
+
 data class Playlist(
     val id: String,
     val name: String,
     val trackIds: List<String>,
-    val locked: Boolean = false
+    val locked: Boolean = false,
+    val origin: PlaylistOrigin = PlaylistOrigin.APOLLO,
+    val importUri: String? = null,
+    /** Original M3U location lines parallel to [trackIds] when imported. */
+    val entryRefs: List<String> = emptyList(),
+    val unresolvedCount: Int = 0
 )
 
 class PlaylistStore(context: Context) {
@@ -66,9 +77,44 @@ class PlaylistStore(context: Context) {
             id = "pl_${System.currentTimeMillis()}",
             name = name.ifBlank { "Deck ${_playlists.value.size}" },
             trackIds = emptyList(),
-            locked = false
+            locked = false,
+            origin = PlaylistOrigin.APOLLO
         )
         persist(_playlists.value + playlist)
+        return playlist
+    }
+
+    /**
+     * Import M3U as a first-class playlist. Never overwrites Car Favorites.
+     * Dedupes by importUri so rescans refresh instead of cloning.
+     */
+    fun createImported(
+        name: String,
+        trackIds: List<String>,
+        entryRefs: List<String>,
+        importUri: String?,
+        unresolvedCount: Int
+    ): Playlist {
+        val existing = importUri?.let { uri ->
+            _playlists.value.find { it.importUri == uri && it.origin == PlaylistOrigin.IMPORTED_M3U }
+        }
+        val playlist = Playlist(
+            id = existing?.id ?: "m3u_${System.currentTimeMillis()}",
+            name = name.ifBlank { "Imported" },
+            trackIds = trackIds,
+            locked = false,
+            origin = PlaylistOrigin.IMPORTED_M3U,
+            importUri = importUri,
+            entryRefs = entryRefs,
+            unresolvedCount = unresolvedCount
+        )
+        persist(
+            if (existing != null) {
+                _playlists.value.map { if (it.id == existing.id) playlist else it }
+            } else {
+                _playlists.value + playlist
+            }
+        )
         return playlist
     }
 
@@ -111,7 +157,10 @@ class PlaylistStore(context: Context) {
 
     fun resolve(playlist: Playlist, all: List<Track>): List<Track> {
         val map = all.associateBy { it.id }
-        return playlist.trackIds.mapNotNull { map[it] }
+        // Preserve order and intentional duplicates; skip unresolved placeholders.
+        return playlist.trackIds.mapNotNull { id ->
+            if (id.startsWith("unresolved:")) null else map[id]
+        }
     }
 
     fun resolveById(playlistId: String, all: List<Track>): List<Track> {
@@ -138,7 +187,11 @@ class PlaylistStore(context: Context) {
                     .put("id", pl.id)
                     .put("name", pl.name)
                     .put("locked", pl.locked)
+                    .put("origin", pl.origin.name)
+                    .put("importUri", pl.importUri)
+                    .put("unresolvedCount", pl.unresolvedCount)
                     .put("tracks", JSONArray(pl.trackIds))
+                    .put("entryRefs", JSONArray(pl.entryRefs))
             )
         }
         prefs.edit().putString(KEY, arr.toString()).apply()
@@ -155,12 +208,28 @@ class PlaylistStore(context: Context) {
                     val ids = buildList {
                         for (t in 0 until tracks.length()) add(tracks.getString(t))
                     }
+                    val refsArr = obj.optJSONArray("entryRefs")
+                    val refs = buildList {
+                        if (refsArr != null) {
+                            for (r in 0 until refsArr.length()) add(refsArr.getString(r))
+                        }
+                    }
                     add(
                         Playlist(
                             id = obj.getString("id"),
                             name = obj.getString("name"),
                             trackIds = ids,
-                            locked = obj.optBoolean("locked", obj.getString("id") == CAR_FAVORITES_ID)
+                            locked = obj.optBoolean("locked", obj.getString("id") == CAR_FAVORITES_ID),
+                            origin = runCatching {
+                                PlaylistOrigin.valueOf(obj.optString("origin", PlaylistOrigin.APOLLO.name))
+                            }.getOrDefault(
+                                if (obj.optString("importUri").isNotBlank()) PlaylistOrigin.IMPORTED_M3U
+                                else PlaylistOrigin.APOLLO
+                            ),
+                            importUri = obj.optString("importUri")
+                                .takeIf { it.isNotBlank() && it != "null" },
+                            entryRefs = refs,
+                            unresolvedCount = obj.optInt("unresolvedCount", 0)
                         )
                     )
                 }

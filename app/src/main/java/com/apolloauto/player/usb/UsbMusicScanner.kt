@@ -2,70 +2,39 @@ package com.apolloauto.player.usb
 
 import android.content.Context
 import android.net.Uri
-import androidx.documentfile.provider.DocumentFile
-import com.apolloauto.player.data.FilenameMetadataParser
 import com.apolloauto.player.data.LibraryStore
+import com.apolloauto.player.data.MusicSourceKind
+import com.apolloauto.player.data.MusicSourceStore
+import com.apolloauto.player.data.SafLibraryScanner
 import com.apolloauto.player.data.Track
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import java.util.Locale
 
+/**
+ * Legacy façade — USB scans now go through [SafLibraryScanner] + [MusicSourceStore]
+ * so phone SAF folders are not mislabeled as USB.
+ */
 class UsbMusicScanner(
     private val context: Context,
     private val store: LibraryStore
 ) {
-    suspend fun scanTree(treeUri: Uri): List<Track> = withContext(Dispatchers.IO) {
-        store.setScanning(true)
-        store.setStatus("Scanning USB SSD…")
-        try {
-            val root = DocumentFile.fromTreeUri(context, treeUri)
-                ?: return@withContext emptyList()
-            val found = ArrayList<Track>(512)
-            walk(root, root.name ?: "USB", found)
-            store.setTracks(found)
-            store.setStatus("${found.size} tracks on USB")
-            found
-        } finally {
-            store.setScanning(false)
+    private val sourceStore: MusicSourceStore?
+        get() = runCatching { com.apolloauto.player.ApolloApp.instance.musicSourceStore }.getOrNull()
+    private val saf: SafLibraryScanner?
+        get() = runCatching { com.apolloauto.player.ApolloApp.instance.safLibraryScanner }.getOrNull()
+
+    suspend fun scanTree(treeUri: Uri): List<Track> {
+        val sources = sourceStore
+        val scanner = saf
+        if (sources != null && scanner != null) {
+            val source = sources.upsertSafSource(
+                treeUri = treeUri,
+                kind = MusicSourceKind.USB_SSD,
+                label = "USB SSD",
+                makePreferred = true
+            )
+            return scanner.scanSource(source).tracks
         }
-    }
-
-    private fun walk(dir: DocumentFile, folderLabel: String, out: MutableList<Track>) {
-        val children = dir.listFiles()
-        for (child in children) {
-            if (child.isDirectory) {
-                val name = child.name ?: continue
-                if (name.startsWith(".")) continue
-                walk(child, name, out)
-            } else if (child.isFile && isAudio(child.name)) {
-                val name = child.name ?: continue
-                val (title, artist, album) = FilenameMetadataParser.resolve(
-                    embeddedTitle = null,
-                    embeddedArtist = null,
-                    displayName = name,
-                    folderFallback = folderLabel
-                )
-                out += Track(
-                    id = child.uri.toString(),
-                    title = title,
-                    artist = artist,
-                    album = album,
-                    uri = child.uri,
-                    folder = folderLabel
-                )
-            }
-        }
-    }
-
-    private fun isAudio(name: String?): Boolean {
-        if (name.isNullOrBlank()) return false
-        val lower = name.lowercase(Locale.US)
-        return AUDIO_EXT.any { lower.endsWith(it) }
-    }
-
-    companion object {
-        private val AUDIO_EXT = listOf(
-            ".mp3", ".flac", ".m4a", ".aac", ".wav", ".ogg", ".opus", ".wma", ".aiff", ".alac"
-        )
+        // Extremely early boot fallback
+        store.setStatus("USB scanner unavailable")
+        return emptyList()
     }
 }

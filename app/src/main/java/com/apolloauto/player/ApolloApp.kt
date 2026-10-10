@@ -3,8 +3,12 @@ package com.apolloauto.player
 import android.app.Application
 import com.apolloauto.player.data.DeviceMusicScanner
 import com.apolloauto.player.data.FavoritesStore
+import com.apolloauto.player.data.LibraryScanCoordinator
 import com.apolloauto.player.data.LibraryStore
+import com.apolloauto.player.data.M3uPlaylistService
+import com.apolloauto.player.data.MusicSourceStore
 import com.apolloauto.player.data.PlaylistStore
+import com.apolloauto.player.data.SafLibraryScanner
 import com.apolloauto.player.media.AudioVisualizerController
 import com.apolloauto.player.media.EqualizerController
 import com.apolloauto.player.media.SleepTimerController
@@ -20,6 +24,14 @@ class ApolloApp : Application() {
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     lateinit var libraryStore: LibraryStore
+        private set
+    lateinit var musicSourceStore: MusicSourceStore
+        private set
+    lateinit var safLibraryScanner: SafLibraryScanner
+        private set
+    lateinit var libraryScanCoordinator: LibraryScanCoordinator
+        private set
+    lateinit var m3uPlaylistService: M3uPlaylistService
         private set
     lateinit var usbScanner: UsbMusicScanner
         private set
@@ -48,10 +60,22 @@ class ApolloApp : Application() {
         super.onCreate()
         instance = this
         libraryStore = LibraryStore(this)
-        usbScanner = UsbMusicScanner(this, libraryStore)
-        deviceScanner = DeviceMusicScanner(this, libraryStore)
-        favoritesStore = FavoritesStore(this)
         playlistStore = PlaylistStore(this)
+        deviceScanner = DeviceMusicScanner(this, libraryStore)
+        musicSourceStore = MusicSourceStore(this, libraryStore)
+        m3uPlaylistService = M3uPlaylistService(this, playlistStore)
+        safLibraryScanner = SafLibraryScanner(this, musicSourceStore, libraryStore)
+        libraryScanCoordinator = LibraryScanCoordinator(
+            context = this,
+            sourceStore = musicSourceStore,
+            deviceScanner = deviceScanner,
+            safScanner = safLibraryScanner,
+            libraryStore = libraryStore,
+            m3uService = m3uPlaylistService,
+            playlistStore = playlistStore
+        )
+        usbScanner = UsbMusicScanner(this, libraryStore)
+        favoritesStore = FavoritesStore(this)
         themeStore = ThemeStore(this)
         equalizerController = EqualizerController(this)
         visualizerController = AudioVisualizerController().also {

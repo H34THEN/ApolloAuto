@@ -3,7 +3,7 @@
 **Codename:** APOLLO // AUDIO COMMAND SYSTEM  
 **Workspace:** `/Users/Gengar/Desktop/local-github/ApolloAuto`  
 **Package:** `com.apolloauto.player` (debug: `com.apolloauto.player.debug`)  
-**Last updated:** 2026-10-09 (Phase D.3 metadata / car heart / stable shuffle)
+**Last updated:** 2026-10-09 (Phase V2 visualizers / library sources / M3U)
 
 ## Phase A — Existing Application Audit
 
@@ -38,19 +38,23 @@
 | Now Playing layout modes | Implemented | Tactical / Immersive / Terminal |
 | Kenney Sci-Fi HUD assets | Partial | Now Playing + HUD components; K5 app-wide pending |
 | Classic interface fallback | Implemented | Settings → Interface Style |
-| Smart playlists / M3U | Missing | Phase E/G |
+| Smart playlists / M3U | Partial (V2) | Import/discover/resolve; export API; AA browse unverified |
+| Music Source Manager | Implemented (V2) | Multi SAF + MediaStore; Settings → Library |
+| Cosmic visualizers (6) | Implemented (V2) | Compose Canvas scenes; device reactivity pending |
+| Immersive viz player | Implemented (V2) | Phone + Car IMMERSIVE; not AA projection |
 | Offline pin cache | Missing | Phase G |
-| Library maintenance | Missing | Phase E/G |
-| Automated tests | Missing | Phase H |
+| Library maintenance | Partial | Source disable/remove; deeper tools TBD |
+| Automated tests | Partial | Filename + M3U unit tests |
 
 ### Checkpoint
 - Git baseline: `b29787a` — phase-2 baseline before HUD/EQ/theme expansion
 - Pre-Kenney tag: `apollo-pre-kenney-hud` → `7632dc8`
 - Kenney branch: `feature/kenney-cyberpunk-hud` @ `5787582`
 - UX branch: `feature/apollo-hud-ux-refinement`
-- Active fix branch: `fix/apollo-metadata-car-controls-shuffle`
+- Active fix branch: `fix/apollo-metadata-car-controls-shuffle` @ `cf50bb1` checkpoint
+- V2 branch: `feature/apollo-v2-visualizers-library`
 - Device: `00021157P002695` (authorized)
-- Rollback: `docs/UI_REDESIGN_ROLLBACK.md` (+ `docs/HUD_ROLLBACK.md` for Kenney)
+- Rollback: `docs/V2_ROLLBACK.md` (+ UI/HUD rollback docs)
 
 ---
 

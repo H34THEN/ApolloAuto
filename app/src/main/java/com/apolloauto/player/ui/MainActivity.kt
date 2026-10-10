@@ -113,7 +113,6 @@ private fun ApolloHomeScreen() {
     val source by app.libraryStore.source.collectAsState()
     val scanning by app.libraryStore.scanning.collectAsState()
     val status by app.libraryStore.status.collectAsState()
-    val treeUri by app.libraryStore.treeUri.collectAsState()
     val playlists by app.playlistStore.playlists.collectAsState()
     val themeId by app.themeStore.themeId.collectAsState()
     val interfaceStyle by app.themeStore.interfaceStyle.collectAsState()
@@ -127,7 +126,21 @@ private fun ApolloHomeScreen() {
     var addTrackId by remember { mutableStateOf<String?>(null) }
     var addTrackTitle by remember { mutableStateOf("") }
 
-    val filtered = remember(tracks, query) { app.libraryStore.filteredTracks() }
+    val libFilter by app.musicSourceStore.filter.collectAsState()
+    val filtered = remember(tracks, query, libFilter) {
+        val base = app.musicSourceStore.filteredTracks()
+        val q = query.trim()
+        if (q.isEmpty()) base
+        else {
+            val needle = q.lowercase()
+            base.filter {
+                it.title.lowercase().contains(needle) ||
+                    it.artist.lowercase().contains(needle) ||
+                    it.album.lowercase().contains(needle) ||
+                    it.folder.lowercase().contains(needle)
+            }
+        }
+    }
     val carTracks = remember(tracks, playlists, query) {
         filterList(app.playlistStore.resolveById(PlaylistStore.CAR_FAVORITES_ID, tracks), query)
     }
@@ -149,18 +162,18 @@ private fun ApolloHomeScreen() {
         }
     }
 
-    fun scanPhone() {
-        scope.launch { app.deviceScanner.scanPhoneLibrary() }
+    fun scanLibrary() {
+        scope.launch { app.libraryScanCoordinator.scanAllEnabled() }
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (granted) scanPhone()
+        if (granted) scanLibrary()
         else app.libraryStore.setStatus("Audio permission denied — enable in Settings")
     }
 
-    fun requestPhoneScan() {
+    fun requestLibraryScan() {
         val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             Manifest.permission.READ_MEDIA_AUDIO
         } else {
@@ -168,19 +181,24 @@ private fun ApolloHomeScreen() {
         }
         val granted = ContextCompat.checkSelfPermission(context, permission) ==
             PackageManager.PERMISSION_GRANTED
-        if (granted) scanPhone() else permissionLauncher.launch(permission)
+        if (granted) scanLibrary() else permissionLauncher.launch(permission)
     }
 
-    LaunchedEffect(source, treeUri) {
-        when (source) {
-            LibrarySource.PHONE -> requestPhoneScan()
-            LibrarySource.USB -> {
-                val uri = treeUri
-                if (uri != null) app.usbScanner.scanTree(uri)
-                else {
-                    app.libraryStore.setTracks(emptyList())
-                    app.libraryStore.setStatus("USB not linked yet — use phone library for now")
-                }
+    LaunchedEffect(Unit) {
+        requestLibraryScan()
+    }
+
+    val openPhoneFolder = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(uri, flags)
+            }
+            scope.launch {
+                app.libraryScanCoordinator.addPhoneFolder(uri, uri.lastPathSegment)
             }
         }
     }
@@ -194,8 +212,9 @@ private fun ApolloHomeScreen() {
             runCatching {
                 context.contentResolver.takePersistableUriPermission(uri, flags)
             }
-            app.libraryStore.setTreeUri(uri)
-            app.libraryStore.setSource(LibrarySource.USB)
+            scope.launch {
+                app.libraryScanCoordinator.addUsbOrExternal(uri, uri.lastPathSegment)
+            }
         }
     }
 
@@ -234,14 +253,32 @@ private fun ApolloHomeScreen() {
                             Text(status, color = p.dim, fontFamily = body, fontSize = ApolloTypeScale.metaSp.sp, maxLines = 1)
                             Spacer(Modifier.height(ApolloSpace.space8))
                             SourceScanRow(
-                                source = source,
+                                filter = libFilter,
                                 scanning = scanning,
-                                onPhone = { app.libraryStore.setSource(LibrarySource.PHONE) },
-                                onUsb = { app.libraryStore.setSource(LibrarySource.USB) },
-                                onScan = {
-                                    if (source == LibrarySource.PHONE) requestPhoneScan()
-                                    else openTree.launch(null)
-                                }
+                                onFilterAll = {
+                                    app.musicSourceStore.setFilter(
+                                        com.apolloauto.player.data.LibraryFilterState(
+                                            com.apolloauto.player.data.LibraryFilter.ALL
+                                        )
+                                    )
+                                },
+                                onFilterPhone = {
+                                    app.musicSourceStore.setFilter(
+                                        com.apolloauto.player.data.LibraryFilterState(
+                                            com.apolloauto.player.data.LibraryFilter.PHONE
+                                        )
+                                    )
+                                },
+                                onFilterUsb = {
+                                    app.musicSourceStore.setFilter(
+                                        com.apolloauto.player.data.LibraryFilterState(
+                                            com.apolloauto.player.data.LibraryFilter.USB
+                                        )
+                                    )
+                                },
+                                onScan = { requestLibraryScan() },
+                                onChangePhoneFolder = { openPhoneFolder.launch(null) },
+                                onLinkUsb = { openTree.launch(null) }
                             )
                             Spacer(Modifier.height(ApolloSpace.panelGap))
                             NowPlayingCard(
@@ -382,6 +419,25 @@ private fun ApolloHomeScreen() {
                                                 val created = app.playlistStore.create("Deck ${playlists.size}")
                                                 selectedPlaylistId = created.id
                                             },
+                                            onImportM3u = { uri ->
+                                                scope.launch {
+                                                    runCatching {
+                                                        val preview = app.m3uPlaylistService.preview(
+                                                            uri,
+                                                            app.libraryStore.tracks.value
+                                                        )
+                                                        val pl = app.m3uPlaylistService.importConfirmed(preview)
+                                                        app.libraryStore.setStatus(
+                                                            "Imported ${pl.name}: ${preview.resolved}/${preview.totalEntries} resolved"
+                                                        )
+                                                        selectedPlaylistId = pl.id
+                                                    }.onFailure {
+                                                        app.libraryStore.setStatus(
+                                                            "M3U import failed: ${it.message ?: "error"}"
+                                                        )
+                                                    }
+                                                }
+                                            },
                                             onDelete = { id -> app.playlistStore.delete(id) }
                                         )
                                     } else {
@@ -442,6 +498,25 @@ private fun ApolloHomeScreen() {
                                     onCreate = {
                                         val created = app.playlistStore.create("Deck ${playlists.size}")
                                         selectedPlaylistId = created.id
+                                    },
+                                    onImportM3u = { uri ->
+                                        scope.launch {
+                                            runCatching {
+                                                val preview = app.m3uPlaylistService.preview(
+                                                    uri,
+                                                    app.libraryStore.tracks.value
+                                                )
+                                                val pl = app.m3uPlaylistService.importConfirmed(preview)
+                                                app.libraryStore.setStatus(
+                                                    "Imported ${pl.name}: ${preview.resolved}/${preview.totalEntries} resolved"
+                                                )
+                                                selectedPlaylistId = pl.id
+                                            }.onFailure {
+                                                app.libraryStore.setStatus(
+                                                    "M3U import failed: ${it.message ?: "error"}"
+                                                )
+                                            }
+                                        }
                                     },
                                     onDelete = { id -> app.playlistStore.delete(id) }
                                 )
@@ -606,24 +681,43 @@ private fun ApolloHomeScreen() {
 
 @Composable
 private fun SourceScanRow(
-    source: LibrarySource,
+    filter: com.apolloauto.player.data.LibraryFilterState,
     scanning: Boolean,
-    onPhone: () -> Unit,
-    onUsb: () -> Unit,
-    onScan: () -> Unit
+    onFilterAll: () -> Unit,
+    onFilterPhone: () -> Unit,
+    onFilterUsb: () -> Unit,
+    onScan: () -> Unit,
+    onChangePhoneFolder: () -> Unit,
+    onLinkUsb: () -> Unit
 ) {
     val p = LocalHudPalette.current
     val body = LocalBodyFont.current
     Column {
         Row(horizontalArrangement = Arrangement.spacedBy(ApolloSpace.space8)) {
-            CompactChip("PHONE", source == LibrarySource.PHONE, Modifier.weight(1f), onPhone)
-            CompactChip("USB SSD", source == LibrarySource.USB, Modifier.weight(1f), onUsb)
             CompactChip(
-                if (source == LibrarySource.PHONE) "SCAN" else "LINK",
-                false,
-                Modifier.weight(0.85f),
-                onScan
+                "ALL",
+                filter.mode == com.apolloauto.player.data.LibraryFilter.ALL,
+                Modifier.weight(1f),
+                onFilterAll
             )
+            CompactChip(
+                "PHONE",
+                filter.mode == com.apolloauto.player.data.LibraryFilter.PHONE,
+                Modifier.weight(1f),
+                onFilterPhone
+            )
+            CompactChip(
+                "USB",
+                filter.mode == com.apolloauto.player.data.LibraryFilter.USB,
+                Modifier.weight(1f),
+                onFilterUsb
+            )
+            CompactChip("SCAN", false, Modifier.weight(0.9f), onScan)
+        }
+        Spacer(Modifier.height(ApolloSpace.space8))
+        Row(horizontalArrangement = Arrangement.spacedBy(ApolloSpace.space8)) {
+            CompactChip("PHONE FOLDER", false, Modifier.weight(1f), onChangePhoneFolder)
+            CompactChip("LINK USB", false, Modifier.weight(1f), onLinkUsb)
         }
         if (scanning) {
             Spacer(Modifier.height(ApolloSpace.space8))
@@ -635,17 +729,16 @@ private fun SourceScanRow(
                 trackColor = p.panel
             )
         }
-        // Keep icons for TalkBack context without large neon blocks
         Row(modifier = Modifier.padding(top = 2.dp)) {
             Icon(
-                if (source == LibrarySource.PHONE) Icons.Default.PhoneAndroid else Icons.Default.Usb,
+                Icons.Default.PhoneAndroid,
                 contentDescription = null,
                 tint = p.dim,
                 modifier = Modifier.size(14.dp)
             )
             Spacer(Modifier.width(4.dp))
             Text(
-                if (source == LibrarySource.PHONE) "Phone library" else "USB storage",
+                "Multi-source library · Settings → Library for full matrix",
                 color = p.dim,
                 fontFamily = body,
                 fontSize = 11.sp
@@ -820,12 +913,16 @@ private fun PlaylistBrowser(
     playlists: List<Playlist>,
     onOpen: (String) -> Unit,
     onCreate: () -> Unit,
+    onImportM3u: (Uri) -> Unit,
     onDelete: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val p = LocalHudPalette.current
     val body = LocalBodyFont.current
     val hud = LocalHudFont.current
+    val importM3u = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri -> if (uri != null) onImportM3u(uri) }
     Column(modifier.fillMaxSize()) {
         Row(
             Modifier.fillMaxWidth(),
@@ -833,23 +930,38 @@ private fun PlaylistBrowser(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "PLAYLISTS // ${playlists.size}",
+                "PLAYLIST ARCHIVE // ${playlists.size}",
                 color = p.primary,
                 fontFamily = hud,
                 letterSpacing = 1.sp,
                 fontSize = ApolloTypeScale.sectionSp.sp
             )
-            Text(
-                "+ NEW",
-                color = p.voidBlack,
-                fontFamily = body,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(p.primary)
-                    .clickable(onClick = onCreate)
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                fontSize = 12.sp
-            )
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    "IMPORT M3U",
+                    color = p.soft,
+                    fontFamily = body,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .border(1.dp, p.accent.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
+                        .clickable {
+                            importM3u.launch(arrayOf("audio/x-mpegurl", "application/vnd.apple.mpegurl", "text/*", "*/*"))
+                        }
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    fontSize = 11.sp
+                )
+                Text(
+                    "+ NEW",
+                    color = p.voidBlack,
+                    fontFamily = body,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(p.primary)
+                        .clickable(onClick = onCreate)
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    fontSize = 12.sp
+                )
+            }
         }
         Spacer(Modifier.height(ApolloSpace.space8))
         LazyColumn(verticalArrangement = Arrangement.spacedBy(ApolloSpace.space8)) {
@@ -871,8 +983,14 @@ private fun PlaylistBrowser(
                 ) {
                     Column(Modifier.weight(1f)) {
                         Text(pl.name, color = p.soft, fontFamily = body, fontSize = ApolloTypeScale.bodySp.sp)
+                        val originTag = when (pl.origin) {
+                            com.apolloauto.player.data.PlaylistOrigin.IMPORTED_M3U -> " · M3U"
+                            com.apolloauto.player.data.PlaylistOrigin.SMART -> " · SMART"
+                            else -> ""
+                        }
+                        val unresolved = if (pl.unresolvedCount > 0) " · ${pl.unresolvedCount} missing" else ""
                         Text(
-                            "${pl.trackIds.size} tracks",
+                            "${pl.trackIds.size} tracks$originTag$unresolved",
                             color = p.dim,
                             fontFamily = body,
                             fontSize = ApolloTypeScale.metaSp.sp

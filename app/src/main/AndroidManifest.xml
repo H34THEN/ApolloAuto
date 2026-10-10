@@ -70,6 +70,13 @@
             android:theme="@style/Theme.ApolloAuto"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden" />
 
+        <activity
+            android:name=".ui.ImmersiveVisualizerActivity"
+            android:exported="false"
+            android:label="Immersive Visualizer"
+            android:theme="@style/Theme.ApolloAuto"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden" />
+
         <service
             android:name=".media.ApolloPlaybackService"
             android:exported="true"

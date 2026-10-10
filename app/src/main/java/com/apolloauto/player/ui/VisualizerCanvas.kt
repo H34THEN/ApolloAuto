@@ -32,6 +32,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.apolloauto.player.ApolloApp
 import com.apolloauto.player.R
+import com.apolloauto.player.media.AudioFeatures
 import com.apolloauto.player.media.VisualizerMode
 import com.apolloauto.player.theme.LocalHudPalette
 import com.apolloauto.player.theme.LocalMotionProfile
@@ -51,6 +52,7 @@ fun ApolloVisualizerSurface(
     val wave by viz.waveform.collectAsState()
     val level by viz.level.collectAsState()
     val bass by viz.bass.collectAsState()
+    val features by viz.features.collectAsState()
     val capturing by viz.capturing.collectAsState()
     val mode by viz.mode.collectAsState()
     val animate = motion != MotionProfile.STATIC
@@ -77,24 +79,35 @@ fun ApolloVisualizerSurface(
 
     Box(modifier = modifier) {
         Canvas(Modifier.fillMaxSize()) {
-            val gridStep = size.width / 12f
-            for (i in 0..12) {
-                val x = i * gridStep
-                drawLine(
-                    color = p.primary.copy(alpha = 0.05f),
-                    start = Offset(x, 0f),
-                    end = Offset(x, size.height),
-                    strokeWidth = 1f
-                )
+            val cosmicScene = when (mode) {
+                VisualizerMode.HYPERDRIVE,
+                VisualizerMode.NEBULA,
+                VisualizerMode.RAVE_CORE,
+                VisualizerMode.SIGNAL_OCEAN,
+                VisualizerMode.PLASMA_HEART,
+                VisualizerMode.FRACTURE -> true
+                else -> false
             }
-            for (i in 0..6) {
-                val y = i * (size.height / 6f)
-                drawLine(
-                    color = p.primary.copy(alpha = 0.04f),
-                    start = Offset(0f, y),
-                    end = Offset(size.width, y),
-                    strokeWidth = 1f
-                )
+            if (!cosmicScene) {
+                val gridStep = size.width / 12f
+                for (i in 0..12) {
+                    val x = i * gridStep
+                    drawLine(
+                        color = p.primary.copy(alpha = 0.05f),
+                        start = Offset(x, 0f),
+                        end = Offset(x, size.height),
+                        strokeWidth = 1f
+                    )
+                }
+                for (i in 0..6) {
+                    val y = i * (size.height / 6f)
+                    drawLine(
+                        color = p.primary.copy(alpha = 0.04f),
+                        start = Offset(0f, y),
+                        end = Offset(size.width, y),
+                        strokeWidth = 1f
+                    )
+                }
             }
 
             val idle = FloatArray(fft.size) { i ->
@@ -111,6 +124,19 @@ fun ApolloVisualizerSurface(
             val lvl = if (live) level else 0.18f + 0.08f * (pulse - 1f)
             val bassLvl = if (live) bass else lvl * 0.7f
             val energy = (lvl * 0.55f + bassLvl * 0.45f).coerceIn(0f, 1f)
+            val liveFeatures = if (live) {
+                features
+            } else {
+                AudioFeatures(
+                    bass = bassLvl,
+                    mid = energy * 0.65f,
+                    high = energy * 0.45f,
+                    rms = lvl,
+                    onset = 0f,
+                    silence = 1f - energy
+                )
+            }
+            val phase = spinAngle
 
             when (mode) {
                 VisualizerMode.SPECTRUM, VisualizerMode.DECORATIVE -> {
@@ -369,6 +395,50 @@ fun ApolloVisualizerSurface(
                     meter(topL, left, 0.05f)
                     meter(topR, right, 0.1f)
                 }
+
+                VisualizerMode.HYPERDRIVE -> drawHyperdriveScene(
+                    features = liveFeatures,
+                    palette = p,
+                    phase = phase,
+                    pulse = pulse,
+                    playing = playing
+                )
+
+                VisualizerMode.NEBULA -> drawNebulaScene(
+                    features = liveFeatures,
+                    palette = p,
+                    phase = phase,
+                    pulse = pulse
+                )
+
+                VisualizerMode.RAVE_CORE -> drawRaveCoreScene(
+                    features = liveFeatures,
+                    palette = p,
+                    phase = phase,
+                    fft = spectrum
+                )
+
+                VisualizerMode.SIGNAL_OCEAN -> drawSignalOceanScene(
+                    features = liveFeatures,
+                    palette = p,
+                    phase = phase,
+                    wave = waveData
+                )
+
+                VisualizerMode.PLASMA_HEART -> drawPlasmaHeartScene(
+                    features = liveFeatures,
+                    palette = p,
+                    phase = phase,
+                    pulse = pulse
+                )
+
+                VisualizerMode.FRACTURE -> drawFractureScene(
+                    features = liveFeatures,
+                    palette = p,
+                    phase = phase,
+                    fft = spectrum,
+                    spin = spinAngle
+                )
             }
         }
         Image(

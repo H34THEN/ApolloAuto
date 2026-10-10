@@ -1,6 +1,7 @@
 package com.apolloauto.player.ui
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -84,7 +85,6 @@ import com.apolloauto.player.data.displayTitle
 import com.apolloauto.player.media.PlayerController
 import com.apolloauto.player.media.QueueEntry
 import com.apolloauto.player.media.RepeatModeUi
-import com.apolloauto.player.media.VisualizerMode
 import com.apolloauto.player.theme.ApolloCyberTheme
 import com.apolloauto.player.theme.ApolloSpace
 import com.apolloauto.player.theme.LocalBodyFont
@@ -231,6 +231,12 @@ private fun CarDeckScreen(onExit: () -> Unit) {
                                 CarDeckMode.VISUALIZER
                             }
                         }
+                        ModeToggleChip(
+                            label = "IMMERSIVE",
+                            selected = false
+                        ) {
+                            context.startActivity(Intent(context, ImmersiveVisualizerActivity::class.java))
+                        }
                         if (deckMode == CarDeckMode.STANDARD) {
                             ModeToggleChip(
                                 label = if (panelExpanded) "HIDE LIST" else "SHOW LIST",
@@ -297,15 +303,16 @@ private fun CarDeckScreen(onExit: () -> Unit) {
                                         drawLine(c, Offset(size.width - 8f, 8f), Offset(size.width - 8f - len, 8f), 2f)
                                         drawLine(c, Offset(size.width - 8f, 8f), Offset(size.width - 8f, 8f + len), 2f)
                                     }
-                                    VizModeChips(
-                                        mode = vizMode,
+                                    VisualizerModeCompactChips(
+                                        selected = vizMode,
+                                        onSelect = { m ->
+                                            app.themeStore.setVisualizerMode(m)
+                                            app.visualizerController.setMode(m)
+                                        },
                                         modifier = Modifier
                                             .align(Alignment.TopStart)
                                             .padding(8.dp)
-                                    ) { m ->
-                                        app.themeStore.setVisualizerMode(m)
-                                        app.visualizerController.setMode(m)
-                                    }
+                                    )
                                 }
                                 Spacer(Modifier.height(ApolloSpace.space8))
                                 CarTransportBar(
@@ -433,15 +440,16 @@ private fun VisualizerOnlyDeck(
         )
         val app = ApolloApp.instance
         val vizMode by app.visualizerController.mode.collectAsState()
-        VizModeChips(
-            mode = vizMode,
+        VisualizerModeCompactChips(
+            selected = vizMode,
+            onSelect = { m ->
+                app.themeStore.setVisualizerMode(m)
+                app.visualizerController.setMode(m)
+            },
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .padding(10.dp)
-        ) { m ->
-            app.themeStore.setVisualizerMode(m)
-            app.visualizerController.setMode(m)
-        }
+        )
         // Tap center to play/pause
         Box(
             Modifier
@@ -802,49 +810,6 @@ private fun ModeChip(label: String, selected: Boolean, modifier: Modifier = Modi
             .clickable(onClick = onClick)
             .padding(vertical = 7.dp)
     )
-}
-
-@Composable
-private fun VizModeChips(
-    mode: VisualizerMode,
-    modifier: Modifier = Modifier,
-    onMode: (VisualizerMode) -> Unit
-) {
-    val p = LocalHudPalette.current
-    val body = LocalBodyFont.current
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        listOf(
-            VisualizerMode.SPECTRUM to "FFT",
-            VisualizerMode.BARS to "BARS",
-            VisualizerMode.WAVEFORM to "WAVE",
-            VisualizerMode.CIRCULAR to "ORB",
-            VisualizerMode.RINGS to "RINGS",
-            VisualizerMode.LEVEL to "VU"
-        ).forEach { (m, label) ->
-            Text(
-                label,
-                color = if (mode == m) p.soft else p.dim,
-                fontFamily = body,
-                fontSize = 9.sp,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(3.dp))
-                    .border(
-                        1.dp,
-                        if (mode == m) p.accent else p.dim.copy(alpha = 0.35f),
-                        RoundedCornerShape(3.dp)
-                    )
-                    .background(
-                        if (mode == m) p.accent.copy(alpha = 0.18f)
-                        else p.voidBlack.copy(alpha = 0.45f)
-                    )
-                    .clickable { onMode(m) }
-                    .padding(horizontal = 6.dp, vertical = 4.dp)
-            )
-        }
-    }
 }
 
 @Composable

@@ -12,7 +12,11 @@ class DeviceMusicScanner(
     private val context: Context,
     private val store: LibraryStore
 ) {
-    suspend fun scanPhoneLibrary(): List<Track> = withContext(Dispatchers.IO) {
+    /**
+     * @param publishDirectly when true (legacy), replaces the entire library with MediaStore results.
+     * Prefer false and publish via [MusicSourceStore.recordScanResult].
+     */
+    suspend fun scanPhoneLibrary(publishDirectly: Boolean = true): List<Track> = withContext(Dispatchers.IO) {
         store.setScanning(true)
         store.setStatus("Scanning phone library…")
         try {
@@ -30,7 +34,8 @@ class DeviceMusicScanner(
                 MediaStore.Audio.Media.ALBUM_ID,
                 MediaStore.Audio.Media.DURATION,
                 MediaStore.Audio.Media.BUCKET_DISPLAY_NAME,
-                MediaStore.Audio.Media.DISPLAY_NAME
+                MediaStore.Audio.Media.DISPLAY_NAME,
+                MediaStore.Audio.Media.RELATIVE_PATH
             )
             val selection = "${MediaStore.Audio.Media.IS_MUSIC}!=0"
             val sort = "${MediaStore.Audio.Media.TITLE} COLLATE NOCASE ASC"
@@ -45,6 +50,7 @@ class DeviceMusicScanner(
                 val durationCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
                 val bucketCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.BUCKET_DISPLAY_NAME)
                 val displayCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME)
+                val relCol = cursor.getColumnIndex(MediaStore.Audio.Media.RELATIVE_PATH)
 
                 while (cursor.moveToNext()) {
                     val id = cursor.getLong(idCol)
@@ -55,6 +61,10 @@ class DeviceMusicScanner(
                     val displayName = cursor.getString(displayCol)
                     val duration = cursor.getLong(durationCol).coerceAtLeast(0L)
                     val folder = cursor.getString(bucketCol)?.takeIf { it.isNotBlank() } ?: "Phone"
+                    val relPath = if (relCol >= 0) {
+                        val base = cursor.getString(relCol)?.trimEnd('/') ?: ""
+                        listOf(base, displayName.orEmpty()).filter { it.isNotBlank() }.joinToString("/")
+                    } else displayName.orEmpty()
                     val (title, artist, albumFromName) = FilenameMetadataParser.resolve(
                         embeddedTitle = rawTitle,
                         embeddedArtist = rawArtist,
@@ -62,7 +72,6 @@ class DeviceMusicScanner(
                         folderFallback = rawAlbum ?: folder
                     )
                     val album = rawAlbum?.takeUnless {
-                        // If album duplicates unresolved combined title, prefer folder/parsed fallback.
                         it.equals(rawTitle, ignoreCase = true)
                     } ?: albumFromName
                     val uri = ContentUris.withAppendedId(collection, id)
@@ -81,14 +90,20 @@ class DeviceMusicScanner(
                         folder = folder,
                         durationMs = duration,
                         artworkUri = art,
-                        albumId = albumId
+                        albumId = albumId,
+                        sourceId = MusicSourceStore.PHONE_MEDIASTORE_ID,
+                        sourceKind = MusicSourceKind.PHONE_MEDIASTORE,
+                        relativePath = relPath,
+                        available = true
                     )
                 }
             }
 
-            store.setTracks(found)
+            if (publishDirectly) {
+                store.setTracks(found)
+            }
             store.setStatus(
-                if (found.isEmpty()) "No music on phone yet — add files or link USB later"
+                if (found.isEmpty()) "No music on phone yet — add a folder in Settings → Library"
                 else "${found.size} phone tracks ready"
             )
             found
