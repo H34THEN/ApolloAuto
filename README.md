@@ -1,36 +1,93 @@
-# Apollo Auto
+# APOLLO II
+### Cyberpunk Music Command System
 
-Cyberpunk USB music player for Android phones and Android Auto car decks.
+**Offline music. Immersive visuals. Your entire library under command.**
 
-Tuned for landscape car radios around **7.4″ × 3.81″** (~1.94:1). Use **Car Mode** for the neon deck UI; Android Auto discovers the same library via Media3.
+Apollo II is a standalone Android music player for local libraries — phone folders, USB SSD / SD via SAF — with Media3 playback, Android Auto media browsing, and a large audio-reactive visualizer gallery (Immersive / Viz-Only / Car Mode).
 
-## Features
+> **Current release:** `v1.0.0-beta.1` · Package `com.apolloauto.player`
 
-- **Cyberpunk phone + Car Mode UI** — neon grid, spectrum orb, large transport controls
-- **USB-C SSD library** — pick the drive root once (SAF); scans MP3/FLAC/M4A/AAC/WAV/OGG/OPUS…
-- **Android Auto** — `MediaLibraryService` browse tree (`All Tracks` + folders)
+## Features (implemented)
 
-## Build
+- Local library scanning (MediaStore + SAF folder trees)
+- Playlists, protected **Car Favorites**, M3U import/export
+- Background playback, lock-screen / Bluetooth media controls
+- Equalizer + sleep timer
+- Android Auto media app (browse + playback via MediaLibraryService)
+- Immersive visualizers with AUTO / BLACK / ALBUM / SCENE backgrounds
+- Shadertoy-inspired ST01–ST03, MILK//LAB, Tron Legacy, Trance Reactor packs
+
+## Installation
+
+1. Download **Apollo-II-v1.0.0-beta.1.apk** from [GitHub Releases](https://github.com/H34THEN/ApolloAuto/releases).
+2. Verify SHA-256 against `SHA256SUMS.txt` on the release.
+3. Install on the phone’s **Owner / personal** profile (not Work).
+4. If upgrading from a debug build (`com.apolloauto.player.debug`), uninstall the debug package first — signatures differ.
 
 ```bash
-export JAVA_HOME="$HOME/toolchains/jdk-17/Contents/Home"
-export ANDROID_HOME="/opt/homebrew/share/android-commandlinetools"
-./gradlew :app:assembleDebug
+adb install --user 0 -r Apollo-II-v1.0.0-beta.1.apk
 ```
 
-APK: `app/build/outputs/apk/debug/app-debug.apk` (also copied to `ApolloAuto-cyber-debug.apk`).
+## Quick Start
 
-## Install (USB debugging)
+1. Open Apollo II → grant media/storage permission.
+2. Settings → Library → add a phone folder or USB tree.
+3. Scan → pick a track → play.
+4. Immersive / Viz gallery for visualizers.
 
-1. Unlock the phone and accept **Allow USB debugging** if prompted.
-2. `adb install -r ApolloAuto-cyber-debug.apk`
+## Android Auto Setup
 
-## First-run on phone
+1. Install Apollo and confirm phone playback works.
+2. Open **Android Auto** phone settings → Customize launcher → enable **Apollo**.
+3. For sideloaded APKs: AA → Version (tap repeatedly) → Developer settings → **Unknown sources**.
+4. Connect to the car and select Apollo from media apps.
 
-1. Attach the SSD with a USB-C OTG / hub (phone must host the drive).
-2. Open **Apollo Auto** → **LINK USB SSD** → grant access to the drive root.
-3. Tap **CAR MODE** for the landscape cyber deck, or connect the phone to the car and open **Apollo Auto** in Android Auto.
+Discovery has been owner-confirmed. Always re-check browse/playback after updates.
 
-## Note on Android Auto visuals
+## Visualizer Guide
 
-Android Auto draws its own media templates on the head unit. Apollo supplies the browse tree, metadata, and playback. The full cyberpunk chrome lives in Apollo’s **Car Mode** on the phone (and any phone-mirrored display).
+- **Immersive / Viz-Only / Car Mode** share the same scene engine.
+- Backgrounds: **AUTO**, **BLACK** (recommended for rainbow scenes), **ALBUM**, **SCENE**.
+- Per-mode size presets (XS–XL) scale geometry without resetting animation clocks.
+- Strong references: LIQUID, SPIRAL/POLY, SYNTH SMOKE, SPACE WARP.
+- ST01 (GrafEq) / ST03 (Cyber Fuji) repaired in this beta — report regressions.
+
+## Permissions & Privacy
+
+See [PRIVACY.md](PRIVACY.md). Core playback is offline-local. Optional future AcoustID keys stay in private prefs.
+
+## Supported Audio Formats
+
+Via Media3/ExoPlayer (device codecs apply): MP3, AAC, FLAC, WAV, OGG/Opus where the platform decoder exists.
+
+## Troubleshooting
+
+| Issue | Action |
+|---|---|
+| Missing music | Re-grant SAF permission; rescan library |
+| Same album art everywhere | Fixed in beta (hashed art cache); rescan after upgrade |
+| Android Auto missing | Owner profile install + Unknown sources for sideloads |
+| Signature conflict | Uninstall previous build (data wipe) then install release |
+| Visualizer silent | Grant RECORD_AUDIO if prompted; play music; check capture diagnostics |
+
+## Development
+
+- JDK **17**
+- Android SDK 34
+- `./gradlew :app:assembleDebug` / `:app:assembleRelease`
+- Release signing via **gitignored** `local-release.properties` pointing at a local keystore
+
+## Roadmap
+
+- Full ECHOHUNT (Chromaprint → AcoustID) beyond scaffolding
+- Additional shader ports with clear licenses
+- CI signing + automated GitHub Releases
+- Real-car AA regression checklist automation
+
+## Credits
+
+See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+## License
+
+[Apache License 2.0](LICENSE)

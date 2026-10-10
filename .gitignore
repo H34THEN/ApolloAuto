@@ -1,6 +1,9 @@
 *.iml
 .gradle/
 /local.properties
+/local-release.properties
+*.jks
+*.keystore
 /.idea/
 .DS_Store
 /build/
@@ -9,6 +12,9 @@
 *.apk
 .cxx/
 *.hprof
+
+# Generated release staging (rebuilt locally; attach APKs via GitHub Releases)
+/dist/
 
 # Kenney source pack (selected assets copied into app/src/main/res)
 /third_party/kenney/

@@ -1,6 +1,14 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+}
+
+// Optional local signing (never commit): repoRoot/local-release.properties
+val releaseProps = Properties().apply {
+    val f = rootProject.file("local-release.properties")
+    if (f.isFile) f.inputStream().use(::load)
 }
 
 android {
@@ -11,9 +19,21 @@ android {
         applicationId = "com.apolloauto.player"
         minSdk = 26
         targetSdk = 34
-        versionCode = 54
-        versionName = "5.3.1"
+        versionCode = 100
+        versionName = "1.0.0-beta.1"
         vectorDrawables.useSupportLibrary = true
+    }
+
+    signingConfigs {
+        create("release") {
+            val store = releaseProps.getProperty("storeFile")
+            if (!store.isNullOrBlank()) {
+                storeFile = file(store)
+                storePassword = releaseProps.getProperty("storePassword")
+                keyAlias = releaseProps.getProperty("keyAlias")
+                keyPassword = releaseProps.getProperty("keyPassword")
+            }
+        }
     }
 
     buildTypes {
@@ -23,6 +43,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            val cfg = signingConfigs.findByName("release")
+            if (cfg?.storeFile != null && cfg.storeFile!!.isFile) {
+                signingConfig = cfg
+            }
         }
         debug {
             applicationIdSuffix = ".debug"

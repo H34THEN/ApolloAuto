@@ -37,6 +37,9 @@ import kotlin.math.sqrt
  */
 
 // ─── ST01 GrafEq (davidar / Xs3GWj) — CRT implicit equation graphs ───────────
+// Repair notes: prior sparse cell sampling + phase*0.008 pattern hopping left the
+// screen mostly black. Rebuild as a dense CRT field that always fills, with audio
+// driving zoom / hue / pattern blend / beat pulses (Compose interpretation).
 
 fun DrawScope.drawSt01GrafEqScene(
     features: AudioFeatures,
@@ -46,92 +49,135 @@ fun DrawScope.drawSt01GrafEqScene(
     playing: Boolean,
     clearBackdrop: Boolean = false
 ) {
-    if (!clearBackdrop) drawRect(Color.Black)
+    if (!clearBackdrop) drawRect(Color(0xFF050308))
     val d = VisualResponseMapper.bandDrive(features, VisualIntensity.REACTIVE)
-    val drive = if (playing) 1f else 0.3f
+    val drive = if (playing) 1f else 0.35f
     val cx = size.width * 0.5f
     val cy = size.height * 0.5f
-    val span = immersiveViewportDim(size.width, size.height)
-    val pattern = ((phase * 0.008f + d.onset * 2f + d.bass * 1.5f) % 5f).toInt().coerceIn(0, 4)
-    val cols = 48
-    val rows = 28
+    val shortSide = min(size.width, size.height)
+    // Convert continuous warpClock (≈ ms*0.12) → seconds-ish for gentle motion.
+    val tSec = phase * 0.008f
+    // Hold each equation family for several seconds (not every ~1s).
+    val pattern = ((tSec * 0.18f + d.onset * 0.35f + d.bass * 0.25f) % 5f).toInt().coerceIn(0, 4)
+    val cols = 64
+    val rows = 40
     val cellW = size.width / cols
     val cellH = size.height / rows
-    val zoom = 0.7f + d.lowMid * 0.35f * drive + sin(phase * 0.01f) * 0.05f
+    val zoom = (1.15f + d.bass * 0.55f * drive + d.rms * 0.2f).coerceIn(0.85f, 2.0f)
+    val panX = sin(tSec * 0.35f) * (0.8f + d.lowMid * 1.2f) * drive
+    val panY = cos(tSec * 0.28f) * (0.6f + d.upperMid) * drive
+
+    var litCount = 0
     for (yi in 0 until rows) {
         for (xi in 0 until cols) {
-            val nx = ((xi + 0.5f) / cols - 0.5f) * 50f * zoom
-            val ny = ((yi + 0.5f) / rows - 0.5f) * 50f * zoom *
-                (size.height / size.width.coerceAtLeast(1f))
-            val lit = grafEqCell(nx, ny, pattern, phase * 0.02f + d.treble * 2f)
-            if (!lit) continue
+            // Height-normalized plane (Shadertoy-style), then zoom/pan.
+            val u = ((xi + 0.5f) / cols - 0.5f) * (size.width / shortSide) * 2.2f
+            val v = ((yi + 0.5f) / rows - 0.5f) * 2.2f
+            val nx = u * zoom + panX
+            val ny = v * zoom + panY
+            val field = grafEqField(nx, ny, pattern, tSec + d.treble * 0.8f)
+            if (field < 0.08f) continue
+            litCount++
+            val bin = fft.getOrElse(((xi + yi) % fft.size.coerceAtLeast(1))) { d.rms }
             val hue = safeHue(
                 when (pattern) {
-                    0 -> 0f + d.bass * 40f
-                    1 -> 280f + d.upperMid * 40f
-                    2 -> 200f + d.onset * 80f
-                    3 -> 50f + d.treble * 40f
-                    else -> 90f + d.rms * 60f
-                }
+                    0 -> 350f + d.bass * 50f + field * 40f
+                    1 -> 270f + d.upperMid * 50f
+                    2 -> 190f + d.onset * 70f
+                    3 -> 40f + d.treble * 50f
+                    else -> 95f + d.rms * 55f
+                } + tSec * 8f
             )
-            val a = (0.55f + fft.getOrElse(xi % fft.size.coerceAtLeast(1)) { d.rms } * 0.45f)
-                .coerceIn(0.35f, 1f) * drive
+            val bright = (0.45f + field * 0.55f + bin * 0.25f).coerceIn(0.25f, 1f) * drive
             drawRect(
-                Color.hsv(hue, 0.85f, 0.95f, a),
+                Color.hsv(hue, (0.75f + d.presence * 0.2f).coerceIn(0.5f, 1f), bright),
                 topLeft = Offset(xi * cellW, yi * cellH),
-                size = androidx.compose.ui.geometry.Size(cellW * 0.92f, cellH * 0.92f)
+                size = androidx.compose.ui.geometry.Size(cellW * 0.94f, cellH * 0.94f)
             )
         }
     }
-    // CRT scanlines
-    val scanStep = (size.height / 90f).coerceAtLeast(2f)
+    // Guarantee non-blank frame if equations undersample (fallback spiral).
+    if (litCount < 40) {
+        for (i in 0 until 96) {
+            val a = i / 96f * PI.toFloat() * 6f + tSec
+            val r = shortSide * (0.08f + (i / 96f) * 0.42f) * (0.9f + d.bass * 0.25f)
+            drawCircle(
+                Color.hsv(safeHue(i * 3f + tSec * 20f), 0.9f, 0.95f)
+                    .copy(alpha = (0.35f + d.rms * 0.4f) * drive),
+                radius = 2.5f + d.treble * 2f,
+                center = Offset(cx + cos(a) * r, cy + sin(a) * r * 0.75f)
+            )
+        }
+    }
+    // CRT scanlines + grille
+    val scanStep = (size.height / 72f).coerceAtLeast(2f)
     var y = 0f
     while (y < size.height) {
         drawLine(
-            Color.Black.copy(alpha = 0.18f + d.treble * 0.1f),
+            Color.Black.copy(alpha = (0.22f + d.treble * 0.12f).coerceIn(0.12f, 0.4f)),
             Offset(0f, y),
             Offset(size.width, y),
-            strokeWidth = 1f
+            strokeWidth = 1.2f
         )
         y += scanStep
     }
-    // Beat shock vignette ring
-    if (d.onset > 0.35f) {
-        drawCircle(
-            Color.White.copy(alpha = (d.onset * 0.2f * drive).coerceIn(0f, 0.35f)),
-            radius = span * (0.2f + d.bass * 0.25f),
+    // Soft vignette
+    drawCircle(
+        Brush.radialGradient(
+            listOf(Color.Transparent, Color.Black.copy(alpha = 0.55f)),
             center = Offset(cx, cy),
-            style = Stroke(3f + d.onset * 6f)
+            radius = shortSide * 0.85f
+        ),
+        radius = shortSide * 0.95f,
+        center = Offset(cx, cy)
+    )
+    // Beat shock ring
+    if (d.onset > 0.28f) {
+        drawCircle(
+            Color.White.copy(alpha = (d.onset * 0.28f * drive).coerceIn(0f, 0.45f)),
+            radius = shortSide * (0.18f + d.bass * 0.22f),
+            center = Offset(cx, cy),
+            style = Stroke(2.5f + d.onset * 7f)
         )
     }
 }
 
-private fun grafEqCell(x: Float, y: Float, pattern: Int, t: Float): Boolean {
+/** Soft field 0..1 for denser CRT fill (not sparse boolean). */
+private fun grafEqField(x: Float, y: Float, pattern: Int, t: Float): Float {
     val p = PI.toFloat()
     return when (pattern) {
-        0 -> { // margarita-ish
-            val z = sqrt(x * x + y * y) - 3.5f * atan2(y, x) + sin(x + t) + cos(y - t)
-            (z % (7f * p) + 7f * p) % (7f * p) < p * 0.5f
+        0 -> { // margarita spirals
+            val z = sqrt(x * x + y * y) - 2.2f * atan2(y, x + 1e-4f) +
+                sin(x * 0.7f + t) + cos(y * 0.7f - t)
+            val m = abs(((z % (2f * p)) + 2f * p) % (2f * p) - p) / p
+            (1f - m).coerceIn(0f, 1f)
         }
-        1 -> { // plaid meltdown-ish
-            val a = 2f * sin(x * 0.08f * sin(y * 0.08f) + y * 0.08f * sin(x * 0.08f) + t)
-            val d = sin(5.5f * x) + sin(5.5f * y)
-            0.25f * a > 0.35f * d
+        1 -> { // plaid interference
+            val a = sin(x * 1.4f + t) * cos(y * 1.4f - t) +
+                0.5f * sin((x + y) * 2.2f + t * 1.3f)
+            ((a + 1.2f) * 0.45f).coerceIn(0f, 1f)
         }
-        2 -> { // threesome petals
-            val z = sin(sqrt((x + 5f).pow(2) + y * y) * 0.4f + t) *
-                cos(8f * atan2(y, x + 5f))
-            abs(z) in 0.05f..0.55f
+        2 -> { // petal lobes
+            val r = sqrt(x * x + y * y) + 0.001f
+            val ang = atan2(y, x)
+            val petals = abs(sin(ang * 4f + t)) * (0.55f + 0.45f * sin(r * 1.8f - t))
+            (petals * (1.15f - (r * 0.12f).coerceAtMost(1f))).coerceIn(0f, 1f)
         }
-        3 -> { // sunlight wedges
-            val a = sqrt((3f - x).pow(2) + y * y) + abs(y) + abs(1f - x)
-            a in 5f..7f && ((atan2(y, x - 1f) + p) % (p / 7f)) < p / 14f
+        3 -> { // radial wedges / sunburst
+            val ang = atan2(y, x)
+            val r = sqrt(x * x + y * y)
+            val wedge = abs(sin(ang * 7f + t * 0.6f))
+            val band = (1f - abs(r - 4.5f - sin(t) * 1.2f) * 0.35f).coerceIn(0f, 1f)
+            (wedge * 0.65f + band * 0.55f).coerceIn(0f, 1f)
         }
-        else -> { // digital bacteria blocks
-            val fx = floor(x * 0.25f)
-            val fy = floor(y * 0.25f)
-            val z = (sin(fx) + fy).pow(2) + (cos(fy) + fx).pow(2)
-            z in 17f..21f
+        else -> { // digital bacteria / pixel blocks
+            val fx = floor(x * 1.6f + t * 0.4f)
+            val fy = floor(y * 1.6f - t * 0.3f)
+            val cell = abs(sin(fx * 12.9898f + fy * 78.233f)) * 43758.5453f
+            val n = cell - floor(cell)
+            val edge = ((abs(x * 1.6f - fx - 0.5f) + abs(y * 1.6f - fy - 0.5f)) * 1.6f)
+                .coerceIn(0f, 1f)
+            ((1f - edge) * (0.35f + n * 0.8f)).coerceIn(0f, 1f)
         }
     }
 }
@@ -211,6 +257,9 @@ fun DrawScope.drawSt02LunchbreakScene(
 }
 
 // ─── ST03 Cyber Fuji 2020 (kaiware007 / Wt33Wf) — sun / fuji / synth grid ───
+// Repair notes: prior layout used immersiveViewportDim (max edge) for vertical
+// offsets, pushing Fuji/sun off-screen in landscape. Use height-normalized units
+// matching Shadertoy uv = (2*frag - res)/res.y.
 
 fun DrawScope.drawSt03CyberFujiScene(
     features: AudioFeatures,
@@ -222,114 +271,148 @@ fun DrawScope.drawSt03CyberFujiScene(
 ) {
     if (!clearBackdrop) drawRect(Color(0xFF000A14))
     val d = VisualResponseMapper.bandDrive(features, VisualIntensity.REACTIVE)
-    val drive = if (playing) 1f else 0.35f
-    val battery = (0.65f + d.rms * 0.35f * drive).coerceIn(0.4f, 1.1f)
-    val cx = size.width * 0.5f
-    val horizon = size.height * 0.58f
-    val span = immersiveViewportDim(size.width, size.height)
+    val drive = if (playing) 1f else 0.4f
+    // Audio → "battery" energy like the original mouse/battery control.
+    val battery = (0.55f + d.rms * 0.35f + d.bass * 0.25f * drive).coerceIn(0.45f, 1.15f)
+    val h = size.height.coerceAtLeast(1f)
+    val w = size.width.coerceAtLeast(1f)
+    val cx = w * 0.5f
+    // Horizon at uv.y ≈ -0.2 → pixel Y = h/2 + 0.2*(h/2) wait:
+    // uv.y = (2*py - h)/h → py = (uv.y * h + h) / 2 = h*(uv.y+1)/2
+    // horizon uv.y = -0.2 → py = h * 0.4
+    val horizon = h * 0.42f
+    val tSec = phase * 0.008f
 
-    // Sky wash
+    // Sky
     drawRect(
         Brush.verticalGradient(
-            listOf(Color(0xFF1A0030), Color(0xFF001428), Color(0xFF000A14)),
+            listOf(Color(0xFF2A0050), Color(0xFF100028), Color(0xFF000A18)),
             startY = 0f,
             endY = horizon
         ),
-        size = androidx.compose.ui.geometry.Size(size.width, horizon)
+        size = androidx.compose.ui.geometry.Size(w, horizon)
     )
 
-    // Sun
-    val sunC = Offset(cx + span * 0.18f, horizon - span * (0.22f + d.bass * 0.06f))
-    val sunR = span * (0.14f + d.bass * 0.05f) * battery
+    // Sun — place in upper-right of sky using height units (never max-edge span).
+    val sunR = h * (0.11f + d.bass * 0.04f) * battery
+    val sunC = Offset(
+        cx + w * 0.18f,
+        horizon - h * (0.18f + d.bass * 0.04f)
+    )
     drawCircle(
         Brush.radialGradient(
-            listOf(Color(0xFFFF6622), Color(0xFFFF2299), Color.Transparent),
+            listOf(
+                Color(0xFFFF8844).copy(alpha = 0.95f * drive),
+                Color(0xFFFF2288).copy(alpha = 0.85f * drive),
+                Color.Transparent
+            ),
             center = sunC,
-            radius = sunR * 1.6f
+            radius = sunR * 1.75f
         ),
-        radius = sunR * 1.6f,
+        radius = sunR * 1.75f,
         center = sunC
     )
-    drawCircle(Color(0xFFFF4488).copy(alpha = 0.9f * drive), sunR, sunC)
-    // Sun cut stripes
-    val stripes = 8
+    drawCircle(Color(0xFFFF4488).copy(alpha = 0.95f * drive), sunR, sunC)
+    val stripes = 9
     for (i in 0 until stripes) {
         val yy = sunC.y - sunR + (i + 1) * (sunR * 2f / (stripes + 1))
         val half = sqrt(max(0f, sunR * sunR - (yy - sunC.y).pow(2)))
-        val thick = (2f + i * 0.6f + d.treble * 2f) * (1f + sin(phase * 0.05f + i) * 0.2f)
+        val thick = (2.5f + i * 0.55f + d.treble * 2.5f) *
+            (1f + 0.15f * sin(tSec * 3f + i + d.onset))
         drawLine(
-            Color(0xFF000A14).copy(alpha = 0.85f),
+            Color(0xFF000A14).copy(alpha = 0.9f),
             Offset(sunC.x - half, yy),
             Offset(sunC.x + half, yy),
-            strokeWidth = thick
+            strokeWidth = thick.coerceIn(1.5f, 14f)
         )
     }
 
-    // Fuji trapezoid
-    val fujiTop = horizon - span * 0.28f
-    val fujiBaseY = horizon + span * 0.02f
+    // Fuji — height-relative trapezoid, always on-screen.
+    val fujiTop = horizon - h * (0.22f + d.sub * 0.03f)
+    val fujiBaseY = horizon + h * 0.03f
+    val fujiHalfBase = w * (0.38f + d.lowMid * 0.04f)
+    val fujiHalfTop = w * 0.055f
     val fujiPath = Path().apply {
-        moveTo(cx - span * 0.42f, fujiBaseY)
-        lineTo(cx - span * 0.08f, fujiTop)
-        lineTo(cx + span * 0.08f, fujiTop)
-        lineTo(cx + span * 0.42f, fujiBaseY)
+        moveTo(cx - fujiHalfBase, fujiBaseY)
+        lineTo(cx - fujiHalfTop, fujiTop)
+        lineTo(cx + fujiHalfTop, fujiTop)
+        lineTo(cx + fujiHalfBase, fujiBaseY)
         close()
     }
     drawPath(
         fujiPath,
         Brush.verticalGradient(
-            listOf(Color(0xFFFF1A80), Color(0xFF220066), Color(0xFF000033)),
+            listOf(
+                Color(0xFFFF2A90).copy(alpha = drive),
+                Color(0xFF3A0080),
+                Color(0xFF080020)
+            ),
             startY = fujiTop,
             endY = fujiBaseY
         )
     )
-    // Snow cap wave
+    // Snow cap
     val snow = Path()
-    val snowY = fujiTop + span * 0.04f
-    snow.moveTo(cx - span * 0.1f, snowY)
-    for (i in 0..24) {
-        val t = i / 24f
-        val x = cx - span * 0.1f + t * span * 0.2f
-        val y = snowY + sin(t * 12f + phase * 0.08f + d.upperMid * 3f) * span * 0.012f *
-            (0.5f + d.onset)
+    val snowY = fujiTop + h * 0.035f
+    val snowHalf = fujiHalfTop + w * 0.04f
+    snow.moveTo(cx - snowHalf, snowY)
+    for (i in 0..28) {
+        val tt = i / 28f
+        val x = cx - snowHalf + tt * snowHalf * 2f
+        val y = snowY + sin(tt * 14f + tSec * 2.2f + d.upperMid * 4f) *
+            h * 0.01f * (0.6f + d.onset)
         snow.lineTo(x, y)
     }
-    snow.lineTo(cx + span * 0.08f, fujiTop)
-    snow.lineTo(cx - span * 0.08f, fujiTop)
+    snow.lineTo(cx + fujiHalfTop, fujiTop)
+    snow.lineTo(cx - fujiHalfTop, fujiTop)
     snow.close()
-    drawPath(snow, Color(0xFFFFAAFF).copy(alpha = 0.85f * drive))
+    drawPath(snow, Color(0xFFFFCCFF).copy(alpha = 0.9f * drive))
+    // Outline
+    drawPath(
+        fujiPath,
+        Color(0xFFFF88FF).copy(alpha = (0.55f + d.onset * 0.35f) * drive),
+        style = Stroke((2f + d.treble * 2f).coerceIn(1.5f, 5f))
+    )
 
-    // Perspective synth grid
-    val gridH = size.height - horizon
-    for (row in 1..14) {
-        val t = row / 14f
+    // Perspective synth grid (floor below horizon)
+    val gridH = h - horizon
+    val scroll = tSec * (1.2f + d.bass * 2.5f) * drive
+    for (row in 1..16) {
+        val t = ((row / 16f) + scroll * 0.08f) % 1f
         val y = horizon + t * t * gridH
-        val alpha = (0.15f + (1f - t) * 0.35f + d.onset * 0.15f) * drive * battery
+        val bin = fft.getOrElse((t * fft.lastIndex).toInt()) { d.rms }
+        val alpha = ((1f - t) * (0.2f + d.rms * 0.35f) + bin * 0.15f + d.onset * 0.1f) *
+            drive * battery
         drawLine(
-            Color(0xFFFF66FF).copy(alpha = alpha.coerceIn(0.05f, 0.7f)),
+            Color(0xFFFF66FF).copy(alpha = alpha.coerceIn(0.06f, 0.8f)),
             Offset(0f, y),
-            Offset(size.width, y),
-            strokeWidth = 1.5f + d.bass * 1.5f
+            Offset(w, y),
+            strokeWidth = (1.4f + d.bass * 2f + bin * 1.5f).coerceIn(1f, 5f)
         )
     }
-    val vanish = Offset(cx, horizon - span * 0.02f)
-    for (col in -10..10) {
-        val edgeX = cx + col * (size.width / 10f) * (1.1f + d.lowMid * 0.2f)
+    val vanish = Offset(cx, horizon)
+    for (col in -12..12) {
+        val edgeX = cx + col * (w / 11f) * (1.05f + d.lowMid * 0.15f)
         drawLine(
-            Color(0xFFFF66FF).copy(alpha = (0.12f + d.treble * 0.2f) * drive),
+            Color(0xFFFF66FF).copy(alpha = (0.14f + d.treble * 0.22f) * drive),
             vanish,
-            Offset(edgeX, size.height),
+            Offset(edgeX, h),
             strokeWidth = 1.2f
         )
     }
-    // Bass pressure flash on horizon
-    if (d.bass > 0.45f) {
-        drawRect(
-            Color(0xFFFF00AA).copy(alpha = (d.bass - 0.45f) * 0.35f * drive),
-            topLeft = Offset(0f, horizon - 4f),
-            size = androidx.compose.ui.geometry.Size(size.width, 8f + d.onset * 12f)
-        )
-    }
+
+    // Horizon glow + bass pressure
+    drawRect(
+        Brush.horizontalGradient(
+            listOf(
+                Color.Transparent,
+                Color(0xFFFF40AA).copy(alpha = (0.25f + d.onset * 0.35f) * drive),
+                Color.Transparent
+            )
+        ),
+        topLeft = Offset(0f, horizon - 3f),
+        size = androidx.compose.ui.geometry.Size(w, 6f + d.bass * 14f)
+    )
 }
 
 // ─── MILK//LAB — Apollo originals (XorDev aesthetic vein) ────────────────────
