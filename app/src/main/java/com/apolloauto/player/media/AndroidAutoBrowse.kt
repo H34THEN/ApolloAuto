@@ -17,21 +17,22 @@ object AndroidAutoBrowse {
         playlistCount: Int,
         trackCount: Int
     ): List<Node> = listOf(
-        Node(favoritesMediaId, "Car Favorites", "$favoritesCount tracks"),
+        // Short titles — AA tabs truncate; keep counts in subtitles only.
+        Node(favoritesMediaId, "Favorites", "$favoritesCount tracks"),
         Node(MediaIds.PLAYLISTS, "Playlists", "$playlistCount lists"),
-        Node(MediaIds.ALL, "All Tracks", "$trackCount tracks"),
+        Node(MediaIds.ALL, "Songs", "$trackCount tracks"),
         Node(MediaIds.ARTISTS, "Artists"),
         Node(MediaIds.ALBUMS, "Albums"),
-        Node(MediaIds.RECENTLY_ADDED, "Recently Added"),
-        Node(MediaIds.RECENT, "Recently Played"),
-        Node(MediaIds.MORE, "More", "Most played · folders · phone viz")
+        Node(MediaIds.RECENTLY_ADDED, "New"),
+        Node(MediaIds.RECENT, "Recent"),
+        Node(MediaIds.MORE, "More")
     )
 
     fun moreNodes(folderCount: Int): List<Node> = listOf(
-        Node(MediaIds.MOST_PLAYED, "Most Played"),
+        Node(MediaIds.MOST_PLAYED, "Top Played"),
         Node(MediaIds.UNPLAYED, "Unplayed"),
         Node(MediaIds.FOLDERS, "Folders", "$folderCount folders"),
-        Node(MediaIds.VISUALIZERS, "Phone Visualizers", "Affects phone Immersive only")
+        Node(MediaIds.VISUALIZERS, "Phone Viz", "Phone Immersive only")
     )
 
     fun isAutomotiveController(packageName: String): Boolean {

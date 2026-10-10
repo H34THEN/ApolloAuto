@@ -1,0 +1,22 @@
+# Known Issues — Apollo II public beta
+
+## Projected Android Auto
+
+- **Next / single-item queue (beta.2):** Fixed in **beta.3** via browse-context expansion. Re-verify on DHU/Sobalai after install + force-stop AA.
+- **Browse label truncation:** Short titles in beta.3 (`Favorites`, `Songs`, `New`, `Recent`). Host may still ellipsize on very narrow panes.
+- **Maps dashboard split:** Host-owned; use AA full-app media from the rail.
+- **No projected Immersive visualizers:** By platform policy — use Native Car Mode / Immersive on the phone.
+
+## Native Car Mode
+
+- Viz-first default in beta.3; queue drawer inside viz-only is still via FULL HUD → QUEUE (dedicated overlay TBD).
+- Immersive visualizers are for parked / passenger use — not a driving distraction aid.
+
+## Library
+
+- OEM MediaStore may mis-tag system tones as music — filtered by path/duration.
+- Album art for SAF libraries fills via background enrich after scan.
+
+## Hardware
+
+- Sobalai wireless AA is projection-only; do not assume APK install on the head unit.

@@ -27,6 +27,8 @@ import com.google.common.util.concurrent.ListenableFuture
 class ApolloPlaybackService : MediaLibraryService() {
     private var player: ExoPlayer? = null
     private var librarySession: MediaLibrarySession? = null
+    /** Last browsed playable children — used to expand single-track AA taps into queues. */
+    private val browsePlayContext = BrowsePlayContext()
 
     override fun onCreate() {
         super.onCreate()
@@ -323,6 +325,8 @@ class ApolloPlaybackService : MediaLibraryService() {
                 }
                 else -> ImmutableList.of()
             }
+            // Cache playable lists so a later single-item play expands to that collection.
+            browsePlayContext.remember(parentId, items)
             return Futures.immediateFuture(LibraryResult.ofItemList(items, params))
         }
 
@@ -332,11 +336,23 @@ class ApolloPlaybackService : MediaLibraryService() {
             mediaItems: MutableList<MediaItem>
         ): ListenableFuture<MutableList<MediaItem>> {
             val store = ApolloApp.instance.libraryStore
-            val resolved = mediaItems.map { item ->
-                val track = store.tracks.value.find { it.id == item.mediaId }
+            val catalog = store.tracks.value
+            var resolved = mediaItems.map { item ->
+                val track = catalog.find { it.id == item.mediaId }
                 track?.toPlayable() ?: item
-            }.toMutableList()
-            return Futures.immediateFuture(resolved)
+            }
+            if (resolved.size == 1) {
+                val expanded = expandForPlayback(resolved[0], catalog)
+                if (expanded.items.size > 1) {
+                    Log.i(
+                        TAG,
+                        "onAddMediaItems expand -> ${expanded.items.size} " +
+                            "(browse=${browsePlayContext.debugParent()})"
+                    )
+                    resolved = expanded.items
+                }
+            }
+            return Futures.immediateFuture(resolved.toMutableList())
         }
 
         override fun onSetMediaItems(
@@ -362,14 +378,11 @@ class ApolloPlaybackService : MediaLibraryService() {
 
             // Single-track taps from AA browse must expand or Next/Queue stay empty.
             if (resolved.size == 1) {
-                val expanded = MediaQueueExpand.expandSingle(
-                    selected = resolved[0],
-                    catalog = catalog,
-                    toPlayable = { it.toPlayable() }
-                )
+                val expanded = expandForPlayback(resolved[0], catalog)
                 Log.i(
                     TAG,
-                    "expandSingle -> ${expanded.items.size} items start=${expanded.startIndex}"
+                    "onSetMediaItems expand -> ${expanded.items.size} start=${expanded.startIndex} " +
+                        "(browse=${browsePlayContext.debugParent()})"
                 )
                 return Futures.immediateFuture(
                     MediaSession.MediaItemsWithStartPosition(
@@ -383,6 +396,23 @@ class ApolloPlaybackService : MediaLibraryService() {
             val safeIndex = startIndex.coerceIn(0, (resolved.size - 1).coerceAtLeast(0))
             return Futures.immediateFuture(
                 MediaSession.MediaItemsWithStartPosition(resolved, safeIndex, startPositionMs)
+            )
+        }
+
+        private fun expandForPlayback(
+            selected: MediaItem,
+            catalog: List<com.apolloauto.player.data.Track>
+        ): MediaQueueExpand.ExpandedQueue {
+            val byId = catalog.associateBy { it.id }
+            val browseIds = browsePlayContext.expandIdsFromBrowse(selected.mediaId)
+            val browseSiblings = browseIds?.first?.mapNotNull { id ->
+                byId[id]?.toPlayable()
+            }
+            return MediaQueueExpand.expandSingle(
+                selected = selected,
+                catalog = catalog,
+                toPlayable = { it.toPlayable() },
+                browseSiblings = browseSiblings?.takeIf { it.size > 1 }
             )
         }
 

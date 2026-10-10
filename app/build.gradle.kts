@@ -19,8 +19,8 @@ android {
         applicationId = "com.apolloauto.player"
         minSdk = 26
         targetSdk = 34
-        versionCode = 103
-        versionName = "1.0.0-beta.2"
+        versionCode = 104
+        versionName = "1.0.0-beta.3"
         vectorDrawables.useSupportLibrary = true
     }
 

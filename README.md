@@ -5,7 +5,7 @@
 
 Apollo II is a standalone Android music player for local libraries — phone folders, USB SSD / SD via SAF — with Media3 playback, Android Auto media browsing, and a large audio-reactive visualizer gallery (Immersive / Viz-Only / Car Mode).
 
-> **Current release:** `v1.0.0-beta.2` · Package `com.apolloauto.player`
+> **Current release:** `v1.0.0-beta.3` · Package `com.apolloauto.player`
 
 ## Features (implemented)
 
@@ -19,13 +19,13 @@ Apollo II is a standalone Android music player for local libraries — phone fol
 
 ## Installation
 
-1. Download **Apollo-II-v1.0.0-beta.2.apk** from [GitHub Releases](https://github.com/H34THEN/ApolloAuto/releases).
+1. Download **Apollo-II-v1.0.0-beta.3.apk** from [GitHub Releases](https://github.com/H34THEN/ApolloAuto/releases).
 2. Verify SHA-256 against `SHA256SUMS.txt` on the release.
 3. Install on the phone’s **Owner / personal** profile (not Work).
 4. If upgrading from a debug build (`com.apolloauto.player.debug`), uninstall the debug package first — signatures differ.
 
 ```bash
-adb install --user 0 -r Apollo-II-v1.0.0-beta.2.apk
+adb install --user 0 -r Apollo-II-v1.0.0-beta.3.apk
 ```
 
 ## Quick Start
@@ -91,16 +91,19 @@ Via Media3/ExoPlayer (device codecs apply): MP3, AAC, FLAC, WAV, OGG/Opus where 
 - `./gradlew :app:assembleDebug` / `:app:assembleRelease`
 - Release signing via **gitignored** `local-release.properties` pointing at a local keystore
 
-### Android Auto DHU (pre-release visual review)
+### Native Car Mode vs Android Auto
 
-Emulate the head-unit media UI on your Mac before cutting a release:
+| Native Car Mode (phone APK) | Projected Android Auto |
+|---|---|
+| Fullscreen Immersive / Viz-Only | Host media browse + Now Playing |
+| Shaders, Trance, Layers | No projected shader canvas |
+| Visualizer-first default (beta.3) | Favorites / Playlists / Songs / Queue |
+
+### Android Auto DHU (pre-release visual review)
 
 ```bash
 ./tools/aa-dhu/install_dhu.sh
-./tools/aa-dhu/check_prereqs.sh
-# Phone: Android Auto → Start head unit server (developer mode)
-./tools/aa-dhu/run_dhu.sh                 # interactive
-./tools/aa-dhu/capture_review.sh          # scripted PNGs → docs/release/aa-dhu-gallery/
+./tools/aa-dhu/run_capture_usb.sh   # preferred — tap Continue on phone if prompted
 ```
 
 Details: [`docs/release/ANDROID_AUTO_DHU.md`](docs/release/ANDROID_AUTO_DHU.md).

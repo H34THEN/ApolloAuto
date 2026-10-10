@@ -15,17 +15,19 @@ class AndroidAutoBrowseTest {
             trackCount = 100
         )
         assertEquals(8, root.size)
-        assertEquals("Car Favorites", root.first().title)
+        assertEquals("Favorites", root.first().title)
         assertEquals("More", root.last().title)
+        assertEquals("Songs", root.first { it.id == MediaIds.ALL }.title)
+        assertEquals("New", root.first { it.id == MediaIds.RECENTLY_ADDED }.title)
+        assertEquals("Recent", root.first { it.id == MediaIds.RECENT }.title)
         assertTrue(root.none { it.title.contains("(") })
-        assertTrue(root.any { it.id == MediaIds.ALL })
         assertFalse(root.any { it.id == MediaIds.MOST_PLAYED })
     }
 
     @Test
     fun moreHoldsSecondaryCategories() {
         val more = AndroidAutoBrowse.moreNodes(12)
-        assertTrue(more.any { it.id == MediaIds.MOST_PLAYED })
+        assertEquals("Top Played", more.first { it.id == MediaIds.MOST_PLAYED }.title)
         assertTrue(more.any { it.id == MediaIds.UNPLAYED })
         assertTrue(more.any { it.id == MediaIds.FOLDERS })
         assertTrue(more.any { it.id == MediaIds.VISUALIZERS })

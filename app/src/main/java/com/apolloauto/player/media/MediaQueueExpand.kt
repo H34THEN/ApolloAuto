@@ -64,8 +64,16 @@ object MediaQueueExpand {
     fun expandSingle(
         selected: MediaItem,
         catalog: List<Track>,
-        toPlayable: (Track) -> MediaItem
+        toPlayable: (Track) -> MediaItem,
+        browseSiblings: List<MediaItem>? = null
     ): ExpandedQueue {
+        // Prefer the last browsed collection (playlist/album folder) when available.
+        if (browseSiblings != null && browseSiblings.size > 1) {
+            val index = browseSiblings.indexOfFirst { it.mediaId == selected.mediaId }
+            if (index >= 0) {
+                return ExpandedQueue(browseSiblings, index)
+            }
+        }
         val byId = catalog.associateBy { it.id }
         val candidates = catalog.map {
             Candidate(it.id, it.album, it.artist, it.folder)

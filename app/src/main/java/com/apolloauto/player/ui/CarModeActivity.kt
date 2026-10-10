@@ -135,8 +135,9 @@ private fun CarDeckScreen(onExit: () -> Unit) {
     val playback by controller.state.collectAsState()
     var listMode by remember { mutableStateOf(CarListMode.CAR_FAVORITES) }
     var addSheet by remember { mutableStateOf(false) }
-    var panelExpanded by remember { mutableStateOf(true) }
-    var deckMode by remember { mutableStateOf(CarDeckMode.STANDARD) }
+    // Visualizer-first Car Mode: list collapsed; full HUD available via toggle.
+    var panelExpanded by remember { mutableStateOf(false) }
+    var deckMode by remember { mutableStateOf(CarDeckMode.VISUALIZER) }
 
     val carTracks = remember(tracks, playlists) {
         app.playlistStore.resolveById(PlaylistStore.CAR_FAVORITES_ID, tracks)
@@ -536,13 +537,14 @@ private fun VisualizerOnlyDeck(
     val effectiveBg = remember(bgMode, vizMode, sceneOverride) {
         com.apolloauto.player.media.VisualizerBackgroundPolicy.resolve(bgMode, vizMode, sceneOverride)
     }
+    // Start with chrome visible briefly so users discover controls, then auto-hide.
     var chromeVisible by remember { mutableStateOf(true) }
     var showBgSheet by remember { mutableStateOf(false) }
     var idleTick by remember { mutableStateOf(0) }
 
     LaunchedEffect(chromeVisible, idleTick, showBgSheet) {
         if (!chromeVisible || showBgSheet) return@LaunchedEffect
-        delay(4500)
+        delay(3_500)
         if (isActive) chromeVisible = false
     }
 
