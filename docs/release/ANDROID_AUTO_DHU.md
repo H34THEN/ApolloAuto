@@ -56,15 +56,26 @@ In the DHU console you can run `screenshot name.png`, `keycode media_next`, `tap
 
 ## Scripted pre-release capture
 
-```bash
-# Opens AA settings and waits until head unit server is listening, then captures:
-./tools/aa-dhu/wait_and_capture.sh
+**Prefer USB AOA** on DHU 2.x (ADB tunnel often connects without video focus):
 
-# Or if the server is already running:
+```bash
+# Watch the phone — tap Continue / Allow on Welcome if prompted.
+./tools/aa-dhu/run_capture_usb.sh
+```
+
+ADB tunnel alternative (requires **Start head unit server**):
+
+```bash
+./tools/aa-dhu/wait_and_capture.sh
+# or
 ./tools/aa-dhu/capture_review.sh
 ```
 
 Writes PNGs under `docs/release/aa-dhu-gallery/`. Fill in `REVIEW.md` (approve / change requests).
+
+### First-time pairing
+
+DHU may show “When safe, check your phone…”. On the phone, complete **Welcome to Android Auto → Continue** (and any Allow prompts). Until that finishes, screenshots stay blank / gated.
 
 ## GitHub / CI
 

@@ -1,43 +1,42 @@
 # Android Auto DHU Visual Review
 
 **Build:** `1.0.0-beta.2` (versionCode 103)  
-**Config:** `tools/aa-dhu/config/sobalai_6_9.ini`  
-**Reviewer:**  
-**Date:**  
+**Config:** `tools/aa-dhu/config/sobalai_6_9.ini` (USB AOA)  
+**Capture:** `./tools/aa-dhu/run_capture_usb.sh`  
+**Date:** 2026-10-10  
 
-Mark each row **Approve** or **Change** (with notes). Re-run `./tools/aa-dhu/capture_review.sh` after fixes.
+Mark each row **Approve** or **Change**.
 
 | # | Screen / moment | File | Verdict | Notes |
 |---|---|---|---|---|
-| 1 | AA home / launcher | `01_home.png` | | |
-| 2 | Media surface (Apollo or picker) | `02_media_surface.png` | | |
-| 3 | Media night mode | `03_media_night.png` | | |
-| 4 | After play/pause | `04_after_play_pause.png` | | |
-| 5 | After next | `05_after_next.png` | | |
-| 6 | After previous | `06_after_previous.png` | | |
-| 7 | Final / idle | `07_final.png` | | |
+| 1 | Full-app Now Playing (art + metadata) | `01_home.png` | | Art OK; Pause+Prev; **Next missing**; Queue pill present |
+| 2 | Browse / Playlists tabs | `02_media_surface.png` | | Tabs truncated (`Car Favori…`); counts in titles |
+| 3 | Playlist track list | `03_media_night.png` | | No row thumbnails (host list); pink NP FAB OK |
+| 4 | After play/pause | `04_after_play_pause.png` | | Playing; **Next still missing** |
+| 5 | After media_next key | `05_after_next.png` | | Track did **not** advance (same song) |
+| 6 | After media_previous | `06_after_previous.png` | | Restarted same track |
+| 7 | Final | `07_final.png` | | Shuffle icon appeared; Next still absent |
 
-## Manual click-through (interactive DHU)
+## Observed vs goals
 
-Do these once per pre-release when AA UX changes. Add extra PNGs as `08_*.png` …
+| Goal | DHU result |
+|---|---|
+| Full-app media (not Maps split) | **PASS** — Apollo fills main pane + left rail |
+| Queue accessible / dismissible | **PASS** — Queue pill on NP |
+| Play/Pause | **PASS** |
+| Next / multi-item queue | **FAIL** — Next hidden; skip did not change track |
+| Shallow root labels | **PARTIAL** — still seeing truncated titles / `(N)` counts (AA cache or tab chrome) |
+| Projected visualizer | N/A (correctly absent) |
 
-| Step | Expected | Verdict | Notes |
-|---|---|---|---|
-| Open Apollo from app rail (full-app media) | Larger browse than dashboard pane | | |
-| Root browse labels | Short titles; Car Favorites → … → More | | |
-| Open More | Most Played, Unplayed, Folders, Phone Visualizers | | |
-| Play track from Artists/Albums | Now Playing shows art + metadata | | |
-| Next visible & advances | Not missing; queue has following item | | |
-| Queue → Back | Returns to Now Playing; playback continues | | |
-| Phone Visualizers note | Affects phone Immersive only | | |
+## Likely follow-ups (engineering)
 
-## Platform limitations (do not file as Apollo bugs)
-
-- Maps / dashboard split is Android Auto host-owned.  
-- No projected Immersive visualizer.  
+1. Confirm `MediaQueueExpand` runs on AA play (`ApolloAASession` log) and timeline size > 1.  
+2. Force-stop Android Auto + Apollo after install so browse tree refreshes.  
+3. Prefer `./tools/aa-dhu/run_capture_usb.sh` over ADB tunnel (video focus).  
+4. On first USB connect, tap **Continue** on phone Welcome dialog.
 
 ## Sign-off
 
-- [ ] Gallery screenshots attached / committed for this cut  
 - [ ] Blocking Change items resolved  
+- [ ] Re-capture after Next fix  
 - [ ] Ready for public beta APK
