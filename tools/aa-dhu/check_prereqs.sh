@@ -48,7 +48,8 @@ else
 fi
 
 # Head unit server listens on device port 5277 when started.
-if adb shell 'toybox netstat -ltn 2>/dev/null; ss -ltn 2>/dev/null' 2>/dev/null | rg -q ':5277'; then
+if adb shell 'toybox netstat -ltn 2>/dev/null || true; ss -ltn 2>/dev/null || true' 2>/dev/null \
+    | grep -E ':5277\b' >/dev/null 2>&1; then
   pass "head unit server listening on :5277"
 else
   note "head unit server NOT listening on :5277 — start it before run_dhu.sh"

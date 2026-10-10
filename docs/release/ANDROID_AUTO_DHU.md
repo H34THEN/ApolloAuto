@@ -57,6 +57,10 @@ In the DHU console you can run `screenshot name.png`, `keycode media_next`, `tap
 ## Scripted pre-release capture
 
 ```bash
+# Opens AA settings and waits until head unit server is listening, then captures:
+./tools/aa-dhu/wait_and_capture.sh
+
+# Or if the server is already running:
 ./tools/aa-dhu/capture_review.sh
 ```
 

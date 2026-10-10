@@ -15,7 +15,9 @@ adb shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1 || true
 
 elapsed=0
 while (( elapsed < MAX_WAIT )); do
-  if adb shell 'toybox netstat -ltn 2>/dev/null; ss -ltn 2>/dev/null' 2>/dev/null | rg -q ':5277'; then
+  if adb shell 'toybox netstat -ltn 2>/dev/null || true; ss -ltn 2>/dev/null || true' 2>/dev/null \
+      | grep -E ':5277\b' >/dev/null 2>&1; then
+    echo
     echo "Head unit server detected."
     exec "$ROOT/tools/aa-dhu/capture_review.sh"
   fi
