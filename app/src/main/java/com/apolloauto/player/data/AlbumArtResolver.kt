@@ -58,7 +58,8 @@ object AlbumArtResolver {
         albumId: Long,
         mediaUri: Uri,
         trackKey: String,
-        cache: MutableMap<Long, Uri?> = mutableMapOf()
+        cache: MutableMap<Long, Uri?> = mutableMapOf(),
+        allowEmbedded: Boolean = true
     ): Uri? {
         if (albumId > 0) {
             if (cache.containsKey(albumId)) return cache[albumId]
@@ -68,6 +69,10 @@ object AlbumArtResolver {
                 cache[albumId] = fromAlbum
                 return fromAlbum
             }
+        }
+        if (!allowEmbedded) {
+            if (albumId > 0) cache[albumId] = null
+            return null
         }
         val embedded = extractEmbedded(context, mediaUri, trackKey)
         if (albumId > 0) cache[albumId] = embedded

@@ -1,6 +1,7 @@
 package com.apolloauto.player
 
 import android.app.Application
+import com.apolloauto.player.data.AlbumArtEnricher
 import com.apolloauto.player.data.AlbumArtResolver
 import com.apolloauto.player.data.DeviceMusicScanner
 import com.apolloauto.player.data.FavoritesStore
@@ -88,6 +89,7 @@ class ApolloApp : Application() {
         musicSourceStore = MusicSourceStore(this, libraryStore, trackFirstSeenStore)
         m3uPlaylistService = M3uPlaylistService(this, playlistStore)
         safLibraryScanner = SafLibraryScanner(this, musicSourceStore, libraryStore)
+        val artEnricher = AlbumArtEnricher(this, musicSourceStore, libraryStore)
         libraryScanCoordinator = LibraryScanCoordinator(
             context = this,
             sourceStore = musicSourceStore,
@@ -95,7 +97,8 @@ class ApolloApp : Application() {
             safScanner = safLibraryScanner,
             libraryStore = libraryStore,
             m3uService = m3uPlaylistService,
-            playlistStore = playlistStore
+            playlistStore = playlistStore,
+            artEnricher = artEnricher
         )
         usbScanner = UsbMusicScanner(this, libraryStore)
         favoritesStore = FavoritesStore(this)
@@ -129,6 +132,12 @@ class ApolloApp : Application() {
             musicSourceStore.invalidateCachedFileArtwork()
             appScope.launch(Dispatchers.IO) {
                 runCatching { libraryScanCoordinator.scanAllEnabled() }
+            }
+        } else {
+            // Existing libraries were scanned without embedded art — fill covers in background.
+            appScope.launch(Dispatchers.IO) {
+                delay(1_500)
+                runCatching { artEnricher.enrichMissing() }
             }
         }
         themeStore.speak(CompanionVoice.bootLine())

@@ -36,7 +36,7 @@ class MusicSourceStore(
         persist(loadOrMigrate())
         // Restore last known catalogs immediately so the library is not empty until rescan.
         catalogCache.loadAll(_sources.value.map { it.id }).forEach { (id, tracks) ->
-            tracksBySource[id] = tracks
+            tracksBySource[id] = sanitizeSourceTracks(id, tracks)
         }
         // If a SAF phone folder is already enabled, keep MediaStore off (no ringtones mix-in).
         if (_sources.value.any { it.enabled && it.kind == MusicSourceKind.PHONE_FOLDER }) {
@@ -49,24 +49,47 @@ class MusicSourceStore(
     }
 
     /**
-     * Phone library = selected folder(s) only.
-     * Turns off MediaStore (device-wide audio including ringtones) and other phone folders.
+     * Prefer the selected phone folder, but **keep MediaStore enabled** as a backup.
+     * MediaStore already excludes ringtones/notifications; disabling it left users with
+     * an empty library when SAF folder permission/scan failed.
      */
     fun useExclusivePhoneFolder(preferredFolderId: String) {
         val next = _sources.value.map { s ->
             when {
                 s.id == preferredFolderId -> s.copy(enabled = true, preferred = true)
-                s.id == PHONE_MEDIASTORE_ID -> s.copy(enabled = false, preferred = false)
+                s.id == PHONE_MEDIASTORE_ID -> s.copy(enabled = true, preferred = false)
                 s.kind == MusicSourceKind.PHONE_FOLDER -> s.copy(enabled = false, preferred = false)
                 else -> s.copy(preferred = false)
             }
         }
         persist(next)
-        tracksBySource.remove(PHONE_MEDIASTORE_ID)
         _sources.value
             .filter { it.kind == MusicSourceKind.PHONE_FOLDER && it.id != preferredFolderId }
             .forEach { tracksBySource.remove(it.id) }
         publishMerged()
+    }
+
+    /** Ensure the MediaStore source exists and is enabled (idempotent). */
+    fun ensureMediastoreEnabled() {
+        val list = _sources.value.toMutableList()
+        val idx = list.indexOfFirst { it.id == PHONE_MEDIASTORE_ID }
+        if (idx < 0) {
+            list.add(
+                0,
+                MusicSource(
+                    id = PHONE_MEDIASTORE_ID,
+                    kind = MusicSourceKind.PHONE_MEDIASTORE,
+                    label = defaultLabel(MusicSourceKind.PHONE_MEDIASTORE),
+                    enabled = true,
+                    preferred = list.none { it.preferred }
+                )
+            )
+        } else if (!list[idx].enabled) {
+            list[idx] = list[idx].copy(enabled = true)
+        } else {
+            return
+        }
+        persist(list)
     }
 
     fun phoneMediastore(): MusicSource =
@@ -176,16 +199,29 @@ class MusicSourceStore(
         error: String? = null,
         connected: Boolean = true
     ) {
-        tracksBySource[sourceId] = tracks
+        val cleaned = sanitizeSourceTracks(sourceId, tracks)
+        // Keep previously enriched covers when a fast rescan omits embedded art.
+        val previousArt = tracksBySource[sourceId].orEmpty()
+            .mapNotNull { t -> t.artworkUri?.let { uri -> t.id to uri } }
+            .toMap()
+        val merged = if (previousArt.isEmpty()) {
+            cleaned
+        } else {
+            cleaned.map { t ->
+                if (t.artworkUri != null) t
+                else previousArt[t.id]?.let { t.copy(artworkUri = it) } ?: t
+            }
+        }
+        tracksBySource[sourceId] = merged
         playlistFilesBySource[sourceId] = playlistFiles
-        catalogCache.save(sourceId, tracks)
-        firstSeenStore.noteSeen(tracks.map { it.id })
+        catalogCache.save(sourceId, merged)
+        firstSeenStore.noteSeen(merged.map { it.id })
         val errMap = _scanErrors.value.toMutableMap()
         if (error.isNullOrBlank()) errMap.remove(sourceId) else errMap[sourceId] = error
         _scanErrors.value = errMap
         update(sourceId) {
             it.copy(
-                trackCount = tracks.size,
+                trackCount = merged.size,
                 playlistCount = playlistFiles.size,
                 lastScanMs = System.currentTimeMillis(),
                 lastError = error,
@@ -221,6 +257,30 @@ class MusicSourceStore(
 
     fun tracksForSource(sourceId: String): List<Track> =
         tracksBySource[sourceId].orEmpty()
+
+    /**
+     * Apply artwork URIs discovered by [AlbumArtEnricher] without a full rescan.
+     * Keys are track ids; unknown ids are ignored.
+     */
+    fun applyArtworkUpdates(artworkByTrackId: Map<String, Uri>) {
+        if (artworkByTrackId.isEmpty()) return
+        var changed = false
+        for ((sourceId, tracks) in tracksBySource.toMap()) {
+            var sourceChanged = false
+            val next = tracks.map { t ->
+                val art = artworkByTrackId[t.id] ?: return@map t
+                if (t.artworkUri == art) return@map t
+                sourceChanged = true
+                t.copy(artworkUri = art)
+            }
+            if (sourceChanged) {
+                tracksBySource[sourceId] = next
+                catalogCache.save(sourceId, next)
+                changed = true
+            }
+        }
+        if (changed) publishMerged()
+    }
 
     /**
      * Drop cached `file://…/album_art/…` URIs after an art-cache migration so the next
@@ -400,6 +460,29 @@ class MusicSourceStore(
             }
         }
     }.getOrDefault(emptyList())
+
+    /** Drop OEM ringtone/notification clips that MediaStore mis-tags as music. */
+    private fun sanitizeSourceTracks(sourceId: String, tracks: List<Track>): List<Track> {
+        if (sourceId != PHONE_MEDIASTORE_ID &&
+            tracks.none { it.sourceKind == MusicSourceKind.PHONE_MEDIASTORE }
+        ) {
+            return tracks
+        }
+        return tracks.filter { track ->
+            if (track.sourceKind != MusicSourceKind.PHONE_MEDIASTORE &&
+                track.sourceId != PHONE_MEDIASTORE_ID
+            ) {
+                return@filter true
+            }
+            MediaStoreMusicFilter.isLikelyMusic(
+                relativePath = track.relativePath,
+                bucketDisplayName = track.folder,
+                displayName = null,
+                title = track.title,
+                durationMs = track.durationMs
+            )
+        }
+    }
 
     companion object {
         const val PHONE_MEDIASTORE_ID = "phone_mediastore"

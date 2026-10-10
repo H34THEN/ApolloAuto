@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -15,9 +16,10 @@ class DeviceMusicScanner(
     /**
      * @param publishDirectly when true (legacy), replaces the entire library with MediaStore results.
      * Prefer false and publish via [MusicSourceStore.recordScanResult].
+     * When false, does **not** toggle [LibraryStore.setScanning] (coordinator owns that flag).
      */
     suspend fun scanPhoneLibrary(publishDirectly: Boolean = true): List<Track> = withContext(Dispatchers.IO) {
-        store.setScanning(true)
+        if (publishDirectly) store.setScanning(true)
         store.setStatus("Scanning phone library…")
         try {
             val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -61,6 +63,7 @@ class DeviceMusicScanner(
                 val relCol = cursor.getColumnIndex(MediaStore.Audio.Media.RELATIVE_PATH)
                 val dateCol = cursor.getColumnIndex(MediaStore.Audio.Media.DATE_ADDED)
 
+                var skippedSystemAudio = 0
                 while (cursor.moveToNext()) {
                     val id = cursor.getLong(idCol)
                     val albumId = cursor.getLong(albumIdCol)
@@ -75,10 +78,25 @@ class DeviceMusicScanner(
                         0L
                     }
                     val folder = cursor.getString(bucketCol)?.takeIf { it.isNotBlank() } ?: "Phone"
-                    val relPath = if (relCol >= 0) {
-                        val base = cursor.getString(relCol)?.trimEnd('/') ?: ""
-                        listOf(base, displayName.orEmpty()).filter { it.isNotBlank() }.joinToString("/")
-                    } else displayName.orEmpty()
+                    val relBase = if (relCol >= 0) {
+                        cursor.getString(relCol)?.trimEnd('/') ?: ""
+                    } else {
+                        ""
+                    }
+                    val relPath = listOf(relBase, displayName.orEmpty())
+                        .filter { it.isNotBlank() }
+                        .joinToString("/")
+                    if (!MediaStoreMusicFilter.isLikelyMusic(
+                            relativePath = relBase.ifBlank { relPath },
+                            bucketDisplayName = folder,
+                            displayName = displayName,
+                            title = rawTitle,
+                            durationMs = duration
+                        )
+                    ) {
+                        skippedSystemAudio++
+                        continue
+                    }
                     val (title, artist, albumFromName) = FilenameMetadataParser.resolve(
                         embeddedTitle = rawTitle,
                         embeddedArtist = rawArtist,
@@ -90,16 +108,16 @@ class DeviceMusicScanner(
                     } ?: albumFromName
                     val uri = ContentUris.withAppendedId(collection, id)
                     val trackKey = "phone:$id"
-                    var art = AlbumArtResolver.resolvePhoneArt(
+                    // Prefer MediaStore albumart URI only during scan — skip embedded/thumbnail
+                    // extraction so large libraries appear quickly.
+                    val art = AlbumArtResolver.resolvePhoneArt(
                         context = context,
                         albumId = albumId,
                         mediaUri = uri,
                         trackKey = trackKey,
-                        cache = artByAlbum
+                        cache = artByAlbum,
+                        allowEmbedded = false
                     )
-                    if (art == null) {
-                        art = AlbumArtResolver.loadThumbnailUri(context, uri, trackKey)
-                    }
                     found += Track(
                         id = trackKey,
                         title = title,
@@ -117,6 +135,9 @@ class DeviceMusicScanner(
                         dateAddedMs = dateAddedMs
                     )
                 }
+                if (skippedSystemAudio > 0) {
+                    Log.i(TAG, "Skipped $skippedSystemAudio MediaStore system/ringtone clips")
+                }
             }
 
             if (publishDirectly) {
@@ -126,12 +147,18 @@ class DeviceMusicScanner(
                 if (found.isEmpty()) "No music on phone yet — add a folder in Settings → Library"
                 else "${found.size} phone tracks ready"
             )
+            Log.i(TAG, "MediaStore scan complete: ${found.size} tracks")
             found
         } catch (t: Throwable) {
+            Log.e(TAG, "Phone scan failed", t)
             store.setStatus("Phone scan failed: ${t.message ?: "permission?"}")
             emptyList()
         } finally {
-            store.setScanning(false)
+            if (publishDirectly) store.setScanning(false)
         }
+    }
+
+    companion object {
+        private const val TAG = "ApolloPhoneScan"
     }
 }

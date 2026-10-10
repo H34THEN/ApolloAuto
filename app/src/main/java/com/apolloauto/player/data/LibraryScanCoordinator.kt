@@ -2,6 +2,7 @@ package com.apolloauto.player.data
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -16,18 +17,45 @@ class LibraryScanCoordinator(
     private val safScanner: SafLibraryScanner,
     private val libraryStore: LibraryStore,
     private val m3uService: M3uPlaylistService,
-    private val playlistStore: PlaylistStore
+    private val playlistStore: PlaylistStore,
+    private val artEnricher: AlbumArtEnricher
 ) {
     suspend fun scanAllEnabled(autoImportDiscoveredM3u: Boolean = true) {
+        // Always keep MediaStore available — SAF-only mode was leaving empty libraries.
+        sourceStore.ensureMediastoreEnabled()
         val sources = sourceStore.sources.value.filter { it.enabled }
+            // MediaStore first so tracks appear quickly while SAF trees walk.
+            .sortedBy { if (it.kind == MusicSourceKind.PHONE_MEDIASTORE) 0 else 1 }
+        if (sources.isEmpty()) {
+            libraryStore.setScanning(false)
+            libraryStore.setStatus("No music sources enabled — open Settings → Library")
+            Log.w(TAG, "scanAllEnabled: no enabled sources")
+            return
+        }
         libraryStore.setScanning(true)
+        libraryStore.setStatus("Scanning ${sources.size} source(s)…")
+        Log.i(TAG, "scanAllEnabled: ${sources.joinToString { "${it.kind}/${it.label}" }}")
         try {
             for (source in sources) {
                 scanOne(source, autoImportDiscoveredM3u)
             }
+            val total = libraryStore.tracks.value.size
+            if (total == 0) {
+                libraryStore.setStatus(
+                    "Scan finished — 0 tracks. Re-select your music folder in Settings → Library " +
+                        "(SAF permission is required after reinstall)."
+                )
+            }
         } finally {
             libraryStore.setScanning(false)
         }
+        // Folder covers only during SAF walk — fill embedded art afterward.
+        runCatching { artEnricher.enrichMissing() }
+            .onFailure { Log.w(TAG, "art enrich failed", it) }
+    }
+
+    companion object {
+        private const val TAG = "ApolloLibScan"
     }
 
     suspend fun scanOne(source: MusicSource, autoImportDiscoveredM3u: Boolean = true) {
@@ -77,9 +105,13 @@ class LibraryScanCoordinator(
         )
         takePersistablePermission(treeUri)
         sourceStore.useExclusivePhoneFolder(source.id)
+        // Scan MediaStore first for immediate results, then the folder tree.
+        sourceStore.ensureMediastoreEnabled()
+        scanOne(sourceStore.phoneMediastore())
         scanOne(source)
+        runCatching { artEnricher.enrichMissing() }
         libraryStore.setStatus(
-            "Phone folder active — ${source.label}. MediaStore (ringtones) off."
+            "Phone folder active — ${source.label} (+ MediaStore backup)."
         )
         return source
     }
@@ -96,6 +128,7 @@ class LibraryScanCoordinator(
         )
         takePersistablePermission(treeUri)
         scanOne(source)
+        runCatching { artEnricher.enrichMissing() }
         return source
     }
 
