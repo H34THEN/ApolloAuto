@@ -25,7 +25,7 @@ Legend for device columns: **Y** = yes, **N** = no / not run this pass, **—** 
 | TR02 | ECTOPLASM | ECTOPLASM | subBass, lowMid, rms | Rendering / Audio reactive | N | N | Metaball approx |
 | TR03 | CIRC∞ | CIRC_INFINITY | fft, band splits | Rendering / Audio reactive | N | N | |
 | TR04 | PRISM RAIN | PRISM_RAIN | fft, onset, treble | Rendering / Audio reactive | N | N | |
-| TR05 | SYNTH SMOKE | SYNTH_SMOKE | sub/bass/mids/treble/onset via fBm plumes (V5.1) | Rendering / Audio reactive | N | N | Was sine Path strokes; rewritten V5.1 |
+| TR05 | SYNTH SMOKE | SYNTH_SMOKE | fBm plumes + contrast/kick/chromatic (V5.2) | Rendering / Audio reactive | N | N | V5.1 vapor; V5.2 contrast + beat pulse |
 | TR06 | NOTE SWARM | NOTE_SWARM | per-region bands | Rendering / Audio reactive | N | N | |
 | TR07 | HARMONIC MANDALA | HARMONIC_MANDALA | fft, folds from lowMid | Rendering / Audio reactive | N | N | |
 | TR08 | LIQUID SPECTRUM | LIQUID_SPECTRUM | fft + band regions | Rendering / Audio reactive | N | N | |

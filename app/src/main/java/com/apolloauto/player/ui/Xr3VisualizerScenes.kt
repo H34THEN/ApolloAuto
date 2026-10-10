@@ -10,6 +10,10 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import com.apolloauto.player.media.AudioFeatures
+import com.apolloauto.player.media.SpiralFillMode
+import com.apolloauto.player.media.VisualIntensity
+import com.apolloauto.player.media.VisualResponseMapper
+import com.apolloauto.player.media.spiralViewportDim
 import com.apolloauto.player.theme.HudPalette
 import kotlin.math.PI
 import kotlin.math.abs
@@ -106,12 +110,19 @@ fun DrawScope.drawXr3PolyScene(
     spectrum: FloatArray,
     phase: Float,
     playing: Boolean,
-    clearBackdrop: Boolean = false
+    clearBackdrop: Boolean = false,
+    spiralScale: Float = 1.35f,
+    fillMode: SpiralFillMode = SpiralFillMode.FILL,
+    centerXOffset: Float = 0f,
+    centerYOffset: Float = 0f
 ) {
     if (!clearBackdrop) drawRect(palette.voidBlack)
     val drive = if (playing) 1f else 0.4f
-    val cx = size.width / 2f
-    val cy = size.height / 2f
+    val cx = size.width / 2f + size.width * centerXOffset.coerceIn(-0.25f, 0.25f)
+    val cy = size.height / 2f + size.height * centerYOffset.coerceIn(-0.25f, 0.25f)
+    // FILL uses max side so landscape spirals occupy the wide viewport (V5.2).
+    val dim = spiralViewportDim(size.width, size.height, fillMode) *
+        spiralScale.coerceIn(0.5f, 2.5f)
     val arms = 5
     val turns = 9
     val steps = arms * turns * 8
@@ -120,7 +131,8 @@ fun DrawScope.drawXr3PolyScene(
         val t = i / steps.toFloat()
         val ang = t * PI.toFloat() * 2f * turns + phase * 0.003f
         val band = spectrum[(t * (spectrum.size - 1)).toInt().coerceIn(0, spectrum.lastIndex)]
-        val r = min(size.width, size.height) * (0.08f + t * 0.38f) *
+        // Preserve successful spectrum→radius mapping; only viewport scale changes.
+        val r = dim * (0.08f + t * 0.42f) *
             (1f + band * 0.35f * drive + features.rms * 0.08f)
         val x = cx + cos(ang) * r
         val y = cy + sin(ang) * r
@@ -225,35 +237,48 @@ fun DrawScope.drawXr3SierpinskiScene(
 ) {
     if (!clearBackdrop) drawRect(palette.voidBlack)
     val drive = if (playing) 1f else 0.4f
+    val d = VisualResponseMapper.bandDrive(features, VisualIntensity.REACTIVE)
+    val kick = VisualResponseMapper.kickPressure(d) * drive
+    val spark = VisualResponseMapper.sparkle(d) * drive
     val cx = size.width / 2f
-    val top = size.height * 0.12f
-    val baseY = size.height * 0.88f
-    val half = min(size.width, size.height) * (0.38f + features.bass * 0.06f)
-    val depth = (3 + (features.rms * 2f).toInt()).coerceIn(3, 5)
-    fun tri(ax: Float, ay: Float, bx: Float, by: Float, cx2: Float, cy2: Float, d: Int) {
-        if (d <= 0) {
+    // Bass breathing — large scale (LIQUID-style geometry delta).
+    val breath = 1f + kick * 0.22f + d.sub * 0.12f
+    val top = size.height * (0.10f - d.bass * 0.03f)
+    val baseY = size.height * (0.90f + d.sub * 0.02f)
+    val half = min(size.width, size.height) * (0.42f + d.bass * 0.18f) * breath
+    val depth = (3 + (d.rms * 2.5f + d.lowMid).toInt()).coerceIn(3, 6)
+    val midShift = d.upperMid * 18f + d.lowMid * 12f
+    fun tri(ax: Float, ay: Float, bx: Float, by: Float, cx2: Float, cy2: Float, level: Int) {
+        if (level <= 0) {
             val path = Path().apply {
                 moveTo(ax, ay); lineTo(bx, by); lineTo(cx2, cy2); close()
             }
             val band = spectrum[((ax / size.width) * spectrum.lastIndex).toInt().coerceIn(0, spectrum.lastIndex)]
-            drawPath(
-                path,
-                palette.primary.copy(alpha = 0.15f + band * 0.35f * drive),
-                style = Stroke(1.2f + features.onset)
-            )
+            val edge = 1.1f + spark * 2.2f + d.onset * 1.5f
+            val a = (0.18f + band * 0.4f * drive + spark * 0.2f).coerceIn(0.12f, 0.95f)
+            drawPath(path, palette.primary.copy(alpha = a), style = Stroke(edge))
+            if (spark > 0.4f) {
+                drawPath(
+                    path,
+                    palette.accent.copy(alpha = (spark * 0.25f).coerceAtMost(0.4f)),
+                    style = Stroke(edge * 0.5f)
+                )
+            }
             return
         }
-        val mx1 = (ax + bx) / 2f
+        // Midrange nudges subdivision midpoints — structure stays recognizably Sierpinski.
+        val wobble = sin(phase * 0.01f + level) * midShift * (1f / (level + 1f))
+        val mx1 = (ax + bx) / 2f + wobble * 0.3f
         val my1 = (ay + by) / 2f
         val mx2 = (bx + cx2) / 2f
-        val my2 = (by + cy2) / 2f
-        val mx3 = (cx2 + ax) / 2f
+        val my2 = (by + cy2) / 2f + wobble * 0.2f
+        val mx3 = (cx2 + ax) / 2f - wobble * 0.25f
         val my3 = (cy2 + ay) / 2f
-        tri(ax, ay, mx1, my1, mx3, my3, d - 1)
-        tri(mx1, my1, bx, by, mx2, my2, d - 1)
-        tri(mx3, my3, mx2, my2, cx2, cy2, d - 1)
+        tri(ax, ay, mx1, my1, mx3, my3, level - 1)
+        tri(mx1, my1, bx, by, mx2, my2, level - 1)
+        tri(mx3, my3, mx2, my2, cx2, cy2, level - 1)
     }
-    rotate(phase * 0.02f * drive, Offset(cx, size.height / 2f)) {
+    rotate(phase * (0.015f + d.presence * 0.02f) * drive + kick * 4f, Offset(cx, size.height / 2f)) {
         tri(cx, top, cx - half, baseY, cx + half, baseY, depth)
     }
 }

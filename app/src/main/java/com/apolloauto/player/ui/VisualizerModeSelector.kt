@@ -198,12 +198,7 @@ object VisualizerModeCatalog {
             "XVU",
             "Dual VU meters (XR3-inspired)"
         ),
-        VisualizerModeEntry(
-            VisualizerMode.XR3_SIERPINSKI,
-            VisualizerCategory.XR3,
-            "SIER",
-            "Sierpinski triangles (XR3-inspired)"
-        ),
+        // XR3_SIERPINSKI retired (broken) — enum kept for prefs compatibility.
         VisualizerModeEntry(
             VisualizerMode.XR3_JULIA,
             VisualizerCategory.XR3,
@@ -231,10 +226,16 @@ object VisualizerModeCatalog {
         VisualizerModeEntry(VisualizerMode.VISSONANCE_MATRIX, VisualizerCategory.EXPERIMENTAL, "VISSON", "Multi-mode spectral matrix")
     )
 
-    /** Modes cycled by immersive next / randomizer (skip idle-only variants). */
+    /** Modes cycled by immersive next / randomizer (skip idle-only / retired). */
     val rotatable: List<VisualizerMode> = all
         .map { it.mode }
-        .filter { it != VisualizerMode.DECORATIVE && it != VisualizerMode.MINIMAL }
+        .filter {
+            it != VisualizerMode.DECORATIVE &&
+                it != VisualizerMode.MINIMAL &&
+                it != VisualizerMode.XR3_SIERPINSKI
+        }
+
+    fun isRetired(mode: VisualizerMode): Boolean = mode == VisualizerMode.XR3_SIERPINSKI
 
     fun entry(mode: VisualizerMode): VisualizerModeEntry =
         all.firstOrNull { it.mode == mode } ?: all.first()

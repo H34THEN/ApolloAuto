@@ -80,6 +80,12 @@ fun ApolloVisualizerSurface(
     val smokeSatCtrl by app.themeStore.smokeSatCtrl.collectAsState()
     val smokePlume by app.themeStore.smokePlume.collectAsState()
     val smokeAudio by app.themeStore.smokeAudio.collectAsState()
+    val smokeContrast by app.themeStore.smokeContrast.collectAsState()
+    val smokeChromatic by app.themeStore.smokeChromatic.collectAsState()
+    val polyScale by app.themeStore.polySpiralScale.collectAsState()
+    val polyFill by app.themeStore.polyFillMode.collectAsState()
+    val polyCx by app.themeStore.polyCenterX.collectAsState()
+    val polyCy by app.themeStore.polyCenterY.collectAsState()
     val sceneBgOverrides by app.themeStore.sceneBgOverrides.collectAsState()
     app.albumArtColors.colorLock = artLock
     val p = artTint?.applyTo(themePalette) ?: themePalette
@@ -717,7 +723,11 @@ fun ApolloVisualizerSurface(
                     spectrum = spectrum,
                     phase = fastPhase,
                     playing = playing,
-                    clearBackdrop = resolvedClear
+                    clearBackdrop = resolvedClear,
+                    spiralScale = polyScale,
+                    fillMode = polyFill,
+                    centerXOffset = polyCx,
+                    centerYOffset = polyCy
                 )
 
                 VisualizerMode.XR3_BARS -> drawXr3BarsScene(
@@ -737,13 +747,18 @@ fun ApolloVisualizerSurface(
                     clearBackdrop = resolvedClear
                 )
 
-                VisualizerMode.XR3_SIERPINSKI -> drawXr3SierpinskiScene(
+                // Retired: fall back to POLY rather than broken SIER geometry.
+                VisualizerMode.XR3_SIERPINSKI -> drawXr3PolyScene(
                     features = liveFeatures,
                     palette = p,
                     spectrum = spectrum,
                     phase = fastPhase,
                     playing = playing,
-                    clearBackdrop = resolvedClear
+                    clearBackdrop = resolvedClear,
+                    spiralScale = polyScale,
+                    fillMode = polyFill,
+                    centerXOffset = polyCx,
+                    centerYOffset = polyCy
                 )
 
                 VisualizerMode.XR3_JULIA -> drawXr3JuliaScene(
@@ -792,7 +807,9 @@ fun ApolloVisualizerSurface(
                         glow = smokeGlowCtrl,
                         saturation = smokeSatCtrl,
                         plumeSize = smokePlume,
-                        audioSensitivity = smokeAudio
+                        audioSensitivity = smokeAudio,
+                        densityContrast = smokeContrast,
+                        chromaticVibration = smokeChromatic
                     )
                 )
                 VisualizerMode.NOTE_SWARM -> drawNoteSwarmScene(

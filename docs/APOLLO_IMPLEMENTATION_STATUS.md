@@ -3,7 +3,7 @@
 **Codename:** APOLLO // AUDIO COMMAND SYSTEM  
 **Workspace:** `/Users/Gengar/Desktop/local-github/ApolloAuto`  
 **Package:** `com.apolloauto.player` (debug: `com.apolloauto.player.debug`)  
-**Last updated:** 2026-10-09 (V5.1 intermediate — smoke rewrite + immersive BG UI)
+**Last updated:** 2026-10-09 (V5.2.1 — Stars2 crash fix, retire SIER, ECHOHUNT Settings UI)
 
 ## Phase A — Existing Application Audit
 
@@ -222,3 +222,22 @@
 - AcoustID credentials (never commit passwords; use Settings API key later)
 
 **Next:** Device visual QA → V5 feature audit → ECHOHUNT scaffold
+
+### Phase V5.2 — Visualizer reactivity stabilization
+**Branch:** `fix/apollo-v5-2-visualizer-reactivity` (not merged)  
+**Baseline:** `apollo-v5-1-checkpoint` / `bb5a667`  
+**Rollback:** `docs/APOLLO_V5_2_ROLLBACK.md`
+
+**Completed in code:**
+- Shared `VisualResponseEngine` (band expand, kick/sparkle, envelopes, POLY viewport)
+- STAR / STAR2 / SIER / RAIN rebuilt with geometry-first mappings
+- SMOKE contrast + beat pressure + chromatic vibration (still fBm vapor)
+- POLY FILL + spiral scale (default 1.35× max-side) — audio mapping preserved
+- LIQUID / SPIRAL left untouched
+- Unit tests for mapper + smoke defaults + BG policy
+
+**Not claimed finished:**
+- Music-on-device band A/B (library may still be empty)
+- 30-minute soak / FPS profiling
+- Full synthetic Audio Test Lab PCM fixtures
+- Broader V5 / ECHOHUNT product work (paused per gate)

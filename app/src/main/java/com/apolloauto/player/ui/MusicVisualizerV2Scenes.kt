@@ -5,8 +5,12 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import com.apolloauto.player.media.AudioFeatures
+import com.apolloauto.player.media.BandDrive
+import com.apolloauto.player.media.VisualIntensity
+import com.apolloauto.player.media.VisualResponseMapper
 import com.apolloauto.player.theme.HudPalette
 import kotlin.math.PI
 import kotlin.math.abs
@@ -310,33 +314,56 @@ fun DrawScope.drawStarFieldScene(
     clearBackdrop: Boolean = false
 ) {
     if (!clearBackdrop) drawRect(palette.voidBlack)
-    val speed = (0.8f + features.bass * 4.5f + features.onset * 2f) * if (playing) 1f else 0.25f
-    val count = 90
+    val d = VisualResponseMapper.bandDrive(features, VisualIntensity.REACTIVE)
+    val drive = if (playing) 1f else 0.28f
+    val kick = VisualResponseMapper.kickPressure(d) * drive
+    val spark = VisualResponseMapper.sparkle(d) * drive
+    // Bass expands field; onset accelerates warp (geometry, not alpha-only).
+    val speed = (0.7f + d.bass * 6.5f + d.onset * 4.5f + d.sub * 2.5f) * drive
+    val expand = 0.55f + kick * 0.45f + d.lowMid * 0.12f
+    val count = 110
     val cx = size.width / 2f
     val cy = size.height / 2f
-    for (i in 0 until count) {
-        // Deterministic pseudo-random star field driven by phase/speed.
-        val seed = i * 97.13f
-        val zCycle = ((phase * speed * 0.08f + seed * 13f) % 1f)
-        val z = 0.08f + (1f - zCycle) * 0.92f
-        val rx = ((sin(seed) + 1f) * 0.5f - 0.5f) * size.width
-        val ry = ((cos(seed * 1.3f) + 1f) * 0.5f - 0.5f) * size.height
-        val sx = cx + (rx / z) * 0.55f
-        val sy = cy + (ry / z) * 0.55f + 12f * sin(phase * 0.004f + i)
-        val r = (1f - z) * 5.5f + 0.4f
-        val alpha = (0.25f + (1f - z) * 0.7f).coerceIn(0.15f, 0.95f)
+    // Kick shockwave ring
+    if (kick > 0.55f) {
+        val shockR = min(size.width, size.height) * (0.12f + kick * 0.28f)
         drawCircle(
-            color = palette.soft.copy(alpha = alpha),
-            radius = r,
-            center = Offset(sx, sy)
+            color = palette.accent.copy(alpha = (0.08f + kick * 0.18f).coerceAtMost(0.35f)),
+            radius = shockR,
+            center = Offset(cx, cy),
+            style = Stroke(2f + kick * 3f)
         )
-        if (playing && features.bass > 0.35f && i % 3 == 0) {
+    }
+    for (i in 0 until count) {
+        val seed = i * 97.13f
+        val zCycle = ((phase * speed * 0.09f + seed * 13f) % 1f)
+        val z = 0.08f + (1f - zCycle) * 0.92f
+        val ang = seed + d.upperMid * 0.8f + phase * 0.0008f * (1f + d.lowMid)
+        val rx = ((sin(seed) + 1f) * 0.5f - 0.5f) * size.width * (1f + d.bass * 0.35f)
+        val ry = ((cos(seed * 1.3f) + 1f) * 0.5f - 0.5f) * size.height * (1f + d.sub * 0.25f)
+        val sx = cx + (rx / z) * expand + cos(ang) * d.midOrbitPx()
+        val sy = cy + (ry / z) * expand + sin(ang * 1.2f) * d.midOrbitPx() * 0.7f
+        val twinkle = if (i % 4 == 0) 1f + spark * (0.5f + 0.5f * sin(phase * 0.08f + seed)) else 1f
+        val r = ((1f - z) * 5.5f + 0.4f + spark * 1.8f) * twinkle
+        val alpha = (0.3f + (1f - z) * 0.65f + spark * 0.2f + d.rms * 0.15f).coerceIn(0.2f, 1f)
+        val color = when {
+            i % 11 == 0 -> palette.accent.copy(alpha = alpha)
+            i % 5 == 0 -> palette.primary.copy(alpha = alpha)
+            else -> palette.soft.copy(alpha = alpha)
+        }
+        drawCircle(color = color, radius = r, center = Offset(sx, sy))
+        if (playing && kick > 0.4f && i % 2 == 0) {
             drawLine(
-                color = palette.primary.copy(alpha = 0.2f + features.bass * 0.25f),
+                color = palette.primary.copy(alpha = 0.25f + kick * 0.35f),
                 start = Offset(sx, sy),
-                end = Offset(cx + (rx / (z + 0.15f)) * 0.55f, cy + (ry / (z + 0.15f)) * 0.55f),
-                strokeWidth = 1f
+                end = Offset(
+                    cx + (rx / (z + 0.12f)) * expand,
+                    cy + (ry / (z + 0.12f)) * expand
+                ),
+                strokeWidth = 1.2f + kick
             )
         }
     }
 }
+
+private fun BandDrive.midOrbitPx(): Float = (lowMid * 22f + upperMid * 14f)

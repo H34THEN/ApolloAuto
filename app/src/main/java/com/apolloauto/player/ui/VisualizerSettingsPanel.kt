@@ -442,8 +442,67 @@ fun VisualizerSettingsPanel() {
             Text("Plume size", color = p.soft, fontFamily = body, fontSize = 12.sp)
             Slider(value = smokePlume, onValueChange = { app.themeStore.setSmokePlume(it) }, valueRange = 0.4f..1.8f)
             Text("Audio sensitivity", color = p.soft, fontFamily = body, fontSize = 12.sp)
-            Slider(value = smokeAudio, onValueChange = { app.themeStore.setSmokeAudio(it) }, valueRange = 0.3f..2f)
+            Slider(value = smokeAudio, onValueChange = { app.themeStore.setSmokeAudio(it) }, valueRange = 0.3f..2.2f)
+            val smokeContrast by app.themeStore.smokeContrast.collectAsState()
+            val smokeChromatic by app.themeStore.smokeChromatic.collectAsState()
+            Text("Density contrast", color = p.soft, fontFamily = body, fontSize = 12.sp)
+            Slider(value = smokeContrast, onValueChange = { app.themeStore.setSmokeContrast(it) }, valueRange = 0.6f..2.2f)
+            Text("Chromatic vibration", color = p.soft, fontFamily = body, fontSize = 12.sp)
+            Slider(value = smokeChromatic, onValueChange = { app.themeStore.setSmokeChromatic(it) }, valueRange = 0f..2f)
         }
+    }
+
+    if (mode == VisualizerMode.XR3_POLY) {
+        val polyScale by app.themeStore.polySpiralScale.collectAsState()
+        val polyFill by app.themeStore.polyFillMode.collectAsState()
+        Panel("POLY SPIRAL") {
+            Text("Spiral scale", color = p.soft, fontFamily = body, fontSize = 12.sp)
+            Slider(
+                value = polyScale,
+                onValueChange = { app.themeStore.setPolySpiralScale(it) },
+                valueRange = 0.5f..2.5f
+            )
+            Text("Active: ${"%.2f".format(polyScale)}x · ${polyFill.name}", color = p.accent, fontFamily = body, fontSize = 11.sp)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                QuickFilterChip("FILL") {
+                    app.themeStore.setPolyFillMode(com.apolloauto.player.media.SpiralFillMode.FILL)
+                }
+                QuickFilterChip("FIT") {
+                    app.themeStore.setPolyFillMode(com.apolloauto.player.media.SpiralFillMode.FIT)
+                }
+            }
+        }
+    }
+
+    Panel("VISUAL INTENSITY") {
+        val intensity by app.themeStore.visualIntensity.collectAsState()
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            com.apolloauto.player.media.VisualIntensity.entries.forEach { level ->
+                QuickFilterChip(level.title.take(6)) { app.themeStore.setVisualIntensity(level) }
+            }
+        }
+        Text("Active: ${intensity.title} (weak-scene mapper default)", color = p.dim, fontFamily = body, fontSize = 11.sp)
+        Spacer(Modifier.height(6.dp))
+        Text("AUDIO TEST LAB", color = p.soft, fontFamily = body, fontSize = 13.sp)
+        Text(
+            "Dev: use capture diagnostics overlay + synthetic tracks. Renderer-only injection is for unit tests only.",
+            color = p.dim,
+            fontFamily = body,
+            fontSize = 10.sp
+        )
+        Switch(
+            checked = debugOverlay,
+            onCheckedChange = {
+                app.themeStore.setVizDebugOverlay(it)
+                app.visualizerController.debugLogging = it
+            },
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = p.accent,
+                checkedTrackColor = p.accent.copy(alpha = 0.45f),
+                uncheckedThumbColor = p.dim,
+                uncheckedTrackColor = p.dim.copy(alpha = 0.35f)
+            )
+        )
     }
 
     Panel("VISUAL ESCALATION") {

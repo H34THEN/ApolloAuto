@@ -9,6 +9,8 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import com.apolloauto.player.media.AudioFeatures
+import com.apolloauto.player.media.VisualIntensity
+import com.apolloauto.player.media.VisualResponseMapper
 import com.apolloauto.player.media.VizPaletteMode
 import com.apolloauto.player.media.VizQualityTier
 import com.apolloauto.player.theme.HudPalette
@@ -153,29 +155,49 @@ fun DrawScope.drawPrismRainScene(
     glow: Float
 ) {
     if (!clearBackdrop) drawRect(palette.voidBlack)
-    val drive = if (playing) 1f else 0.3f
-    val drops = (48 * quality.particleScale).toInt().coerceIn(20, 80)
-    val fall = phase * (2f + features.rms * 4f) * drive
+    val drive = if (playing) 1f else 0.28f
+    val d = VisualResponseMapper.bandDrive(features, VisualIntensity.REACTIVE)
+    val kick = VisualResponseMapper.kickPressure(d) * drive
+    val spark = VisualResponseMapper.sparkle(d) * drive
+    // Ambient drizzle + event-driven density (not timer-only rain).
+    val drops = ((36 + d.rms * 40f + kick * 28f + spark * 20f) * quality.particleScale)
+        .toInt().coerceIn(24, 120)
+    val fall = phase * (1.6f + d.rms * 5.5f + kick * 3f) * drive
+    val ground = size.height * 0.88f
     for (i in 0 until drops) {
-        val x = (TrancePalette.hash01(i) * size.width + features.upperMid * 20f) % size.width
-        val speed = 0.4f + TrancePalette.hash01(i + 3) * 0.9f + features.treble * 0.5f
-        val y = ((fall * speed * 40f) + TrancePalette.hash01(i + 7) * size.height) % size.height
+        val x = (TrancePalette.hash01(i) * size.width + d.upperMid * 48f + d.lowMid * 24f) % size.width
+        val speed = 0.45f + TrancePalette.hash01(i + 3) * 0.85f + d.treble * 1.1f + kick * 0.6f
+        val y = ((fall * speed * 42f) + TrancePalette.hash01(i + 7) * size.height) % size.height
         val band = fft[i % fft.size]
-        val len = 8f + band * 28f + features.onset * 20f
-        val c = TrancePalette.color(i / drops.toFloat() + phase * 0.0005f, paletteMode, palette, sat, glow)
+        // Kick → thick long drops; treble → fine needles; onset → impact length.
+        val len = 6f + band * 32f + kick * 36f + spark * 14f + d.onset * 22f
+        val thick = 1.1f + d.presence * 1.4f + kick * 2.2f + if (i % 7 == 0) kick * 2f else 0f
+        val c = TrancePalette.color(
+            i / drops.toFloat() + phase * 0.0005f + d.lowMid * 0.08f,
+            paletteMode, palette, sat, glow
+        )
         drawLine(
-            c.copy(alpha = 0.55f + band * 0.4f),
+            c.copy(alpha = (0.5f + band * 0.45f + spark * 0.2f).coerceIn(0.35f, 1f)),
             Offset(x, y),
-            Offset(x + sin(i.toFloat()) * 4f, y + len),
-            strokeWidth = 1.2f + features.presence * 1.5f,
+            Offset(x + sin(i.toFloat()) * (3f + d.upperMid * 8f), y + len),
+            strokeWidth = thick,
             cap = StrokeCap.Round
         )
-        if (features.onset > 0.35f && i % 5 == 0) {
+        // Impact ripples — driven by onset/kick, not a constant splash.
+        val impact = kick > 0.5f || d.onset > 0.32f
+        if (impact && (i % 4 == 0 || (d.onset > 0.55f && i % 2 == 0))) {
+            val ix = x
+            val ripple = 8f + kick * 42f + d.onset * 28f + band * 12f
             drawCircle(
-                c.copy(alpha = 0.25f + features.onset * 0.35f),
-                radius = 6f + features.bass * 18f,
-                center = Offset(x, size.height * 0.85f),
-                style = Stroke(1.5f)
+                c.copy(alpha = (0.2f + d.onset * 0.45f).coerceAtMost(0.55f)),
+                radius = ripple,
+                center = Offset(ix, ground),
+                style = Stroke(1.4f + kick * 2f)
+            )
+            drawCircle(
+                c.copy(alpha = 0.35f + kick * 0.3f),
+                radius = 2.5f + kick * 4f,
+                center = Offset(ix, ground)
             )
         }
     }

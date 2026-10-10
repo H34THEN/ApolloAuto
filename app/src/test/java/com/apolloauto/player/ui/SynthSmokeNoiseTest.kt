@@ -19,7 +19,9 @@ class SynthSmokeNoiseTest {
         assertTrue(c.glow in 0.3f..1.8f)
         assertTrue(c.saturation in 0.3f..1.6f)
         assertTrue(c.plumeSize in 0.4f..1.8f)
-        assertTrue(c.audioSensitivity in 0.3f..2f)
+        assertTrue(c.audioSensitivity in 0.3f..2.2f)
+        assertTrue(c.densityContrast in 0.6f..2.2f)
+        assertTrue(c.chromaticVibration in 0f..2f)
     }
 
     @Test

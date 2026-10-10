@@ -73,7 +73,7 @@ class SettingsActivity : ComponentActivity() {
     }
 }
 
-private enum class SettingsTab { DISPLAY, LIBRARY, AUDIO, VISUALIZER, PLAYBACK }
+private enum class SettingsTab { DISPLAY, LIBRARY, AUDIO, VISUALIZER, PLAYBACK, ECHOHUNT }
 
 @Composable
 private fun SettingsScreen(onClose: () -> Unit) {
@@ -140,6 +140,7 @@ private fun SettingsScreen(onClose: () -> Unit) {
                     SettingsTab.AUDIO -> AudioSettings()
                     SettingsTab.VISUALIZER -> VisualizerSettingsPanel()
                     SettingsTab.PLAYBACK -> PlaybackSettings()
+                    SettingsTab.ECHOHUNT -> EchoHuntSettingsPanel()
                 }
                 Spacer(Modifier.height(24.dp))
             }

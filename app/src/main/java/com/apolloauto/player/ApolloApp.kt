@@ -10,6 +10,7 @@ import com.apolloauto.player.data.M3uPlaylistService
 import com.apolloauto.player.data.MusicSourceStore
 import com.apolloauto.player.data.PlayHistoryStore
 import com.apolloauto.player.echohunt.EchoHuntCredentialStore
+import com.apolloauto.player.echohunt.EchoHuntScanController
 import com.apolloauto.player.data.PlaylistStore
 import com.apolloauto.player.data.SafLibraryScanner
 import com.apolloauto.player.media.AlbumArtColorStore
@@ -18,6 +19,7 @@ import com.apolloauto.player.media.EqualizerController
 import com.apolloauto.player.media.PlaybackSessionStore
 import com.apolloauto.player.media.SleepTimerController
 import com.apolloauto.player.media.StablePlaybackQueue
+import com.apolloauto.player.media.VisualizerMode
 import com.apolloauto.player.theme.ThemeStore
 import com.apolloauto.player.usb.UsbMusicScanner
 import kotlinx.coroutines.CoroutineScope
@@ -64,6 +66,8 @@ class ApolloApp : Application() {
         private set
     lateinit var echoHuntCredentials: EchoHuntCredentialStore
         private set
+    lateinit var echoHuntScan: EchoHuntScanController
+        private set
 
     /** Bound by playback service when live. */
     @Volatile
@@ -100,6 +104,12 @@ class ApolloApp : Application() {
         playHistoryStore = PlayHistoryStore(this)
         playbackSessionStore = PlaybackSessionStore(this)
         echoHuntCredentials = EchoHuntCredentialStore(this)
+        echoHuntScan = EchoHuntScanController(echoHuntCredentials, appScope)
+        // Retire broken SIER if persisted as active mode.
+        if (themeStore.visualizerMode.value == VisualizerMode.XR3_SIERPINSKI) {
+            themeStore.setVisualizerMode(VisualizerMode.XR3_POLY)
+            visualizerController.setMode(VisualizerMode.XR3_POLY, reason = "retire_sier")
+        }
         themeStore.speak(CompanionVoice.bootLine())
         sleepTimerController = SleepTimerController(
             context = this,

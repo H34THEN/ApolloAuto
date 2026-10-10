@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import com.apolloauto.player.media.TranceResponseProfile
+import com.apolloauto.player.media.SpiralFillMode
+import com.apolloauto.player.media.VisualIntensity
 import com.apolloauto.player.media.VisualizerBackgroundMode
 import com.apolloauto.player.media.VisualizerMode
 import com.apolloauto.player.media.VizPaletteMode
@@ -101,7 +103,8 @@ class ThemeStore(context: Context) {
 
     private val _visualizerMode = MutableStateFlow(
         runCatching {
-            VisualizerMode.valueOf(prefs.getString(KEY_VIZ_MODE, VisualizerMode.SPECTRUM.name)!!)
+            val raw = VisualizerMode.valueOf(prefs.getString(KEY_VIZ_MODE, VisualizerMode.SPECTRUM.name)!!)
+            if (raw == VisualizerMode.XR3_SIERPINSKI) VisualizerMode.XR3_POLY else raw
         }.getOrDefault(VisualizerMode.SPECTRUM)
     )
     val visualizerMode: StateFlow<VisualizerMode> = _visualizerMode.asStateFlow()
@@ -235,18 +238,47 @@ class ThemeStore(context: Context) {
     val smokeTurbulence: StateFlow<Float> = _smokeTurbulence.asStateFlow()
     private val _smokeFlow = MutableStateFlow(prefs.getFloat(KEY_SMOKE_FLOW, 1f))
     val smokeFlow: StateFlow<Float> = _smokeFlow.asStateFlow()
-    private val _smokeBassPressure = MutableStateFlow(prefs.getFloat(KEY_SMOKE_BASS, 1f))
+    private val _smokeBassPressure = MutableStateFlow(prefs.getFloat(KEY_SMOKE_BASS, 1.25f))
     val smokeBassPressure: StateFlow<Float> = _smokeBassPressure.asStateFlow()
     private val _smokeSoftness = MutableStateFlow(prefs.getFloat(KEY_SMOKE_SOFT, 1f))
     val smokeSoftness: StateFlow<Float> = _smokeSoftness.asStateFlow()
-    private val _smokeGlow = MutableStateFlow(prefs.getFloat(KEY_SMOKE_GLOW, 1f))
+    private val _smokeGlow = MutableStateFlow(prefs.getFloat(KEY_SMOKE_GLOW, 1.15f))
     val smokeGlowCtrl: StateFlow<Float> = _smokeGlow.asStateFlow()
-    private val _smokeSat = MutableStateFlow(prefs.getFloat(KEY_SMOKE_SAT, 1f))
+    private val _smokeSat = MutableStateFlow(prefs.getFloat(KEY_SMOKE_SAT, 1.2f))
     val smokeSatCtrl: StateFlow<Float> = _smokeSat.asStateFlow()
     private val _smokePlume = MutableStateFlow(prefs.getFloat(KEY_SMOKE_PLUME, 1f))
     val smokePlume: StateFlow<Float> = _smokePlume.asStateFlow()
-    private val _smokeAudio = MutableStateFlow(prefs.getFloat(KEY_SMOKE_AUDIO, 1f))
+    private val _smokeAudio = MutableStateFlow(prefs.getFloat(KEY_SMOKE_AUDIO, 1.25f))
     val smokeAudio: StateFlow<Float> = _smokeAudio.asStateFlow()
+    private val _smokeContrast = MutableStateFlow(prefs.getFloat(KEY_SMOKE_CONTRAST, 1.35f))
+    val smokeContrast: StateFlow<Float> = _smokeContrast.asStateFlow()
+    private val _smokeChromatic = MutableStateFlow(prefs.getFloat(KEY_SMOKE_CHROMATIC, 1f))
+    val smokeChromatic: StateFlow<Float> = _smokeChromatic.asStateFlow()
+
+    private val _polySpiralScale = MutableStateFlow(
+        // V5.2 follow-up: slightly smaller than initial FILL 1.35 default.
+        prefs.getFloat(KEY_POLY_SCALE, 1.12f).let { stored ->
+            if (stored >= 1.34f && stored <= 1.36f) 1.12f else stored
+        }
+    )
+    val polySpiralScale: StateFlow<Float> = _polySpiralScale.asStateFlow()
+    private val _polyFillMode = MutableStateFlow(
+        runCatching {
+            SpiralFillMode.valueOf(prefs.getString(KEY_POLY_FILL, SpiralFillMode.FILL.name)!!)
+        }.getOrDefault(SpiralFillMode.FILL)
+    )
+    val polyFillMode: StateFlow<SpiralFillMode> = _polyFillMode.asStateFlow()
+    private val _polyCenterX = MutableStateFlow(prefs.getFloat(KEY_POLY_CX, 0f))
+    val polyCenterX: StateFlow<Float> = _polyCenterX.asStateFlow()
+    private val _polyCenterY = MutableStateFlow(prefs.getFloat(KEY_POLY_CY, 0f))
+    val polyCenterY: StateFlow<Float> = _polyCenterY.asStateFlow()
+
+    private val _visualIntensity = MutableStateFlow(
+        runCatching {
+            VisualIntensity.valueOf(prefs.getString(KEY_VIZ_INTENSITY, VisualIntensity.REACTIVE.name)!!)
+        }.getOrDefault(VisualIntensity.REACTIVE)
+    )
+    val visualIntensity: StateFlow<VisualIntensity> = _visualIntensity.asStateFlow()
 
     /** Optional per-scene background override (null = use global). */
     private val _sceneBgOverrides = MutableStateFlow(loadSceneBgOverrides())
@@ -288,8 +320,9 @@ class ThemeStore(context: Context) {
     }
 
     fun setVisualizerMode(mode: VisualizerMode) {
-        _visualizerMode.value = mode
-        prefs.edit().putString(KEY_VIZ_MODE, mode.name).apply()
+        val resolved = if (mode == VisualizerMode.XR3_SIERPINSKI) VisualizerMode.XR3_POLY else mode
+        _visualizerMode.value = resolved
+        prefs.edit().putString(KEY_VIZ_MODE, resolved.name).apply()
     }
 
     fun setVizBackgroundMode(mode: VisualizerBackgroundMode) {
@@ -366,8 +399,43 @@ class ThemeStore(context: Context) {
     }
 
     fun setSmokeAudio(v: Float) {
-        _smokeAudio.value = v.coerceIn(0.3f, 2f)
+        _smokeAudio.value = v.coerceIn(0.3f, 2.2f)
         prefs.edit().putFloat(KEY_SMOKE_AUDIO, _smokeAudio.value).apply()
+    }
+
+    fun setSmokeContrast(v: Float) {
+        _smokeContrast.value = v.coerceIn(0.6f, 2.2f)
+        prefs.edit().putFloat(KEY_SMOKE_CONTRAST, _smokeContrast.value).apply()
+    }
+
+    fun setSmokeChromatic(v: Float) {
+        _smokeChromatic.value = v.coerceIn(0f, 2f)
+        prefs.edit().putFloat(KEY_SMOKE_CHROMATIC, _smokeChromatic.value).apply()
+    }
+
+    fun setPolySpiralScale(v: Float) {
+        _polySpiralScale.value = v.coerceIn(0.5f, 2.5f)
+        prefs.edit().putFloat(KEY_POLY_SCALE, _polySpiralScale.value).apply()
+    }
+
+    fun setPolyFillMode(mode: SpiralFillMode) {
+        _polyFillMode.value = mode
+        prefs.edit().putString(KEY_POLY_FILL, mode.name).apply()
+    }
+
+    fun setPolyCenterX(v: Float) {
+        _polyCenterX.value = v.coerceIn(-0.25f, 0.25f)
+        prefs.edit().putFloat(KEY_POLY_CX, _polyCenterX.value).apply()
+    }
+
+    fun setPolyCenterY(v: Float) {
+        _polyCenterY.value = v.coerceIn(-0.25f, 0.25f)
+        prefs.edit().putFloat(KEY_POLY_CY, _polyCenterY.value).apply()
+    }
+
+    fun setVisualIntensity(level: VisualIntensity) {
+        _visualIntensity.value = level
+        prefs.edit().putString(KEY_VIZ_INTENSITY, level.name).apply()
     }
 
     fun smokeControls(): com.apolloauto.player.ui.SmokeControls =
@@ -380,7 +448,9 @@ class ThemeStore(context: Context) {
             glow = _smokeGlow.value,
             saturation = _smokeSat.value,
             plumeSize = _smokePlume.value,
-            audioSensitivity = _smokeAudio.value
+            audioSensitivity = _smokeAudio.value,
+            densityContrast = _smokeContrast.value,
+            chromaticVibration = _smokeChromatic.value
         )
 
     fun sceneBackgroundOverride(mode: VisualizerMode): VisualizerBackgroundMode? =
@@ -665,7 +735,8 @@ class ThemeStore(context: Context) {
                 .toSet()
                 .ifEmpty { all }
         }
-        val merged = base + newlyAdded
+        // Drop retired scenes from enabled pool (SIER).
+        val merged = (base + newlyAdded) - VisualizerMode.XR3_SIERPINSKI
         prefs.edit()
             .putString(KEY_VIZ_KNOWN, all.joinToString(",") { it.name })
             .putString(KEY_VIZ_ENABLED, merged.joinToString(",") { it.name })
@@ -754,6 +825,13 @@ class ThemeStore(context: Context) {
         private const val KEY_SMOKE_SAT = "smoke_sat"
         private const val KEY_SMOKE_PLUME = "smoke_plume"
         private const val KEY_SMOKE_AUDIO = "smoke_audio"
+        private const val KEY_SMOKE_CONTRAST = "smoke_contrast"
+        private const val KEY_SMOKE_CHROMATIC = "smoke_chromatic"
+        private const val KEY_POLY_SCALE = "poly_spiral_scale"
+        private const val KEY_POLY_FILL = "poly_fill_mode"
+        private const val KEY_POLY_CX = "poly_center_x"
+        private const val KEY_POLY_CY = "poly_center_y"
+        private const val KEY_VIZ_INTENSITY = "visual_intensity"
         private const val KEY_SCENE_BG = "scene_bg_overrides"
     }
 }
