@@ -8,7 +8,8 @@
 - [x] Native Car Mode defaults to visualizer-first
 - [x] Unit tests: media browse + queue expand + browse context
 - [x] Signed APK `dist/Apollo-II-v1.0.0-beta.3.apk`
-- [ ] DHU re-capture proving Next advances (`run_capture_usb.sh`)
+- [x] DHU re-capture proving Next advances (`05_after_next.png`)
+- [x] Uninstall debug package conflict documented
 - [ ] Owner Sobalai retest
 - [ ] GitHub Release `v1.0.0-beta.3` published
 

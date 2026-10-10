@@ -1,38 +1,24 @@
-# Apollo II v1.0.0-beta.1 — Release Audit
+# V1 Release Audit — `1.0.0-beta.3`
 
+**Branch:** `release/apollo-ii-car-experience-v1`  
 **Repo:** https://github.com/H34THEN/ApolloAuto  
-**Branch:** `release/apollo-ii-v1-beta`  
-**Checkpoint tip:** `0b8dac9` (pre-ST repair) → subsequent ST01/ST03 fix commits  
-**Package:** `com.apolloauto.player` (release) / `.debug` (debug)
+**Package:** `com.apolloauto.player` · versionCode **104** · versionName **1.0.0-beta.3**
 
-## Feature status (honest)
+## Gates
 
-| Area | Status | Notes |
-|---|---|---|
-| Core playback (Media3) | Implemented / Device tested | Phone install verified |
-| Library scan (phone/SAF/USB) | Implemented / Device tested | Album-art collision fixed (hash keys) |
-| Playlists + Car Favorites | Implemented | |
-| M3U import/export | Implemented | |
-| Equalizer / sleep timer | Implemented | |
-| Android Auto discovery | Owner-confirmed | Visible in AA launcher |
-| Android Auto browse/playback | Implemented / Needs owner car test | Service exported; MCT/DHU not fully exercised this session |
-| Visualizer gallery | Implemented | Large catalog |
-| ST01 GrafEq | **Repaired** / Partial device verify | Dense CRT field rewrite |
-| ST02 lunchbreak | Implemented | Not reported broken |
-| ST03 Cyber Fuji | **Repaired** / Partial device verify | Height-normalized layout |
-| MILK//LAB (10) | Implemented / Experimental | Apollo originals; not XorDev ports |
-| Tron Legacy (3) | Implemented / Experimental | |
-| SPACE_WARP | Implemented / Improved | |
-| LIQUID / POLY / SPIRAL | Implemented | Preserve as strong refs |
-| SYNTH SMOKE | Implemented | |
-| STAR/STAR2/SIER/RAIN | Retired aliases | Map to SPACE_WARP / POLY / TOPO |
-| ECHOHUNT | Scaffold only | Hide as incomplete; no secrets |
-| Signed release APK | Built | Local beta keystore (not in git) |
-| Screenshots in README | **Not complete** | Capture pending |
-| Public visibility change | **Not done** | Requires explicit approval |
+| Gate | Status |
+|---|---|
+| AA multi-track queue / Next | PASS (DHU USB after release-only install) |
+| Browse short labels | PASS (code) · vehicle visual TBD |
+| Native Car Mode viz-first | PASS (defaults) |
+| ST01/ST03 | REPAIRED prior · owner visual QA recommended |
+| Security audit | See `SECURITY_AUDIT.md` — re-scan before wider public |
+| License audit | See `LICENSE_AUDIT.md` |
+| Signed APK | `dist/Apollo-II-v1.0.0-beta.3.apk` |
+| SHA-256 | `df9ab554549027f7d80c37ed9ca325e5d74897393728ce2f63f9949d37dad2d7` |
+| Signing cert SHA-256 | `c9890584935a924813f778eb495db81156e89c0d7ed2ed9062adddfdcbe4c303` |
+| Sobalai vehicle | Pending owner |
 
-## Blockers remaining for “public” claim
-1. Owner visual QA of ST01/ST03 after repair  
-2. Real-car Android Auto browse/playback confirmation  
-3. README screenshots from device  
-4. Explicit approval before making the private repo public  
+## Classification
+
+**READY FOR PRIVATE TESTING** — DHU Next proven; publish GitHub pre-release for sideload. Promote to wider public beta after Sobalai confirmation.

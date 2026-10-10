@@ -1,8 +1,8 @@
 # Android Auto UX Audit — Sobalai / VW Rabbit
 
-**Date:** 2026-10-10  
-**Branch:** `hotfix/android-auto-ux-p0`  
-**App:** Apollo II `1.0.0-beta.2` (versionCode 103)  
+**Date:** 2026-10-10 (updated beta.3)  
+**Branch:** `release/apollo-ii-car-experience-v1`  
+**App:** Apollo II `1.0.0-beta.3` (versionCode 104)  
 **Vehicle / HU:** 2007 VW Rabbit Mk5 · Sobalai 6.9″ wireless Android Auto  
 **Integration:** Media3 `MediaLibraryService` (classic media browse) — not Car App Library templates
 

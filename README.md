@@ -79,7 +79,7 @@ Via Media3/ExoPlayer (device codecs apply): MP3, AAC, FLAC, WAV, OGG/Opus where 
 | Ringtones in library | Filtered in beta.2 (OEM MediaStore mis-tags); rescan |
 | Same album art everywhere / almost no art | Hashed cache + post-scan art enrich; wait for enrich or rescan |
 | Android Auto missing | Owner profile install + Unknown sources for sideloads |
-| AA Next missing | Fixed in beta.2 (single-track queue expand); replay a track from browse |
+| AA Next missing | Fixed in beta.3 (browse-context playlist/album expand); play from a multi-track list |
 | AA Maps taking half the screen | Expected AA dashboard layout — open Apollo full-app media from the rail |
 | Signature conflict | Uninstall previous build (data wipe) then install release |
 | Visualizer silent | Grant RECORD_AUDIO if prompted; play music; check capture diagnostics |

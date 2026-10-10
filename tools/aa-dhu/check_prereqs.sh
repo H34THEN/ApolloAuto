@@ -41,6 +41,11 @@ else
   note "com.apolloauto.player not installed — install dist release APK before DHU review"
 fi
 
+if adb shell pm path com.apolloauto.player.debug >/dev/null 2>&1; then
+  note "com.apolloauto.player.debug ALSO installed — AA may bind debug and hide Next"
+  echo "      Fix: adb uninstall --user 0 com.apolloauto.player.debug"
+fi
+
 if adb shell pm path com.google.android.projection.gearhead >/dev/null 2>&1; then
   pass "Android Auto (gearhead) installed"
 else

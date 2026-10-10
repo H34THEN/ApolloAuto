@@ -2,7 +2,8 @@
 
 ## Projected Android Auto
 
-- **Next / single-item queue (beta.2):** Fixed in **beta.3** via browse-context expansion. Re-verify on DHU/Sobalai after install + force-stop AA.
+- **Debug + release both installed:** AA may bind `com.apolloauto.player.debug` and hide Next. Uninstall the debug package before HU/DHU testing.
+- **Next / single-item queue:** Fixed in **beta.3** (browse-context + expand). DHU USB: Next visible and advances after multi-track queue. Re-select a playlist track on Sobalai after upgrade.
 - **Browse label truncation:** Short titles in beta.3 (`Favorites`, `Songs`, `New`, `Recent`). Host may still ellipsize on very narrow panes.
 - **Maps dashboard split:** Host-owned; use AA full-app media from the rail.
 - **No projected Immersive visualizers:** By platform policy — use Native Car Mode / Immersive on the phone.
