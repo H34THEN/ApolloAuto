@@ -9,6 +9,7 @@ import com.apolloauto.player.companion.CompanionVoice
 import com.apolloauto.player.data.M3uPlaylistService
 import com.apolloauto.player.data.MusicSourceStore
 import com.apolloauto.player.data.PlayHistoryStore
+import com.apolloauto.player.echohunt.EchoHuntCredentialStore
 import com.apolloauto.player.data.PlaylistStore
 import com.apolloauto.player.data.SafLibraryScanner
 import com.apolloauto.player.media.AlbumArtColorStore
@@ -61,6 +62,8 @@ class ApolloApp : Application() {
         private set
     lateinit var playbackSessionStore: PlaybackSessionStore
         private set
+    lateinit var echoHuntCredentials: EchoHuntCredentialStore
+        private set
 
     /** Bound by playback service when live. */
     @Volatile
@@ -96,6 +99,7 @@ class ApolloApp : Application() {
         albumArtColors = AlbumArtColorStore(this, appScope)
         playHistoryStore = PlayHistoryStore(this)
         playbackSessionStore = PlaybackSessionStore(this)
+        echoHuntCredentials = EchoHuntCredentialStore(this)
         themeStore.speak(CompanionVoice.bootLine())
         sleepTimerController = SleepTimerController(
             context = this,

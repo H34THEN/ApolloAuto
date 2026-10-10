@@ -38,10 +38,12 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PlaylistAdd
@@ -51,6 +53,9 @@ import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -299,6 +304,10 @@ private fun CarDeckScreen(onExit: () -> Unit) {
                             onPrev = controller::skipPrevious,
                             onNext = controller::skipNext,
                             onToggle = controller::togglePlayPause,
+                            onExit = {
+                                deckMode = CarDeckMode.STANDARD
+                            },
+                            artworkUri = playback.artworkUri,
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -327,8 +336,12 @@ private fun CarDeckScreen(onExit: () -> Unit) {
                                     val albumBlur by app.themeStore.albumBlur.collectAsState()
                                     val albumDark by app.themeStore.albumDarkness.collectAsState()
                                     val albumSat by app.themeStore.albumSaturation.collectAsState()
-                                    val effectiveBg = remember(bgMode, vizMode) {
-                                        com.apolloauto.player.media.VisualizerBackgroundPolicy.resolve(bgMode, vizMode)
+                                    val sceneBgOverrides by app.themeStore.sceneBgOverrides.collectAsState()
+                                    val sceneOverride = sceneBgOverrides[vizMode]
+                                    val effectiveBg = remember(bgMode, vizMode, sceneOverride) {
+                                        com.apolloauto.player.media.VisualizerBackgroundPolicy.resolve(
+                                            bgMode, vizMode, sceneOverride
+                                        )
                                     }
                                     VisualizerBackgroundLayer(
                                         effective = effectiveBg,
@@ -475,106 +488,199 @@ private fun VisualizerOnlyDeck(
     onPrev: () -> Unit,
     onNext: () -> Unit,
     onToggle: () -> Unit,
+    onExit: (() -> Unit)? = null,
+    artworkUri: android.net.Uri? = null,
     modifier: Modifier = Modifier
 ) {
     val p = LocalHudPalette.current
     val body = LocalBodyFont.current
-    Box(modifier = modifier.fillMaxSize()) {
+    val app = ApolloApp.instance
+    val vizMode by app.visualizerController.mode.collectAsState()
+    val enabledVizModes by app.themeStore.enabledVisualizerModes.collectAsState()
+    val bgMode by app.themeStore.vizBackgroundMode.collectAsState()
+    val albumBlur by app.themeStore.albumBlur.collectAsState()
+    val albumDark by app.themeStore.albumDarkness.collectAsState()
+    val albumSat by app.themeStore.albumSaturation.collectAsState()
+    val sceneBgOverrides by app.themeStore.sceneBgOverrides.collectAsState()
+    val sceneOverride = sceneBgOverrides[vizMode]
+    val effectiveBg = remember(bgMode, vizMode, sceneOverride) {
+        com.apolloauto.player.media.VisualizerBackgroundPolicy.resolve(bgMode, vizMode, sceneOverride)
+    }
+    var chromeVisible by remember { mutableStateOf(true) }
+    var showBgSheet by remember { mutableStateOf(false) }
+    var idleTick by remember { mutableStateOf(0) }
+
+    LaunchedEffect(chromeVisible, idleTick, showBgSheet) {
+        if (!chromeVisible || showBgSheet) return@LaunchedEffect
+        delay(4500)
+        if (isActive) chromeVisible = false
+    }
+
+    Box(
+        modifier
+            .fillMaxSize()
+            .clip(RoundedCornerShape(6.dp))
+            .border(1.dp, p.primary.copy(alpha = 0.35f), RoundedCornerShape(6.dp))
+            .background(Color.Black)
+            .clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() }
+            ) {
+                chromeVisible = !chromeVisible
+                showBgSheet = false
+                idleTick++
+            }
+    ) {
+        VisualizerBackgroundLayer(
+            effective = effectiveBg,
+            artworkUri = artworkUri,
+            albumBlur = albumBlur,
+            albumDarkness = albumDark,
+            albumSaturation = albumSat,
+            modifier = Modifier.fillMaxSize()
+        )
         ApolloVisualizerSurface(
             playing = playing,
-            modifier = Modifier
-                .fillMaxSize()
-                .clip(RoundedCornerShape(6.dp))
-                .border(1.dp, p.primary.copy(alpha = 0.35f), RoundedCornerShape(6.dp))
-                .background(p.voidBlack)
+            clearBackdrop = true,
+            modifier = Modifier.fillMaxSize()
         )
-        val app = ApolloApp.instance
-        val vizMode by app.visualizerController.mode.collectAsState()
-        val enabledVizModes by app.themeStore.enabledVisualizerModes.collectAsState()
-        VisualizerModeCompactChips(
-            selected = vizMode,
-            enabledModes = enabledVizModes,
-            onSelect = { m ->
-                app.themeStore.setVisualizerMode(m)
-                app.visualizerController.setMode(m)
-            },
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(10.dp)
-        )
-        // Tap center to play/pause
-        Box(
-            Modifier
-                .align(Alignment.Center)
-                .size(72.dp)
-                .clip(CircleShape)
-                .border(1.dp, p.accent.copy(alpha = 0.5f), CircleShape)
-                .background(p.voidBlack.copy(alpha = 0.35f))
-                .clickable(onClick = onToggle),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
-                if (playing) "Pause" else "Play",
-                tint = p.soft,
-                modifier = Modifier.size(36.dp)
-            )
-        }
-        Column(
-            Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(Color.Transparent, p.voidBlack.copy(alpha = 0.85f))
-                    )
-                )
-                .padding(horizontal = 12.dp, vertical = 14.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
+        if (chromeVisible) {
             Row(
-                Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onPrev, modifier = Modifier.size(52.dp)) {
-                    Icon(
-                        Icons.Default.SkipPrevious,
-                        "Previous",
-                        tint = p.primary,
-                        modifier = Modifier.size(36.dp)
-                    )
-                }
-                Column(
-                    Modifier.weight(1f),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                IconButton(
+                    onClick = {
+                        showBgSheet = !showBgSheet
+                        idleTick++
+                    },
+                    modifier = Modifier.size(44.dp)
                 ) {
-                    Text(
-                        title,
-                        color = p.soft,
-                        fontFamily = body,
-                        fontSize = 16.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        textAlign = TextAlign.Center
-                    )
-                    Text(
-                        artist,
-                        color = p.dim,
-                        fontFamily = body,
-                        fontSize = 13.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        textAlign = TextAlign.Center
+                    Icon(
+                        Icons.Default.Layers,
+                        contentDescription = "Visual background",
+                        tint = if (showBgSheet) p.accent else p.soft.copy(alpha = 0.7f)
                     )
                 }
-                IconButton(onClick = onNext, modifier = Modifier.size(52.dp)) {
-                    Icon(
-                        Icons.Default.SkipNext,
-                        "Next",
-                        tint = p.primary,
-                        modifier = Modifier.size(36.dp)
+                if (onExit != null) {
+                    IconButton(onClick = onExit, modifier = Modifier.size(44.dp)) {
+                        Icon(Icons.Default.Close, contentDescription = "Exit viz-only", tint = p.dim)
+                    }
+                }
+            }
+            VisualizerModeCompactChips(
+                selected = vizMode,
+                enabledModes = enabledVizModes,
+                onSelect = { m ->
+                    app.themeStore.setVisualizerMode(m)
+                    app.visualizerController.setMode(m)
+                    idleTick++
+                },
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 48.dp, start = 10.dp, end = 10.dp)
+            )
+            if (showBgSheet) {
+                VisualBackgroundSheet(
+                    scene = vizMode,
+                    onClose = { showBgSheet = false },
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .fillMaxWidth(0.92f)
+                        .padding(12.dp)
+                )
+            }
+            Box(
+                Modifier
+                    .align(Alignment.Center)
+                    .size(72.dp)
+                    .clip(CircleShape)
+                    .border(1.dp, p.accent.copy(alpha = 0.5f), CircleShape)
+                    .background(p.voidBlack.copy(alpha = 0.35f))
+                    .clickable {
+                        onToggle()
+                        idleTick++
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    if (playing) "Pause" else "Play",
+                    tint = p.soft,
+                    modifier = Modifier.size(36.dp)
+                )
+            }
+            Column(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color.Transparent, p.voidBlack.copy(alpha = 0.85f))
+                        )
                     )
+                    .padding(horizontal = 12.dp, vertical = 14.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    IconButton(
+                        onClick = {
+                            onPrev()
+                            idleTick++
+                        },
+                        modifier = Modifier.size(52.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.SkipPrevious,
+                            "Previous",
+                            tint = p.primary,
+                            modifier = Modifier.size(36.dp)
+                        )
+                    }
+                    Column(
+                        Modifier.weight(1f),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            title,
+                            color = p.soft,
+                            fontFamily = body,
+                            fontSize = 16.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            artist,
+                            color = p.dim,
+                            fontFamily = body,
+                            fontSize = 13.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    IconButton(
+                        onClick = {
+                            onNext()
+                            idleTick++
+                        },
+                        modifier = Modifier.size(52.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.SkipNext,
+                            "Next",
+                            tint = p.primary,
+                            modifier = Modifier.size(36.dp)
+                        )
+                    }
                 }
             }
         }

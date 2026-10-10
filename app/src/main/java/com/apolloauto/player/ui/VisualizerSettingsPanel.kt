@@ -141,19 +141,28 @@ fun VisualizerSettingsPanel() {
         Spacer(Modifier.height(4.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             VisualizerBackgroundMode.entries.forEach { m ->
-                QuickFilterChip(m.name.replace('_', ' ')) {
+                QuickFilterChip(m.shortLabel) {
                     app.themeStore.setVizBackgroundMode(m)
                 }
             }
         }
         Text(
-            "Active: ${bgMode.name} → ${effectiveBg.preference.name}",
+            "Active: ${bgMode.shortLabel} → ${effectiveBg.preference.name}",
             color = p.accent,
             fontFamily = body,
             fontSize = 11.sp,
             modifier = Modifier.padding(top = 6.dp)
         )
         Text(effectiveBg.note, color = p.dim, fontFamily = body, fontSize = 10.sp)
+        if (bgMode == VisualizerBackgroundMode.SCENE) {
+            Text(
+                "SCENE uses each visualizer's native atmosphere (black for simple signal modes).",
+                color = p.dim,
+                fontFamily = body,
+                fontSize = 11.sp,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
         if (bgMode == VisualizerBackgroundMode.ALBUM_ART ||
             (bgMode == VisualizerBackgroundMode.AUTO && effectiveBg.showAlbumArt)
         ) {
@@ -383,6 +392,57 @@ fun VisualizerSettingsPanel() {
                     VisualizerModeCatalog.entry(it).category == VisualizerCategory.EXPERIMENTAL
                 }
             }
+        }
+    }
+
+    if (mode == VisualizerMode.SYNTH_SMOKE) {
+        val smokePreset by app.themeStore.smokeColorPreset.collectAsState()
+        val smokeDensity by app.themeStore.smokeDensity.collectAsState()
+        val smokeTurb by app.themeStore.smokeTurbulence.collectAsState()
+        val smokeFlow by app.themeStore.smokeFlow.collectAsState()
+        val smokeBass by app.themeStore.smokeBassPressure.collectAsState()
+        val smokeSoft by app.themeStore.smokeSoftness.collectAsState()
+        val smokeGlowCtrl by app.themeStore.smokeGlowCtrl.collectAsState()
+        val smokeSatCtrl by app.themeStore.smokeSatCtrl.collectAsState()
+        val smokePlume by app.themeStore.smokePlume.collectAsState()
+        val smokeAudio by app.themeStore.smokeAudio.collectAsState()
+        Panel("SYNTH SMOKE") {
+            Text("Color preset", color = p.soft, fontFamily = body, fontSize = 13.sp)
+            Spacer(Modifier.height(4.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                SmokeColorPreset.entries.take(3).forEach { preset ->
+                    QuickFilterChip(preset.name.take(6)) {
+                        app.themeStore.setSmokeColorPreset(preset)
+                    }
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                SmokeColorPreset.entries.drop(3).forEach { preset ->
+                    QuickFilterChip(preset.name.take(8)) {
+                        app.themeStore.setSmokeColorPreset(preset)
+                    }
+                }
+            }
+            Text("Active: ${smokePreset.title}", color = p.accent, fontFamily = body, fontSize = 11.sp)
+            Text("Density", color = p.soft, fontFamily = body, fontSize = 12.sp)
+            Slider(value = smokeDensity, onValueChange = { app.themeStore.setSmokeDensity(it) }, valueRange = 0.4f..1.6f)
+            Text("Turbulence", color = p.soft, fontFamily = body, fontSize = 12.sp)
+            Slider(value = smokeTurb, onValueChange = { app.themeStore.setSmokeTurbulence(it) }, valueRange = 0.2f..2f)
+            Text("Flow speed", color = p.soft, fontFamily = body, fontSize = 12.sp)
+            Slider(value = smokeFlow, onValueChange = { app.themeStore.setSmokeFlow(it) }, valueRange = 0.2f..2.5f)
+            Text("Bass pressure", color = p.soft, fontFamily = body, fontSize = 12.sp)
+            Slider(value = smokeBass, onValueChange = { app.themeStore.setSmokeBassPressure(it) }, valueRange = 0.2f..2f)
+            Text("Cloud softness", color = p.soft, fontFamily = body, fontSize = 12.sp)
+            Slider(value = smokeSoft, onValueChange = { app.themeStore.setSmokeSoftness(it) }, valueRange = 0.3f..1.8f)
+            Text("Glow", color = p.soft, fontFamily = body, fontSize = 12.sp)
+            Slider(value = smokeGlowCtrl, onValueChange = { app.themeStore.setSmokeGlowCtrl(it) }, valueRange = 0.3f..1.8f)
+            Text("Saturation", color = p.soft, fontFamily = body, fontSize = 12.sp)
+            Slider(value = smokeSatCtrl, onValueChange = { app.themeStore.setSmokeSatCtrl(it) }, valueRange = 0.3f..1.6f)
+            Text("Plume size", color = p.soft, fontFamily = body, fontSize = 12.sp)
+            Slider(value = smokePlume, onValueChange = { app.themeStore.setSmokePlume(it) }, valueRange = 0.4f..1.8f)
+            Text("Audio sensitivity", color = p.soft, fontFamily = body, fontSize = 12.sp)
+            Slider(value = smokeAudio, onValueChange = { app.themeStore.setSmokeAudio(it) }, valueRange = 0.3f..2f)
         }
     }
 

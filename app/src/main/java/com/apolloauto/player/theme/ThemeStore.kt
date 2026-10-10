@@ -220,6 +220,39 @@ class ThemeStore(context: Context) {
     private val _vizDebugOverlay = MutableStateFlow(prefs.getBoolean(KEY_VIZ_DEBUG, false))
     val vizDebugOverlay: StateFlow<Boolean> = _vizDebugOverlay.asStateFlow()
 
+    private val _smokeColorPreset = MutableStateFlow(
+        runCatching {
+            com.apolloauto.player.ui.SmokeColorPreset.valueOf(
+                prefs.getString(KEY_SMOKE_PRESET, com.apolloauto.player.ui.SmokeColorPreset.NEON_VAPOR.name)!!
+            )
+        }.getOrDefault(com.apolloauto.player.ui.SmokeColorPreset.NEON_VAPOR)
+    )
+    val smokeColorPreset: StateFlow<com.apolloauto.player.ui.SmokeColorPreset> = _smokeColorPreset.asStateFlow()
+
+    private val _smokeDensity = MutableStateFlow(prefs.getFloat(KEY_SMOKE_DENSITY, 1f))
+    val smokeDensity: StateFlow<Float> = _smokeDensity.asStateFlow()
+    private val _smokeTurbulence = MutableStateFlow(prefs.getFloat(KEY_SMOKE_TURB, 1f))
+    val smokeTurbulence: StateFlow<Float> = _smokeTurbulence.asStateFlow()
+    private val _smokeFlow = MutableStateFlow(prefs.getFloat(KEY_SMOKE_FLOW, 1f))
+    val smokeFlow: StateFlow<Float> = _smokeFlow.asStateFlow()
+    private val _smokeBassPressure = MutableStateFlow(prefs.getFloat(KEY_SMOKE_BASS, 1f))
+    val smokeBassPressure: StateFlow<Float> = _smokeBassPressure.asStateFlow()
+    private val _smokeSoftness = MutableStateFlow(prefs.getFloat(KEY_SMOKE_SOFT, 1f))
+    val smokeSoftness: StateFlow<Float> = _smokeSoftness.asStateFlow()
+    private val _smokeGlow = MutableStateFlow(prefs.getFloat(KEY_SMOKE_GLOW, 1f))
+    val smokeGlowCtrl: StateFlow<Float> = _smokeGlow.asStateFlow()
+    private val _smokeSat = MutableStateFlow(prefs.getFloat(KEY_SMOKE_SAT, 1f))
+    val smokeSatCtrl: StateFlow<Float> = _smokeSat.asStateFlow()
+    private val _smokePlume = MutableStateFlow(prefs.getFloat(KEY_SMOKE_PLUME, 1f))
+    val smokePlume: StateFlow<Float> = _smokePlume.asStateFlow()
+    private val _smokeAudio = MutableStateFlow(prefs.getFloat(KEY_SMOKE_AUDIO, 1f))
+    val smokeAudio: StateFlow<Float> = _smokeAudio.asStateFlow()
+
+    /** Optional per-scene background override (null = use global). */
+    private val _sceneBgOverrides = MutableStateFlow(loadSceneBgOverrides())
+    val sceneBgOverrides: StateFlow<Map<VisualizerMode, VisualizerBackgroundMode>> =
+        _sceneBgOverrides.asStateFlow()
+
     fun activePalette(): HudPalette =
         paletteFor(_themeId.value, _custom.value.toPalette(), _glow.value)
 
@@ -285,6 +318,83 @@ class ThemeStore(context: Context) {
     fun setVizDebugOverlay(enabled: Boolean) {
         _vizDebugOverlay.value = enabled
         prefs.edit().putBoolean(KEY_VIZ_DEBUG, enabled).apply()
+    }
+
+    fun setSmokeColorPreset(preset: com.apolloauto.player.ui.SmokeColorPreset) {
+        _smokeColorPreset.value = preset
+        prefs.edit().putString(KEY_SMOKE_PRESET, preset.name).apply()
+    }
+
+    fun setSmokeDensity(v: Float) {
+        _smokeDensity.value = v.coerceIn(0.4f, 1.6f)
+        prefs.edit().putFloat(KEY_SMOKE_DENSITY, _smokeDensity.value).apply()
+    }
+
+    fun setSmokeTurbulence(v: Float) {
+        _smokeTurbulence.value = v.coerceIn(0.2f, 2f)
+        prefs.edit().putFloat(KEY_SMOKE_TURB, _smokeTurbulence.value).apply()
+    }
+
+    fun setSmokeFlow(v: Float) {
+        _smokeFlow.value = v.coerceIn(0.2f, 2.5f)
+        prefs.edit().putFloat(KEY_SMOKE_FLOW, _smokeFlow.value).apply()
+    }
+
+    fun setSmokeBassPressure(v: Float) {
+        _smokeBassPressure.value = v.coerceIn(0.2f, 2f)
+        prefs.edit().putFloat(KEY_SMOKE_BASS, _smokeBassPressure.value).apply()
+    }
+
+    fun setSmokeSoftness(v: Float) {
+        _smokeSoftness.value = v.coerceIn(0.3f, 1.8f)
+        prefs.edit().putFloat(KEY_SMOKE_SOFT, _smokeSoftness.value).apply()
+    }
+
+    fun setSmokeGlowCtrl(v: Float) {
+        _smokeGlow.value = v.coerceIn(0.3f, 1.8f)
+        prefs.edit().putFloat(KEY_SMOKE_GLOW, _smokeGlow.value).apply()
+    }
+
+    fun setSmokeSatCtrl(v: Float) {
+        _smokeSat.value = v.coerceIn(0.3f, 1.6f)
+        prefs.edit().putFloat(KEY_SMOKE_SAT, _smokeSat.value).apply()
+    }
+
+    fun setSmokePlume(v: Float) {
+        _smokePlume.value = v.coerceIn(0.4f, 1.8f)
+        prefs.edit().putFloat(KEY_SMOKE_PLUME, _smokePlume.value).apply()
+    }
+
+    fun setSmokeAudio(v: Float) {
+        _smokeAudio.value = v.coerceIn(0.3f, 2f)
+        prefs.edit().putFloat(KEY_SMOKE_AUDIO, _smokeAudio.value).apply()
+    }
+
+    fun smokeControls(): com.apolloauto.player.ui.SmokeControls =
+        com.apolloauto.player.ui.SmokeControls(
+            density = _smokeDensity.value,
+            turbulence = _smokeTurbulence.value,
+            flowSpeed = _smokeFlow.value,
+            bassPressure = _smokeBassPressure.value,
+            softness = _smokeSoftness.value,
+            glow = _smokeGlow.value,
+            saturation = _smokeSat.value,
+            plumeSize = _smokePlume.value,
+            audioSensitivity = _smokeAudio.value
+        )
+
+    fun sceneBackgroundOverride(mode: VisualizerMode): VisualizerBackgroundMode? =
+        _sceneBgOverrides.value[mode]
+
+    fun setSceneBackgroundOverride(mode: VisualizerMode, bg: VisualizerBackgroundMode?) {
+        val next = _sceneBgOverrides.value.toMutableMap()
+        if (bg == null) next.remove(mode) else next[mode] = bg
+        _sceneBgOverrides.value = next
+        persistSceneBgOverrides(next)
+    }
+
+    fun clearSceneBackgroundOverride(mode: VisualizerMode) {
+        setSceneBackgroundOverride(mode, null)
     }
 
     fun setVizRandomizer(enabled: Boolean) {
@@ -578,6 +688,24 @@ class ThemeStore(context: Context) {
             .toSet()
     }
 
+    private fun loadSceneBgOverrides(): Map<VisualizerMode, VisualizerBackgroundMode> {
+        val raw = prefs.getString(KEY_SCENE_BG, null) ?: return emptyMap()
+        return raw.split(';')
+            .mapNotNull { pair ->
+                val parts = pair.split(':')
+                if (parts.size != 2) return@mapNotNull null
+                val mode = runCatching { VisualizerMode.valueOf(parts[0]) }.getOrNull()
+                val bg = runCatching { VisualizerBackgroundMode.valueOf(parts[1]) }.getOrNull()
+                if (mode != null && bg != null) mode to bg else null
+            }
+            .toMap()
+    }
+
+    private fun persistSceneBgOverrides(map: Map<VisualizerMode, VisualizerBackgroundMode>) {
+        val raw = map.entries.joinToString(";") { "${it.key.name}:${it.value.name}" }
+        prefs.edit().putString(KEY_SCENE_BG, raw).apply()
+    }
+
     companion object {
         private const val PREFS = "apollo_theme"
         private const val KEY_THEME = "hud_theme"
@@ -616,5 +744,16 @@ class ThemeStore(context: Context) {
         private const val KEY_ALBUM_DARK = "album_bg_darkness"
         private const val KEY_ALBUM_SAT = "album_bg_saturation"
         private const val KEY_VIZ_DEBUG = "viz_debug_overlay"
+        private const val KEY_SMOKE_PRESET = "smoke_color_preset"
+        private const val KEY_SMOKE_DENSITY = "smoke_density"
+        private const val KEY_SMOKE_TURB = "smoke_turbulence"
+        private const val KEY_SMOKE_FLOW = "smoke_flow"
+        private const val KEY_SMOKE_BASS = "smoke_bass_pressure"
+        private const val KEY_SMOKE_SOFT = "smoke_softness"
+        private const val KEY_SMOKE_GLOW = "smoke_glow"
+        private const val KEY_SMOKE_SAT = "smoke_sat"
+        private const val KEY_SMOKE_PLUME = "smoke_plume"
+        private const val KEY_SMOKE_AUDIO = "smoke_audio"
+        private const val KEY_SCENE_BG = "scene_bg_overrides"
     }
 }

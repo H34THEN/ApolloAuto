@@ -57,4 +57,26 @@ class VisualizerBackgroundPolicyTest {
         assertTrue(eff.showAlbumArt)
         assertTrue(eff.clearSceneBackdrop)
     }
+
+    @Test
+    fun userScene_keepsAtmosphereWithoutAlbumArt() {
+        val eff = VisualizerBackgroundPolicy.resolve(
+            VisualizerBackgroundMode.SCENE,
+            VisualizerMode.SYNTH_SMOKE
+        )
+        assertFalse(eff.showAlbumArt)
+        assertFalse(eff.clearSceneBackdrop)
+        assertEquals(SceneBackgroundPreference.SCENE_DEFINED, eff.preference)
+    }
+
+    @Test
+    fun sceneOverride_beatsGlobalAlbum() {
+        val eff = VisualizerBackgroundPolicy.resolve(
+            VisualizerBackgroundMode.ALBUM_ART,
+            VisualizerMode.CHROMATIC_PHI,
+            sceneOverride = VisualizerBackgroundMode.BLACK
+        )
+        assertFalse(eff.showAlbumArt)
+        assertTrue(eff.clearSceneBackdrop)
+    }
 }

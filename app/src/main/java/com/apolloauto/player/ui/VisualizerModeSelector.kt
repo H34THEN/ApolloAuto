@@ -220,7 +220,7 @@ object VisualizerModeCatalog {
         VisualizerModeEntry(VisualizerMode.ECTOPLASM, VisualizerCategory.TRANCE, "SLIME", "Iridescent metaball ectoplasm"),
         VisualizerModeEntry(VisualizerMode.CIRC_INFINITY, VisualizerCategory.TRANCE, "CIRC∞", "Radial spectral infinity"),
         VisualizerModeEntry(VisualizerMode.PRISM_RAIN, VisualizerCategory.TRANCE, "RAIN", "Onset prism droplets"),
-        VisualizerModeEntry(VisualizerMode.SYNTH_SMOKE, VisualizerCategory.TRANCE, "SMOKE", "Chromatic vapor layers"),
+        VisualizerModeEntry(VisualizerMode.SYNTH_SMOKE, VisualizerCategory.TRANCE, "SMOKE", "Billowing fBm vapor plumes"),
         VisualizerModeEntry(VisualizerMode.NOTE_SWARM, VisualizerCategory.TRANCE, "SWARM", "Per-band particle constellations"),
         VisualizerModeEntry(VisualizerMode.HARMONIC_MANDALA, VisualizerCategory.TRANCE, "MANDALA", "Symmetric harmonic petals"),
         VisualizerModeEntry(VisualizerMode.LIQUID_SPECTRUM, VisualizerCategory.TRANCE, "LIQUID", "Flowing liquid spectrum field"),

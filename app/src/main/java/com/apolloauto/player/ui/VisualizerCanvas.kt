@@ -70,6 +70,17 @@ fun ApolloVisualizerSurface(
     val spiralColor by app.themeStore.spiralColorPreset.collectAsState()
     val obsidianPreset by app.themeStore.obsidianPreset.collectAsState()
     val vissonSub by app.themeStore.vissonanceSubmode.collectAsState()
+    val smokePreset by app.themeStore.smokeColorPreset.collectAsState()
+    val smokeDensity by app.themeStore.smokeDensity.collectAsState()
+    val smokeTurb by app.themeStore.smokeTurbulence.collectAsState()
+    val smokeFlow by app.themeStore.smokeFlow.collectAsState()
+    val smokeBass by app.themeStore.smokeBassPressure.collectAsState()
+    val smokeSoft by app.themeStore.smokeSoftness.collectAsState()
+    val smokeGlowCtrl by app.themeStore.smokeGlowCtrl.collectAsState()
+    val smokeSatCtrl by app.themeStore.smokeSatCtrl.collectAsState()
+    val smokePlume by app.themeStore.smokePlume.collectAsState()
+    val smokeAudio by app.themeStore.smokeAudio.collectAsState()
+    val sceneBgOverrides by app.themeStore.sceneBgOverrides.collectAsState()
     app.albumArtColors.colorLock = artLock
     val p = artTint?.applyTo(themePalette) ?: themePalette
     val motion = LocalMotionProfile.current
@@ -85,8 +96,9 @@ fun ApolloVisualizerSurface(
     val bgMode by app.themeStore.vizBackgroundMode.collectAsState()
     val animate = motion != MotionProfile.STATIC
     val cinematicAmt = if (cinematic) 1f else 0f
-    val effectiveBg = remember(bgMode, mode) {
-        VisualizerBackgroundPolicy.resolve(bgMode, mode)
+    val sceneOverride = sceneBgOverrides[mode]
+    val effectiveBg = remember(bgMode, mode, sceneOverride) {
+        VisualizerBackgroundPolicy.resolve(bgMode, mode, sceneOverride)
     }
     // Force clear backdrop when BLACK/ALBUM or AUTO→BLACK so scenes don't paint opaque void.
     val resolvedClear = clearBackdrop || effectiveBg.clearSceneBackdrop
@@ -769,7 +781,19 @@ fun ApolloVisualizerSurface(
                 )
                 VisualizerMode.SYNTH_SMOKE -> drawSynthSmokeScene(
                     liveFeatures, p, fastPhase, playing, resolvedClear,
-                    paletteMode, quality, vizSat, vizGlow
+                    paletteMode, quality, vizSat, vizGlow,
+                    smokePreset = smokePreset,
+                    controls = SmokeControls(
+                        density = smokeDensity,
+                        turbulence = smokeTurb,
+                        flowSpeed = smokeFlow,
+                        bassPressure = smokeBass,
+                        softness = smokeSoft,
+                        glow = smokeGlowCtrl,
+                        saturation = smokeSatCtrl,
+                        plumeSize = smokePlume,
+                        audioSensitivity = smokeAudio
+                    )
                 )
                 VisualizerMode.NOTE_SWARM -> drawNoteSwarmScene(
                     liveFeatures, p, spectrum, fastPhase, playing, resolvedClear,

@@ -100,7 +100,7 @@ fun VisualizerGallerySheet(
             VisualizerBackgroundMode.entries.forEach { m ->
                 val on = bgMode == m
                 Text(
-                    m.name.replace('_', ' '),
+                    m.shortLabel,
                     color = if (on) p.voidBlack else p.soft,
                     fontFamily = body,
                     fontSize = 10.sp,

@@ -2,12 +2,22 @@ package com.apolloauto.player.media
 
 /**
  * User-facing visualizer background modes.
- * SCENE_DEFINED is an internal AUTO resolution, not a fourth settings chip.
+ * SCENE requests the renderer's native atmosphere (no album art, no forced clear).
  */
 enum class VisualizerBackgroundMode {
     AUTO,
     BLACK,
-    ALBUM_ART
+    ALBUM_ART,
+    SCENE;
+
+    /** Compact HUD / chip label. */
+    val shortLabel: String
+        get() = when (this) {
+            AUTO -> "AUTO"
+            BLACK -> "BLACK"
+            ALBUM_ART -> "ALBUM"
+            SCENE -> "SCENE"
+        }
 }
 
 enum class SceneBackgroundPreference {
@@ -77,24 +87,32 @@ object VisualizerBackgroundPolicy {
 
     /**
      * Effective layer strategy for the unified stack.
-     * User BLACK/ALBUM_ART always win; AUTO follows scene preference.
+     * Precedence: scene override → global user mode → AUTO recommendation.
      */
     fun resolve(
         userMode: VisualizerBackgroundMode,
-        scene: VisualizerMode
+        scene: VisualizerMode,
+        sceneOverride: VisualizerBackgroundMode? = null
     ): EffectiveBackground {
-        return when (userMode) {
+        val mode = sceneOverride ?: userMode
+        return when (mode) {
             VisualizerBackgroundMode.BLACK -> EffectiveBackground(
                 showAlbumArt = false,
                 clearSceneBackdrop = true,
                 preference = SceneBackgroundPreference.BLACK,
-                note = "User BLACK — scene atmospheric fills suppressed"
+                note = "BLACK — pure #000000; scene fills suppressed"
             )
             VisualizerBackgroundMode.ALBUM_ART -> EffectiveBackground(
                 showAlbumArt = true,
                 clearSceneBackdrop = true,
                 preference = SceneBackgroundPreference.ALBUM_ART,
-                note = "User ALBUM_ART — geometry composites over cover"
+                note = "ALBUM — geometry composites over blurred cover"
+            )
+            VisualizerBackgroundMode.SCENE -> EffectiveBackground(
+                showAlbumArt = false,
+                clearSceneBackdrop = false,
+                preference = SceneBackgroundPreference.SCENE_DEFINED,
+                note = "SCENE — native atmosphere (black for simple signal modes)"
             )
             VisualizerBackgroundMode.AUTO -> when (val pref = preferenceFor(scene)) {
                 SceneBackgroundPreference.BLACK -> EffectiveBackground(
@@ -107,13 +125,13 @@ object VisualizerBackgroundPolicy {
                     showAlbumArt = true,
                     clearSceneBackdrop = true,
                     preference = pref,
-                    note = "AUTO → ALBUM_ART"
+                    note = "AUTO → ALBUM"
                 )
                 SceneBackgroundPreference.SCENE_DEFINED -> EffectiveBackground(
                     showAlbumArt = false,
                     clearSceneBackdrop = false,
                     preference = pref,
-                    note = "AUTO → scene atmospheric world (no album art)"
+                    note = "AUTO → scene atmospheric world"
                 )
             }
         }

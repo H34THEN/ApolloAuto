@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Lyrics
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -120,6 +121,7 @@ private fun ImmersiveVisualizerScreen(onExit: () -> Unit) {
     var lyricsDoc by remember { mutableStateOf<LrcDocument?>(null) }
     var showLyrics by remember { mutableStateOf(false) }
     var showGallery by remember { mutableStateOf(false) }
+    var showBgSheet by remember { mutableStateOf(false) }
     var hudVisible by remember { mutableStateOf(true) }
     val lyricsAvailable = lyricsDoc != null && lyricsDoc!!.lines.isNotEmpty()
     val autoDjOnTrack by app.themeStore.autoDjOnTrackChange.collectAsState()
@@ -247,8 +249,10 @@ private fun ImmersiveVisualizerScreen(onExit: () -> Unit) {
     val albumDark by app.themeStore.albumDarkness.collectAsState()
     val albumSat by app.themeStore.albumSaturation.collectAsState()
     val debugOverlay by app.themeStore.vizDebugOverlay.collectAsState()
-    val effectiveBg = remember(bgMode, mode) {
-        com.apolloauto.player.media.VisualizerBackgroundPolicy.resolve(bgMode, mode)
+    val sceneBgOverrides by app.themeStore.sceneBgOverrides.collectAsState()
+    val sceneOverride = sceneBgOverrides[mode]
+    val effectiveBg = remember(bgMode, mode, sceneOverride) {
+        com.apolloauto.player.media.VisualizerBackgroundPolicy.resolve(bgMode, mode, sceneOverride)
     }
     LaunchedEffect(debugOverlay) {
         app.visualizerController.debugLogging = debugOverlay
@@ -308,13 +312,30 @@ private fun ImmersiveVisualizerScreen(onExit: () -> Unit) {
         ) {
             ImmersiveGhostButton(
                 selected = showGallery,
-                onClick = { showGallery = !showGallery }
+                onClick = {
+                    showGallery = !showGallery
+                    if (showGallery) showBgSheet = false
+                }
             ) {
                 Text(
                     "GAL",
                     color = if (showGallery) p.accent else p.soft.copy(alpha = 0.55f),
                     fontFamily = body,
                     fontSize = 10.sp
+                )
+            }
+            ImmersiveGhostButton(
+                selected = showBgSheet,
+                onClick = {
+                    showBgSheet = !showBgSheet
+                    if (showBgSheet) showGallery = false
+                }
+            ) {
+                Icon(
+                    Icons.Default.Layers,
+                    contentDescription = "Visual background",
+                    tint = if (showBgSheet) p.accent else p.soft.copy(alpha = 0.55f),
+                    modifier = Modifier.size(20.dp)
                 )
             }
             ImmersiveGhostButton(onClick = { cycleNext() }) {
@@ -396,6 +417,19 @@ private fun ImmersiveVisualizerScreen(onExit: () -> Unit) {
                     .align(Alignment.Center)
                     .fillMaxWidth(0.92f)
                     .padding(16.dp)
+            )
+        }
+
+        if (showBgSheet && hudVisible) {
+            VisualBackgroundSheet(
+                scene = mode,
+                onClose = { showBgSheet = false },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(top = 56.dp, end = 12.dp, start = 12.dp)
+                    .fillMaxWidth(0.88f)
+                    .widthIn(max = 360.dp)
             )
         }
 

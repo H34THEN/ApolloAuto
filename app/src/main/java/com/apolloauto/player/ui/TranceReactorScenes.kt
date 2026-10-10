@@ -181,38 +181,7 @@ fun DrawScope.drawPrismRainScene(
     }
 }
 
-fun DrawScope.drawSynthSmokeScene(
-    features: AudioFeatures,
-    palette: HudPalette,
-    phase: Float,
-    playing: Boolean,
-    clearBackdrop: Boolean,
-    paletteMode: VizPaletteMode,
-    quality: VizQualityTier,
-    sat: Float,
-    glow: Float
-) {
-    if (!clearBackdrop) drawRect(palette.voidBlack)
-    val drive = if (playing) 1f else 0.4f
-    val layers = (5 * quality.meshScale).toInt().coerceIn(3, 8)
-    for (l in 0 until layers) {
-        val path = Path()
-        val yBase = size.height * (0.25f + l * 0.12f)
-        val amp = size.height * (0.04f + features.lowMid * 0.05f + features.bass * 0.04f) * drive
-        val steps = 40
-        for (i in 0..steps) {
-            val x = i / steps.toFloat() * size.width
-            val w = sin(i * 0.35f + phase * 0.01f + l) * amp +
-                cos(i * 0.2f + features.presence * 3f) * amp * 0.5f +
-                features.treble * sin(i * 0.8f + phase * 0.02f) * amp * 0.4f
-            val y = yBase + w
-            if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
-        }
-        val c = TrancePalette.color(l / layers.toFloat() + phase * 0.0004f, paletteMode, palette, sat, glow * 0.85f)
-        drawPath(path, c.copy(alpha = 0.35f + features.rms * 0.25f), style = Stroke(6f + features.onset * 4f))
-        drawPath(path, c.copy(alpha = 0.15f), style = Stroke(14f))
-    }
-}
+// SYNTH SMOKE renderer lives in SynthSmokeScene.kt (V5.1 procedural vapor).
 
 fun DrawScope.drawNoteSwarmScene(
     features: AudioFeatures,

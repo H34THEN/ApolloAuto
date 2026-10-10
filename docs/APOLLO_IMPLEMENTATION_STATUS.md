@@ -3,7 +3,7 @@
 **Codename:** APOLLO // AUDIO COMMAND SYSTEM  
 **Workspace:** `/Users/Gengar/Desktop/local-github/ApolloAuto`  
 **Package:** `com.apolloauto.player` (debug: `com.apolloauto.player.debug`)  
-**Last updated:** 2026-10-09 (Trance Reactor V4 — TR01–TR13 Compose scenes)
+**Last updated:** 2026-10-09 (V5.1 intermediate — smoke rewrite + immersive BG UI)
 
 ## Phase A — Existing Application Audit
 
@@ -201,3 +201,24 @@
 - Background engine AUTO/BLACK/ALBUM_ART
 
 **Honest gaps:** device soak FPS/screenshots not yet Verified.
+
+### Phase V5.1 — Smoke + Immersive BG controls (intermediate)
+**Branch:** `fix/apollo-smoke-immersive-controls-v5` (not merged)  
+**Baseline tag:** `apollo-pre-v5-1` → `3003d61`  
+**Rollback:** `docs/APOLLO_V5_1_ROLLBACK.md`  
+**Docs:** `docs/APOLLO_V5_1_*.md`
+
+**Completed in code:**
+- SYNTH SMOKE rewritten as fBm density vapor (`SynthSmokeScene.kt`) — not sine strokes
+- User SCENE background mode + Immersive/Viz-Only Layers sheet
+- Smoke color presets + controls in ThemeStore / Settings
+- Per-scene background overrides
+- Debug APK assembled and installed on Metroid A024
+
+**Not claimed finished:**
+- Screenshot matrix visual inspection
+- 10 / 30 minute soak metrics
+- Full V5 music-source / M3U / ECHOHUNT roadmap
+- AcoustID credentials (never commit passwords; use Settings API key later)
+
+**Next:** Device visual QA → V5 feature audit → ECHOHUNT scaffold
