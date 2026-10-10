@@ -8,7 +8,8 @@
 
 | Tool | Use |
 |---|---|
-| Desktop Head Unit (DHU) | Browse + Now Playing layout |
+| Desktop Head Unit (DHU) | Browse + Now Playing layout — see `ANDROID_AUTO_DHU.md` + `tools/aa-dhu/` |
+| `./tools/aa-dhu/capture_review.sh` | Scripted screenshots → `aa-dhu-gallery/` |
 | Media Controller Test | Available commands, queue size, skip |
 | `adb logcat -s ApolloAASession` | `onConnect`, `expandSingle` |
 | `adb shell dumpsys media_session` | Legacy PlaybackState actions |

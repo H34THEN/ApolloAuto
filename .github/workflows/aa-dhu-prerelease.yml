@@ -1,0 +1,72 @@
+name: aa-dhu-prerelease
+
+# Validates the Android Auto DHU harness + Media3 unit tests.
+# Full DHU screenshot capture requires a developer Mac/PC + phone and is
+# documented in docs/release/ANDROID_AUTO_DHU.md (not runnable on GHA runners).
+
+on:
+  pull_request:
+    paths:
+      - "app/src/main/java/com/apolloauto/player/media/**"
+      - "app/src/test/java/com/apolloauto/player/media/**"
+      - "tools/aa-dhu/**"
+      - "docs/release/ANDROID_AUTO*.md"
+      - "docs/release/aa-dhu-gallery/**"
+      - ".github/workflows/aa-dhu-prerelease.yml"
+  push:
+    branches: [master, release/**, hotfix/**]
+    paths:
+      - "app/src/main/java/com/apolloauto/player/media/**"
+      - "app/src/test/java/com/apolloauto/player/media/**"
+      - "tools/aa-dhu/**"
+      - "docs/release/ANDROID_AUTO*.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  harness-and-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify DHU harness files
+        run: |
+          set -euo pipefail
+          required=(
+            tools/aa-dhu/install_dhu.sh
+            tools/aa-dhu/check_prereqs.sh
+            tools/aa-dhu/run_dhu.sh
+            tools/aa-dhu/capture_review.sh
+            tools/aa-dhu/lib/env.sh
+            tools/aa-dhu/config/sobalai_6_9.ini
+            tools/aa-dhu/config/compact_800x480.ini
+            tools/aa-dhu/scripts/walkthrough_media.txt
+            docs/release/ANDROID_AUTO_DHU.md
+            docs/release/aa-dhu-gallery/REVIEW.md
+          )
+          for f in "${required[@]}"; do
+            test -f "$f" || { echo "missing $f"; exit 1; }
+          done
+          echo "DHU harness files OK"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Android Auto media unit tests
+        run: |
+          ./gradlew :app:testDebugUnitTest \
+            --tests 'com.apolloauto.player.media.*' \
+            --stacktrace
+
+      - name: Reminder — local DHU gallery
+        run: |
+          echo "Run locally before AA UX release:"
+          echo "  ./tools/aa-dhu/capture_review.sh"
+          echo "  fill docs/release/aa-dhu-gallery/REVIEW.md"

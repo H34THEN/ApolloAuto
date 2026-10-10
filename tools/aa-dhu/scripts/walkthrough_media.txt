@@ -1,0 +1,35 @@
+# DHU console script — Apollo media visual walkthrough.
+# CWD must be the gallery output directory when launched via run_dhu.sh.
+# Coordinates / layout assume sobalai_6_9.ini (1280x720 + margins).
+
+sleep 5
+screenshot 01_home.png
+
+keycode media
+sleep 4
+screenshot 02_media_surface.png
+
+night
+sleep 1
+screenshot 03_media_night.png
+day
+sleep 1
+
+keycode media_play_pause
+sleep 3
+screenshot 04_after_play_pause.png
+
+keycode media_next
+sleep 3
+screenshot 05_after_next.png
+
+keycode media_previous
+sleep 3
+screenshot 06_after_previous.png
+
+sleep 1
+screenshot 07_final.png
+
+# Pause for interactive click-through / approval before exit.
+sleep 90
+quit

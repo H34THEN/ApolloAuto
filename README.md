@@ -91,6 +91,20 @@ Via Media3/ExoPlayer (device codecs apply): MP3, AAC, FLAC, WAV, OGG/Opus where 
 - `./gradlew :app:assembleDebug` / `:app:assembleRelease`
 - Release signing via **gitignored** `local-release.properties` pointing at a local keystore
 
+### Android Auto DHU (pre-release visual review)
+
+Emulate the head-unit media UI on your Mac before cutting a release:
+
+```bash
+./tools/aa-dhu/install_dhu.sh
+./tools/aa-dhu/check_prereqs.sh
+# Phone: Android Auto → Start head unit server (developer mode)
+./tools/aa-dhu/run_dhu.sh                 # interactive
+./tools/aa-dhu/capture_review.sh          # scripted PNGs → docs/release/aa-dhu-gallery/
+```
+
+Details: [`docs/release/ANDROID_AUTO_DHU.md`](docs/release/ANDROID_AUTO_DHU.md).
+
 ## Roadmap
 
 - Full ECHOHUNT (Chromaprint → AcoustID) beyond scaffolding

@@ -11,8 +11,9 @@
 - [x] No projected visualizer bypass attempted
 - [x] Native Immersive / Viz-Only unchanged by AA browse (Phone Visualizers under More)
 - [x] Unit tests: browse tree + queue expand
+- [ ] DHU pre-release gallery (`./tools/aa-dhu/capture_review.sh` + `aa-dhu-gallery/REVIEW.md`)
 - [ ] Owner Sobalai retest (photos / Next visible)
-- [ ] Signed APK + SHA-256 published
+- [x] Signed APK + SHA-256 published (`v1.0.0-beta.2`)
 
 ## Prior beta.1 gates (carry forward)
 
