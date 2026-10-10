@@ -7,15 +7,12 @@ import kotlin.random.Random
 /**
  * Owns a stable playback order for the current queue session.
  *
- * Media3 [Player.shuffleModeEnabled] is kept OFF. When the user enables shuffle we physically
- * reorder the playlist once (current track preserved) so NEXT never regenerates order and the
- * MediaItem timeline matches the UI queue (phone + Android Auto share the same ExoPlayer).
+ * Media3 [Player.shuffleModeEnabled] stays OFF. Shuffle ON physically reorders once;
+ * [remix] reshuffles while keeping shuffle ON; NEXT never regenerates order.
  */
 class StablePlaybackQueue {
-    /** Unshuffled collection order for the session. */
     private var original: List<MediaItem> = emptyList()
 
-    /** Whether the active playlist on the player is a shuffle projection. */
     var shuffleEnabled: Boolean = false
         private set
 
@@ -38,34 +35,59 @@ class StablePlaybackQueue {
         }
     }
 
+    /**
+     * Toggle shuffle mode only.
+     * ON → shuffle once (current first). OFF → restore original order.
+     * Does nothing if already in the requested state except when enabling from off.
+     */
     fun toggleShuffle(
         currentItems: List<MediaItem>,
         currentIndex: Int
     ): QueueApply? {
         if (currentItems.isEmpty()) return null
-        if (original.isEmpty()) {
-            original = currentItems.toList()
-        }
+        if (original.isEmpty()) original = currentItems.toList()
         val idx = currentIndex.coerceIn(0, currentItems.lastIndex)
         return if (!shuffleEnabled) {
             shuffleEnabled = true
             generation += 1
-            // Shuffle the currently loaded items (preserves prior edits), keep current first.
             buildShuffled(currentItems, idx, Random(generation))
         } else {
             shuffleEnabled = false
-            // Restore original order; keep current track.
             val currentId = currentItems[idx].mediaId
             val restore = if (original.isNotEmpty()) original else currentItems
-            val newIndex = restore.indexOfFirst { it.mediaId == currentId }
-                .takeIf { it >= 0 } ?: 0
+            val newIndex = restore.indexOfFirst { it.mediaId == currentId }.takeIf { it >= 0 } ?: 0
             QueueApply(restore, newIndex)
         }
     }
 
-    fun syncFromPlayerShuffleFlag(playerWantsShuffle: Boolean, currentItems: List<MediaItem>, currentIndex: Int): QueueApply? {
+    /**
+     * Reshuffle upcoming tracks while staying in shuffle mode.
+     * If shuffle was off, turns it on.
+     */
+    fun remix(
+        currentItems: List<MediaItem>,
+        currentIndex: Int
+    ): QueueApply? {
+        if (currentItems.isEmpty()) return null
+        if (original.isEmpty()) original = currentItems.toList()
+        shuffleEnabled = true
+        generation += 1
+        val idx = currentIndex.coerceIn(0, currentItems.lastIndex)
+        return buildShuffled(currentItems, idx, Random(generation))
+    }
+
+    fun syncFromPlayerShuffleFlag(
+        playerWantsShuffle: Boolean,
+        currentItems: List<MediaItem>,
+        currentIndex: Int
+    ): QueueApply? {
         if (playerWantsShuffle == shuffleEnabled) return null
-        return toggleShuffle(currentItems, currentIndex)
+        // Only auto-enable from remote; never auto-remix on every sync.
+        return if (playerWantsShuffle && !shuffleEnabled) {
+            toggleShuffle(currentItems, currentIndex)
+        } else if (!playerWantsShuffle && shuffleEnabled) {
+            toggleShuffle(currentItems, currentIndex)
+        } else null
     }
 
     fun snapshot(player: Player): List<QueueEntry> {
@@ -97,7 +119,6 @@ class StablePlaybackQueue {
     )
 
     companion object {
-        /** Pure helper: current item first, remaining shuffled once. */
         fun <T> stableShuffleKeepingCurrent(items: List<T>, currentIndex: Int, random: Random): List<T> {
             if (items.isEmpty()) return emptyList()
             val idx = currentIndex.coerceIn(0, items.lastIndex)

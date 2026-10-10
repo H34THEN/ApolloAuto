@@ -54,7 +54,9 @@ class ApolloApp : Application() {
         playlistStore = PlaylistStore(this)
         themeStore = ThemeStore(this)
         equalizerController = EqualizerController(this)
-        visualizerController = AudioVisualizerController()
+        visualizerController = AudioVisualizerController().also {
+            it.setMode(themeStore.visualizerMode.value)
+        }
         stablePlaybackQueue = StablePlaybackQueue()
         sleepTimerController = SleepTimerController(
             context = this,

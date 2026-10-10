@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.apolloauto.player.theme.LocalBodyFont
 import com.apolloauto.player.theme.LocalHudPalette
 
 @Composable
@@ -28,6 +29,7 @@ fun ApolloHudPanel(
     content: @Composable ColumnScope.() -> Unit
 ) {
     val p = LocalHudPalette.current
+    val font = LocalBodyFont.current
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(6.dp))
@@ -36,7 +38,7 @@ fun ApolloHudPanel(
             .padding(12.dp)
     ) {
         if (title != null) {
-            Text(title, color = p.primary, fontSize = 11.sp, letterSpacing = 2.sp)
+            Text(title, color = p.primary, fontFamily = font, fontSize = 11.sp, letterSpacing = 2.sp)
             Spacer(Modifier.height(8.dp))
         }
         content()
@@ -46,13 +48,21 @@ fun ApolloHudPanel(
 @Composable
 fun ApolloSectionHeader(title: String, trailing: String? = null) {
     val p = LocalHudPalette.current
+    val font = LocalBodyFont.current
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(title, color = p.primary, fontSize = 12.sp, letterSpacing = 2.sp, modifier = Modifier.weight(1f))
+        Text(
+            title,
+            color = p.primary,
+            fontFamily = font,
+            fontSize = 12.sp,
+            letterSpacing = 2.sp,
+            modifier = Modifier.weight(1f)
+        )
         if (trailing != null) {
-            Text(trailing, color = p.dim, fontSize = 11.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+            Text(trailing, color = p.dim, fontFamily = font, fontSize = 11.sp)
         }
     }
 }
@@ -60,6 +70,7 @@ fun ApolloSectionHeader(title: String, trailing: String? = null) {
 @Composable
 fun ApolloSignalBadge(label: String, active: Boolean) {
     val p = LocalHudPalette.current
+    val font = LocalBodyFont.current
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(3.dp))
@@ -67,7 +78,7 @@ fun ApolloSignalBadge(label: String, active: Boolean) {
             .background(if (active) p.accent.copy(alpha = 0.15f) else p.voidBlack.copy(alpha = 0.4f))
             .padding(horizontal = 8.dp, vertical = 4.dp)
     ) {
-        Text(label, color = if (active) p.soft else p.dim, fontSize = 10.sp, letterSpacing = 1.sp)
+        Text(label, color = if (active) p.soft else p.dim, fontFamily = font, fontSize = 10.sp, letterSpacing = 1.sp)
     }
 }
 
@@ -79,6 +90,7 @@ fun ApolloStatusBar(
     sleepLabel: String?
 ) {
     val p = LocalHudPalette.current
+    val font = LocalBodyFont.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -87,7 +99,7 @@ fun ApolloStatusBar(
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("APOLLO II", color = p.primary, fontSize = 11.sp, letterSpacing = 2.sp)
+        Text("APOLLO II", color = p.primary, fontFamily = font, fontSize = 11.sp, letterSpacing = 2.sp)
         Spacer(Modifier.width(10.dp))
         ApolloSignalBadge(themeLabel, true)
         Spacer(Modifier.width(6.dp))

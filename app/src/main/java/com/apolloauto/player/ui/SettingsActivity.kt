@@ -49,6 +49,7 @@ import com.apolloauto.player.theme.CustomThemeDraft
 import com.apolloauto.player.theme.HudFontOption
 import com.apolloauto.player.theme.HudThemeId
 import com.apolloauto.player.theme.InterfaceStyle
+import com.apolloauto.player.theme.LocalBodyFont
 import com.apolloauto.player.theme.LocalHudPalette
 import com.apolloauto.player.theme.MotionProfile
 import com.apolloauto.player.theme.fontFamilyFor
@@ -227,7 +228,7 @@ private fun DisplaySettings() {
             }
         }
         Text(
-            "E1D1C Text is baked into the APK (ttf). Track titles keep a Unicode-safe body face.",
+            "Selected font applies to all app text. Use System Sans if a face is missing glyphs.",
             color = p.dim,
             fontSize = 12.sp
         )
@@ -374,31 +375,44 @@ private fun AudioSettings() {
                 .background(p.voidBlack)
         )
         Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf(
-                VisualizerMode.SPECTRUM to "FFT",
-                VisualizerMode.WAVEFORM to "WAVE",
-                VisualizerMode.CIRCULAR to "ORB",
-                VisualizerMode.LEVEL to "LVL"
-            ).forEach { (m, label) ->
-                Text(
-                    label,
-                    color = if (mode == m) p.soft else p.dim,
-                    fontSize = 12.sp,
-                    letterSpacing = 1.sp,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(3.dp))
-                        .border(
-                            1.dp,
-                            if (mode == m) p.accent else p.primary.copy(alpha = 0.25f),
-                            RoundedCornerShape(3.dp)
-                        )
-                        .background(if (mode == m) p.accent.copy(alpha = 0.12f) else Color.Transparent)
-                        .clickable { app.visualizerController.setMode(m) }
-                        .padding(vertical = 8.dp)
+                listOf(
+                    VisualizerMode.SPECTRUM to "FFT",
+                    VisualizerMode.BARS to "BARS",
+                    VisualizerMode.WAVEFORM to "WAVE"
+                ),
+                listOf(
+                    VisualizerMode.CIRCULAR to "ORB",
+                    VisualizerMode.RINGS to "RINGS",
+                    VisualizerMode.LEVEL to "VU"
                 )
+            ).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    row.forEach { (m, label) ->
+                        Text(
+                            label,
+                            color = if (mode == m) p.soft else p.dim,
+                            fontSize = 12.sp,
+                            letterSpacing = 1.sp,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(3.dp))
+                                .border(
+                                    1.dp,
+                                    if (mode == m) p.accent else p.primary.copy(alpha = 0.25f),
+                                    RoundedCornerShape(3.dp)
+                                )
+                                .background(if (mode == m) p.accent.copy(alpha = 0.12f) else Color.Transparent)
+                                .clickable {
+                                    app.themeStore.setVisualizerMode(m)
+                                    app.visualizerController.setMode(m)
+                                }
+                                .padding(vertical = 8.dp)
+                        )
+                    }
+                }
             }
         }
     }
@@ -574,9 +588,11 @@ private fun PlaybackSettings() {
 @Composable
 private fun ActionChip(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val p = LocalHudPalette.current
+    val font = LocalBodyFont.current
     Text(
         label,
         color = p.voidBlack,
+        fontFamily = font,
         fontSize = 13.sp,
         letterSpacing = 1.sp,
         textAlign = TextAlign.Center,
@@ -591,12 +607,13 @@ private fun ActionChip(label: String, modifier: Modifier = Modifier, onClick: ()
 @Composable
 private fun HexField(value: String, onChange: (String) -> Unit, modifier: Modifier = Modifier) {
     val p = LocalHudPalette.current
+    val font = LocalBodyFont.current
     BasicTextField(
         value = value,
         onValueChange = onChange,
         singleLine = true,
         cursorBrush = SolidColor(p.primary),
-        textStyle = androidx.compose.ui.text.TextStyle(color = p.soft, fontSize = 14.sp),
+        textStyle = androidx.compose.ui.text.TextStyle(color = p.soft, fontSize = 14.sp, fontFamily = font),
         modifier = modifier
             .border(1.dp, p.primary.copy(alpha = 0.35f), RoundedCornerShape(4.dp))
             .padding(horizontal = 10.dp, vertical = 8.dp)

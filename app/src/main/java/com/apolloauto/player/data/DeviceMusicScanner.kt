@@ -29,7 +29,8 @@ class DeviceMusicScanner(
                 MediaStore.Audio.Media.ALBUM,
                 MediaStore.Audio.Media.ALBUM_ID,
                 MediaStore.Audio.Media.DURATION,
-                MediaStore.Audio.Media.BUCKET_DISPLAY_NAME
+                MediaStore.Audio.Media.BUCKET_DISPLAY_NAME,
+                MediaStore.Audio.Media.DISPLAY_NAME
             )
             val selection = "${MediaStore.Audio.Media.IS_MUSIC}!=0"
             val sort = "${MediaStore.Audio.Media.TITLE} COLLATE NOCASE ASC"
@@ -43,16 +44,27 @@ class DeviceMusicScanner(
                 val albumIdCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
                 val durationCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
                 val bucketCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.BUCKET_DISPLAY_NAME)
+                val displayCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME)
 
                 while (cursor.moveToNext()) {
                     val id = cursor.getLong(idCol)
                     val albumId = cursor.getLong(albumIdCol)
-                    val title = cursor.getString(titleCol)?.takeIf { it.isNotBlank() } ?: "Unknown"
-                    val artist = cursor.getString(artistCol)?.takeIf { it.isNotBlank() && it != "<unknown>" }
-                        ?: "Unknown Artist"
-                    val album = cursor.getString(albumCol)?.takeIf { it.isNotBlank() } ?: "Unknown Album"
+                    val rawTitle = cursor.getString(titleCol)
+                    val rawArtist = cursor.getString(artistCol)
+                    val rawAlbum = cursor.getString(albumCol)?.takeIf { it.isNotBlank() }
+                    val displayName = cursor.getString(displayCol)
                     val duration = cursor.getLong(durationCol).coerceAtLeast(0L)
                     val folder = cursor.getString(bucketCol)?.takeIf { it.isNotBlank() } ?: "Phone"
+                    val (title, artist, albumFromName) = FilenameMetadataParser.resolve(
+                        embeddedTitle = rawTitle,
+                        embeddedArtist = rawArtist,
+                        displayName = displayName,
+                        folderFallback = rawAlbum ?: folder
+                    )
+                    val album = rawAlbum?.takeUnless {
+                        // If album duplicates unresolved combined title, prefer folder/parsed fallback.
+                        it.equals(rawTitle, ignoreCase = true)
+                    } ?: albumFromName
                     val uri = ContentUris.withAppendedId(collection, id)
                     val art = if (albumId > 0) {
                         ContentUris.withAppendedId(

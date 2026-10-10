@@ -265,6 +265,7 @@ private fun ApolloHomeScreen() {
                                 onToggle = controller::togglePlayPause,
                                 onNext = controller::skipNext,
                                 onShuffle = controller::toggleShuffle,
+                                onRemix = controller::remixShuffle,
                                 onRepeat = controller::cycleRepeat,
                                 onToggleCarFavorite = {
                                     if (playback.mediaId.isNotBlank()) {

@@ -225,7 +225,10 @@ private fun NowPlayingScreen(onClose: () -> Unit) {
                     onAdd = { addSheet = true },
                     onEq = { context.startActivity(Intent(context, SettingsActivity::class.java)) },
                     onTimer = { context.startActivity(Intent(context, SettingsActivity::class.java)) },
-                    onMode = { app.visualizerController.setMode(it) }
+                    onMode = {
+                        app.themeStore.setVisualizerMode(it)
+                        app.visualizerController.setMode(it)
+                    }
                 )
                 PlayerLayoutMode.IMMERSIVE -> ImmersiveLayout(
                     playbackTitle = playback.title,
@@ -345,23 +348,37 @@ private fun TacticalLayout(
                         .background(p.voidBlack)
                 )
                 Spacer(Modifier.height(6.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     listOf(
-                        VisualizerMode.SPECTRUM to "FFT",
-                        VisualizerMode.WAVEFORM to "WAVE",
-                        VisualizerMode.CIRCULAR to "ORB",
-                        VisualizerMode.LEVEL to "LVL"
-                    ).forEach { (m, label) ->
-                        Text(
-                            label,
-                            color = if (mode == m) p.soft else p.dim,
-                            fontFamily = hudFont,
-                            fontSize = 11.sp,
-                            modifier = Modifier
-                                .border(1.dp, if (mode == m) p.accent else p.dim.copy(alpha = 0.3f), RoundedCornerShape(2.dp))
-                                .clickable { onMode(m) }
-                                .padding(horizontal = 6.dp, vertical = 4.dp)
+                        listOf(
+                            VisualizerMode.SPECTRUM to "FFT",
+                            VisualizerMode.BARS to "BARS",
+                            VisualizerMode.WAVEFORM to "WAVE"
+                        ),
+                        listOf(
+                            VisualizerMode.CIRCULAR to "ORB",
+                            VisualizerMode.RINGS to "RINGS",
+                            VisualizerMode.LEVEL to "VU"
                         )
+                    ).forEach { row ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            row.forEach { (m, label) ->
+                                Text(
+                                    label,
+                                    color = if (mode == m) p.soft else p.dim,
+                                    fontFamily = hudFont,
+                                    fontSize = 10.sp,
+                                    modifier = Modifier
+                                        .border(
+                                            1.dp,
+                                            if (mode == m) p.accent else p.dim.copy(alpha = 0.3f),
+                                            RoundedCornerShape(2.dp)
+                                        )
+                                        .clickable { onMode(m) }
+                                        .padding(horizontal = 6.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -369,23 +386,33 @@ private fun TacticalLayout(
 
         ApolloSciFiPanel(title = "TRACK DATA") {
             val lines = TrackMetadataFormatter.displayLines(playbackTitle, artist, album)
-            Text(
-                lines[0],
-                color = p.soft,
-                fontSize = 22.sp,
-                fontFamily = bodyFont,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            if (lines.size > 1) {
-                Text(
-                    lines[1],
-                    color = p.dim,
-                    fontSize = 15.sp,
-                    fontFamily = bodyFont,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                ApolloHudIconButton(onClick = onPrev, size = 40.dp) {
+                    Icon(Icons.Default.SkipPrevious, null, tint = p.soft, modifier = Modifier.size(22.dp))
+                }
+                Column(Modifier.weight(1f).padding(horizontal = 6.dp)) {
+                    Text(
+                        lines[0],
+                        color = p.soft,
+                        fontSize = 20.sp,
+                        fontFamily = bodyFont,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (lines.size > 1) {
+                        Text(
+                            lines[1],
+                            color = p.dim,
+                            fontSize = 15.sp,
+                            fontFamily = bodyFont,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+                ApolloHudIconButton(onClick = onNext, size = 40.dp) {
+                    Icon(Icons.Default.SkipNext, null, tint = p.soft, modifier = Modifier.size(22.dp))
+                }
             }
             Spacer(Modifier.height(8.dp))
             ApolloHudProgress(progress, height = 14.dp)
@@ -408,9 +435,6 @@ private fun TacticalLayout(
             ApolloHudIconButton(onClick = onShuffle, size = 36.dp) {
                 Icon(Icons.Default.Shuffle, null, tint = if (shuffle) p.accent else p.dim, modifier = Modifier.size(16.dp))
             }
-            ApolloHudIconButton(onClick = onPrev, size = 40.dp) {
-                Icon(Icons.Default.SkipPrevious, null, tint = p.soft, modifier = Modifier.size(22.dp))
-            }
             ApolloHudIconButton(onClick = onToggle, size = 48.dp) {
                 Icon(
                     if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
@@ -418,9 +442,6 @@ private fun TacticalLayout(
                     tint = p.soft,
                     modifier = Modifier.size(26.dp)
                 )
-            }
-            ApolloHudIconButton(onClick = onNext, size = 40.dp) {
-                Icon(Icons.Default.SkipNext, null, tint = p.soft, modifier = Modifier.size(22.dp))
             }
             ApolloHudIconButton(onClick = onRepeat, size = 36.dp) {
                 Icon(
@@ -509,15 +530,35 @@ private fun ImmersiveLayout(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(playbackTitle, color = p.soft, fontSize = 24.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(artist, color = p.dim, fontSize = 14.sp)
-            Spacer(Modifier.height(10.dp))
-            ApolloHudProgress(progress)
-            Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
                 ApolloHudIconButton(onClick = onPrev, size = 42.dp) {
                     Icon(Icons.Default.SkipPrevious, null, tint = p.soft, modifier = Modifier.size(22.dp))
                 }
+                Column(
+                    Modifier.weight(1f).padding(horizontal = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        playbackTitle,
+                        color = p.soft,
+                        fontSize = 22.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(artist, color = p.dim, fontSize = 14.sp)
+                }
+                ApolloHudIconButton(onClick = onNext, size = 42.dp) {
+                    Icon(Icons.Default.SkipNext, null, tint = p.soft, modifier = Modifier.size(22.dp))
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            ApolloHudProgress(progress)
+            Spacer(Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                 ApolloHudIconButton(onClick = onToggle, size = 52.dp) {
                     Icon(
                         if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
@@ -525,9 +566,6 @@ private fun ImmersiveLayout(
                         tint = p.soft,
                         modifier = Modifier.size(28.dp)
                     )
-                }
-                ApolloHudIconButton(onClick = onNext, size = 42.dp) {
-                    Icon(Icons.Default.SkipNext, null, tint = p.soft, modifier = Modifier.size(22.dp))
                 }
             }
             Spacer(Modifier.height(8.dp))
@@ -571,8 +609,17 @@ private fun TerminalLayout(
                     .size(72.dp)
                     .border(1.dp, p.primary.copy(alpha = 0.4f))
             )
-            Spacer(Modifier.width(10.dp))
-            Column {
+            Spacer(Modifier.width(6.dp))
+            Box(
+                Modifier
+                    .size(44.dp)
+                    .border(1.dp, p.primary.copy(alpha = 0.35f))
+                    .clickable(onClick = onPrev),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.SkipPrevious, null, tint = p.soft)
+            }
+            Column(Modifier.weight(1f).padding(horizontal = 8.dp)) {
                 ApolloHudLabel("TERMINAL MODE")
                 Text(
                     playbackTitle,
@@ -589,6 +636,15 @@ private fun TerminalLayout(
                     fontSize = 12.sp
                 )
             }
+            Box(
+                Modifier
+                    .size(44.dp)
+                    .border(1.dp, p.primary.copy(alpha = 0.35f))
+                    .clickable(onClick = onNext),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.SkipNext, null, tint = p.soft)
+            }
         }
         ApolloHudProgress(progress, height = 14.dp)
         ApolloVisualizerSurface(
@@ -602,9 +658,7 @@ private fun TerminalLayout(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
             listOf(
                 Triple(onShuffle, Icons.Default.Shuffle, if (shuffle) p.accent else p.dim),
-                Triple(onPrev, Icons.Default.SkipPrevious, p.soft),
                 Triple(onToggle, if (playing) Icons.Default.Pause else Icons.Default.PlayArrow, p.accent),
-                Triple(onNext, Icons.Default.SkipNext, p.soft),
                 Triple(
                     onRepeat,
                     if (repeatMode == RepeatModeUi.ONE) Icons.Default.RepeatOne else Icons.Default.Repeat,

@@ -35,11 +35,14 @@ fun fontFamilyFor(option: HudFontOption): FontFamily = when (option) {
     HudFontOption.SYSTEM_MONO -> FontFamily.Monospace
 }
 
-/** Display / HUD chrome font (user-selected). */
+/** User-selected HUD font (Settings → Display → HUD Font). */
 val LocalHudFont = staticCompositionLocalOf { E1d1cText }
 
-/** Metadata-safe body font (always readable Unicode). */
-val LocalBodyFont = staticCompositionLocalOf { FontFamily.SansSerif }
+/**
+ * App body / controls font — same as [LocalHudFont] so the font picker
+ * applies consistently across every screen.
+ */
+val LocalBodyFont = staticCompositionLocalOf { E1d1cText }
 
 @Composable
 fun hudFont(): FontFamily = LocalHudFont.current

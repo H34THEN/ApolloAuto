@@ -3,6 +3,7 @@ package com.apolloauto.player.theme
 import android.content.Context
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import com.apolloauto.player.media.VisualizerMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -92,6 +93,13 @@ class ThemeStore(context: Context) {
     )
     val hudFont: StateFlow<HudFontOption> = _hudFont.asStateFlow()
 
+    private val _visualizerMode = MutableStateFlow(
+        runCatching {
+            VisualizerMode.valueOf(prefs.getString(KEY_VIZ_MODE, VisualizerMode.SPECTRUM.name)!!)
+        }.getOrDefault(VisualizerMode.SPECTRUM)
+    )
+    val visualizerMode: StateFlow<VisualizerMode> = _visualizerMode.asStateFlow()
+
     fun activePalette(): HudPalette =
         paletteFor(_themeId.value, _custom.value.toPalette(), _glow.value)
 
@@ -124,6 +132,11 @@ class ThemeStore(context: Context) {
     fun setHudFont(option: HudFontOption) {
         _hudFont.value = option
         prefs.edit().putString(KEY_FONT, option.name).apply()
+    }
+
+    fun setVisualizerMode(mode: VisualizerMode) {
+        _visualizerMode.value = mode
+        prefs.edit().putString(KEY_VIZ_MODE, mode.name).apply()
     }
 
     fun updateCustom(draft: CustomThemeDraft) {
@@ -191,5 +204,6 @@ class ThemeStore(context: Context) {
         private const val KEY_INTERFACE = "interface_style"
         private const val KEY_PLAYER_LAYOUT = "player_layout"
         private const val KEY_FONT = "hud_font"
+        private const val KEY_VIZ_MODE = "visualizer_mode"
     }
 }

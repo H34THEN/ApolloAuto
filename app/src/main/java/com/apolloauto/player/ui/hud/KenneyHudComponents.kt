@@ -36,7 +36,6 @@ import androidx.compose.ui.unit.sp
 import com.apolloauto.player.R
 import com.apolloauto.player.theme.InterfaceStyle
 import com.apolloauto.player.theme.LocalBodyFont
-import com.apolloauto.player.theme.LocalHudFont
 import com.apolloauto.player.theme.LocalHudPalette
 
 @Composable
@@ -46,7 +45,7 @@ fun ApolloSciFiPanel(
     content: @Composable ColumnScope.() -> Unit
 ) {
     val p = LocalHudPalette.current
-    val font = LocalHudFont.current
+    val font = LocalBodyFont.current
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(4.dp))
@@ -234,7 +233,7 @@ fun ApolloArtworkFrame(
 @Composable
 fun ApolloHudLabel(text: String, modifier: Modifier = Modifier, accent: Boolean = true) {
     val p = LocalHudPalette.current
-    val font = LocalHudFont.current
+    val font = LocalBodyFont.current
     Text(
         text.uppercase(),
         color = if (accent) p.primary else p.dim,

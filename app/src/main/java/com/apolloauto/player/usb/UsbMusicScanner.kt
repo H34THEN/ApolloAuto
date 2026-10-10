@@ -3,6 +3,7 @@ package com.apolloauto.player.usb
 import android.content.Context
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
+import com.apolloauto.player.data.FilenameMetadataParser
 import com.apolloauto.player.data.LibraryStore
 import com.apolloauto.player.data.Track
 import kotlinx.coroutines.Dispatchers
@@ -38,13 +39,17 @@ class UsbMusicScanner(
                 walk(child, name, out)
             } else if (child.isFile && isAudio(child.name)) {
                 val name = child.name ?: continue
-                val title = name.substringBeforeLast('.')
+                val (title, artist, album) = FilenameMetadataParser.resolve(
+                    embeddedTitle = null,
+                    embeddedArtist = null,
+                    displayName = name,
+                    folderFallback = folderLabel
+                )
                 out += Track(
                     id = child.uri.toString(),
                     title = title,
-                    // Keep folder as album context; do not duplicate into artist (D3 metadata policy).
-                    artist = "Unknown Artist",
-                    album = folderLabel,
+                    artist = artist,
+                    album = album,
                     uri = child.uri,
                     folder = folderLabel
                 )

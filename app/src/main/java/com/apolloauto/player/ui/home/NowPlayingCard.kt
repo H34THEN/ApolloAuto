@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -66,6 +67,7 @@ fun NowPlayingCard(
     onToggle: () -> Unit,
     onNext: () -> Unit,
     onShuffle: () -> Unit,
+    onRemix: () -> Unit = {},
     onRepeat: () -> Unit,
     onToggleCarFavorite: () -> Unit,
     onAddToPlaylist: () -> Unit,
@@ -96,8 +98,15 @@ fun NowPlayingCard(
         Spacer(Modifier.height(ApolloSpace.space8))
         Row(verticalAlignment = Alignment.CenterVertically) {
             ArtworkThumb(artworkUri = artworkUri, size = ApolloSpace.playerArt)
-            Spacer(Modifier.size(ApolloSpace.space12))
-            Column(Modifier.weight(1f)) {
+            Spacer(Modifier.size(ApolloSpace.space8))
+            IconButton(onClick = onPrev, modifier = Modifier.size(ApolloSpace.touchMin)) {
+                Icon(Icons.Default.SkipPrevious, "Previous", tint = p.primary, modifier = Modifier.size(28.dp))
+            }
+            Column(
+                Modifier
+                    .weight(1f)
+                    .padding(horizontal = 4.dp)
+            ) {
                 Text(
                     lines.getOrElse(0) { title },
                     color = p.soft,
@@ -127,6 +136,9 @@ fun NowPlayingCard(
                     )
                 }
             }
+            IconButton(onClick = onNext, modifier = Modifier.size(ApolloSpace.touchMin)) {
+                Icon(Icons.Default.SkipNext, "Next", tint = p.primary, modifier = Modifier.size(28.dp))
+            }
         }
         Spacer(Modifier.height(ApolloSpace.space12))
         if (kenney) {
@@ -155,13 +167,7 @@ fun NowPlayingCard(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onPrev, modifier = Modifier.size(ApolloSpace.touchMin)) {
-                Icon(Icons.Default.SkipPrevious, "Previous", tint = p.primary, modifier = Modifier.size(28.dp))
-            }
             BoxPlay(playing = playing, onClick = onToggle)
-            IconButton(onClick = onNext, modifier = Modifier.size(ApolloSpace.touchMin)) {
-                Icon(Icons.Default.SkipNext, "Next", tint = p.primary, modifier = Modifier.size(28.dp))
-            }
         }
         Row(
             Modifier.fillMaxWidth(),
@@ -169,7 +175,20 @@ fun NowPlayingCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onShuffle, modifier = Modifier.size(40.dp)) {
-                Icon(Icons.Default.Shuffle, "Shuffle", tint = if (shuffle) p.accent else p.dim, modifier = Modifier.size(20.dp))
+                Icon(
+                    Icons.Default.Shuffle,
+                    if (shuffle) "Shuffle on" else "Shuffle off",
+                    tint = if (shuffle) p.accent else p.dim,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            IconButton(onClick = onRemix, enabled = shuffle, modifier = Modifier.size(40.dp)) {
+                Icon(
+                    Icons.Default.Tune,
+                    "Remix shuffle",
+                    tint = if (shuffle) p.secondary else p.dim.copy(alpha = 0.35f),
+                    modifier = Modifier.size(20.dp)
+                )
             }
             IconButton(onClick = onRepeat, modifier = Modifier.size(40.dp)) {
                 Icon(

@@ -125,14 +125,30 @@ class PlayerController(private val context: Context) {
         val items = currentItems(ctrl)
         if (items.isEmpty()) return
         val apply = stableQueue.toggleShuffle(items, ctrl.currentMediaItemIndex) ?: return
+        applyQueueSilently(ctrl, apply)
+    }
+
+    /** Reshuffle upcoming tracks; keeps shuffle ON and does not interrupt the current track. */
+    fun remixShuffle() {
+        val ctrl = controller ?: return
+        val items = currentItems(ctrl)
+        if (items.isEmpty()) return
+        val apply = stableQueue.remix(items, ctrl.currentMediaItemIndex) ?: return
+        applyQueueSilently(ctrl, apply)
+    }
+
+    private fun applyQueueSilently(ctrl: MediaController, apply: StablePlaybackQueue.QueueApply) {
         val pos = ctrl.currentPosition.coerceAtLeast(0L)
-        val wasPlaying = ctrl.isPlaying
+        val playWhenReady = ctrl.playWhenReady
         applyingQueue = true
         try {
             ctrl.shuffleModeEnabled = false
             ctrl.setMediaItems(apply.items, apply.startIndex, pos)
-            ctrl.prepare()
-            if (wasPlaying) ctrl.play()
+            // Avoid prepare()+play() restart blip when already buffered.
+            if (ctrl.playbackState == Player.STATE_IDLE) {
+                ctrl.prepare()
+            }
+            ctrl.playWhenReady = playWhenReady
         } finally {
             applyingQueue = false
         }
