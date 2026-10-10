@@ -68,7 +68,9 @@ fun VisualizerGallerySheet(
         VisualizerCategory.TOPO,
         VisualizerCategory.PSY,
         VisualizerCategory.TRANCE,
-        VisualizerCategory.EXPERIMENTAL
+        VisualizerCategory.EXPERIMENTAL,
+        VisualizerCategory.SHADERTOY,
+        VisualizerCategory.MILK_LAB
     )
 
     Column(

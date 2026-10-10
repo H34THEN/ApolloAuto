@@ -92,7 +92,20 @@ object VisualizerBackgroundPolicy {
         VisualizerMode.WIRE_TERRAIN,
         VisualizerMode.NEON_TOPO,
         VisualizerMode.PSY_KALEIDO,
-        VisualizerMode.ACID_TUNNEL -> SceneBackgroundPreference.BLACK
+        VisualizerMode.ACID_TUNNEL,
+        VisualizerMode.ST01_GRAF_EQ,
+        VisualizerMode.ST02_LUNCHBREAK,
+        VisualizerMode.ST03_CYBER_FUJI,
+        VisualizerMode.ML_BLACK_HOLE,
+        VisualizerMode.ML_EVENT_HORIZON,
+        VisualizerMode.ML_XOR_PLASMA,
+        VisualizerMode.ML_INFERNAL_MESH,
+        VisualizerMode.ML_ASTRAL_COLLAPSE,
+        VisualizerMode.ML_NEON_RITUAL,
+        VisualizerMode.ML_LIQUID_WARP,
+        VisualizerMode.ML_GLITCH_CORE,
+        VisualizerMode.ML_CHAOS_TUNNEL,
+        VisualizerMode.ML_FRACTAL_BITE -> SceneBackgroundPreference.BLACK
 
         // Atmospheric worlds — AUTO keeps scene-drawn void (not album art)
         VisualizerMode.HYPERDRIVE,

@@ -45,7 +45,9 @@ enum class VisualizerCategory(val title: String) {
     TOPO("apollo // techno topographic"),
     PSY("apollo // trippy / stylized"),
     EXPERIMENTAL("apollo // experimental"),
-    FUN("apollo // fun")
+    FUN("apollo // fun"),
+    SHADERTOY("shadertoy // ST"),
+    MILK_LAB("milk // lab")
 }
 
 data class VisualizerModeEntry(
@@ -83,7 +85,20 @@ object VisualizerModeCatalog {
         VisualizerMode.WIRE_TERRAIN,
         VisualizerMode.NEON_TOPO,
         VisualizerMode.PSY_KALEIDO,
-        VisualizerMode.ACID_TUNNEL
+        VisualizerMode.ACID_TUNNEL,
+        VisualizerMode.ST01_GRAF_EQ,
+        VisualizerMode.ST02_LUNCHBREAK,
+        VisualizerMode.ST03_CYBER_FUJI,
+        VisualizerMode.ML_BLACK_HOLE,
+        VisualizerMode.ML_EVENT_HORIZON,
+        VisualizerMode.ML_XOR_PLASMA,
+        VisualizerMode.ML_INFERNAL_MESH,
+        VisualizerMode.ML_ASTRAL_COLLAPSE,
+        VisualizerMode.ML_NEON_RITUAL,
+        VisualizerMode.ML_LIQUID_WARP,
+        VisualizerMode.ML_GLITCH_CORE,
+        VisualizerMode.ML_CHAOS_TUNNEL,
+        VisualizerMode.ML_FRACTAL_BITE
     )
 
     val all: List<VisualizerModeEntry> = listOf(
@@ -353,6 +368,36 @@ object VisualizerModeCatalog {
             "ACID",
             "Acid spiral tunnel"
         ),
+        // --- shadertoy // ST ---
+        VisualizerModeEntry(
+            VisualizerMode.ST01_GRAF_EQ,
+            VisualizerCategory.SHADERTOY,
+            "ST01",
+            "GrafEq CRT equations (davidar / Xs3GWj)"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.ST02_LUNCHBREAK,
+            VisualizerCategory.SHADERTOY,
+            "ST02",
+            "lunchbreak minkowski solids (nabr / flGyWc)"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.ST03_CYBER_FUJI,
+            VisualizerCategory.SHADERTOY,
+            "ST03",
+            "Cyber Fuji 2020 sun/grid (kaiware007 / Wt33Wf)"
+        ),
+        // --- milk // lab ---
+        VisualizerModeEntry(VisualizerMode.ML_BLACK_HOLE, VisualizerCategory.MILK_LAB, "HOLE", "Accretion disk (XorDev Black hole vein)"),
+        VisualizerModeEntry(VisualizerMode.ML_EVENT_HORIZON, VisualizerCategory.MILK_LAB, "HORIZON", "Lensed warp rings"),
+        VisualizerModeEntry(VisualizerMode.ML_XOR_PLASMA, VisualizerCategory.MILK_LAB, "XPLASMA", "Xor-style plasma field"),
+        VisualizerModeEntry(VisualizerMode.ML_INFERNAL_MESH, VisualizerCategory.MILK_LAB, "INFERNAL", "Infernal spiral mesh"),
+        VisualizerModeEntry(VisualizerMode.ML_ASTRAL_COLLAPSE, VisualizerCategory.MILK_LAB, "ASTRAL", "Astral particle collapse"),
+        VisualizerModeEntry(VisualizerMode.ML_NEON_RITUAL, VisualizerCategory.MILK_LAB, "RITUAL", "Neon ritual polygons"),
+        VisualizerModeEntry(VisualizerMode.ML_LIQUID_WARP, VisualizerCategory.MILK_LAB, "LIQUIDW", "Liquid dimensional warp"),
+        VisualizerModeEntry(VisualizerMode.ML_GLITCH_CORE, VisualizerCategory.MILK_LAB, "GLITCH", "Glitch spectrum core"),
+        VisualizerModeEntry(VisualizerMode.ML_CHAOS_TUNNEL, VisualizerCategory.MILK_LAB, "CHAOS", "Chaotic plasma tunnel"),
+        VisualizerModeEntry(VisualizerMode.ML_FRACTAL_BITE, VisualizerCategory.MILK_LAB, "BITE", "Fractal devourer"),
         VisualizerModeEntry(VisualizerMode.AUDIBLE_SPIRALS, VisualizerCategory.EXPERIMENTAL, "SPIRAL", "Archimedean audible spirals"),
         VisualizerModeEntry(VisualizerMode.FLUCTUS_FLOW, VisualizerCategory.EXPERIMENTAL, "FLUCTUS", "3D ribbon wave sculpture"),
         VisualizerModeEntry(VisualizerMode.WAVEFORM_VOID, VisualizerCategory.EXPERIMENTAL, "VOID", "Layered waveform landscape"),

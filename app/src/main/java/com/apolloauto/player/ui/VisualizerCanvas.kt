@@ -234,7 +234,20 @@ fun ApolloVisualizerSurface(
                 VisualizerMode.PSY_KALEIDO,
                 VisualizerMode.ACID_TUNNEL,
                 VisualizerMode.LYRICS_RAINBOW,
-                VisualizerMode.PARTY_MARQUEE -> true
+                VisualizerMode.PARTY_MARQUEE,
+                VisualizerMode.ST01_GRAF_EQ,
+                VisualizerMode.ST02_LUNCHBREAK,
+                VisualizerMode.ST03_CYBER_FUJI,
+                VisualizerMode.ML_BLACK_HOLE,
+                VisualizerMode.ML_EVENT_HORIZON,
+                VisualizerMode.ML_XOR_PLASMA,
+                VisualizerMode.ML_INFERNAL_MESH,
+                VisualizerMode.ML_ASTRAL_COLLAPSE,
+                VisualizerMode.ML_NEON_RITUAL,
+                VisualizerMode.ML_LIQUID_WARP,
+                VisualizerMode.ML_GLITCH_CORE,
+                VisualizerMode.ML_CHAOS_TUNNEL,
+                VisualizerMode.ML_FRACTAL_BITE -> true
                 else -> false
             }
             if (!cosmicScene && !resolvedClear) {
@@ -955,6 +968,45 @@ fun ApolloVisualizerSurface(
                     liveFeatures, p, spectrum, fastPhase, playing, sceneClear
                 )
                 VisualizerMode.ACID_TUNNEL -> drawAcidTunnelScene(
+                    liveFeatures, p, spectrum, fastPhase, playing, sceneClear
+                )
+                VisualizerMode.ST01_GRAF_EQ -> drawSt01GrafEqScene(
+                    liveFeatures, p, spectrum, fastPhase, playing, sceneClear
+                )
+                VisualizerMode.ST02_LUNCHBREAK -> drawSt02LunchbreakScene(
+                    liveFeatures, p, spectrum, fastPhase, playing, sceneClear
+                )
+                VisualizerMode.ST03_CYBER_FUJI -> drawSt03CyberFujiScene(
+                    liveFeatures, p, spectrum, fastPhase, playing, sceneClear
+                )
+                VisualizerMode.ML_BLACK_HOLE -> drawMlBlackHoleScene(
+                    liveFeatures, p, spectrum, fastPhase, playing, sceneClear
+                )
+                VisualizerMode.ML_EVENT_HORIZON -> drawMlEventHorizonScene(
+                    liveFeatures, p, spectrum, fastPhase, playing, sceneClear
+                )
+                VisualizerMode.ML_XOR_PLASMA -> drawMlXorPlasmaScene(
+                    liveFeatures, p, spectrum, fastPhase, playing, sceneClear
+                )
+                VisualizerMode.ML_INFERNAL_MESH -> drawMlInfernalMeshScene(
+                    liveFeatures, p, spectrum, fastPhase, playing, sceneClear
+                )
+                VisualizerMode.ML_ASTRAL_COLLAPSE -> drawMlAstralCollapseScene(
+                    liveFeatures, p, spectrum, fastPhase, playing, sceneClear
+                )
+                VisualizerMode.ML_NEON_RITUAL -> drawMlNeonRitualScene(
+                    liveFeatures, p, spectrum, fastPhase, playing, sceneClear
+                )
+                VisualizerMode.ML_LIQUID_WARP -> drawMlLiquidWarpScene(
+                    liveFeatures, p, waveData, spectrum, fastPhase, playing, sceneClear
+                )
+                VisualizerMode.ML_GLITCH_CORE -> drawMlGlitchCoreScene(
+                    liveFeatures, p, spectrum, fastPhase, playing, sceneClear
+                )
+                VisualizerMode.ML_CHAOS_TUNNEL -> drawMlChaosTunnelScene(
+                    liveFeatures, p, spectrum, fastPhase, playing, sceneClear
+                )
+                VisualizerMode.ML_FRACTAL_BITE -> drawMlFractalBiteScene(
                     liveFeatures, p, spectrum, fastPhase, playing, sceneClear
                 )
             }

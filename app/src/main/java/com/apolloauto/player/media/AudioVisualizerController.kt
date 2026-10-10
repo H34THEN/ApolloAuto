@@ -121,7 +121,22 @@ enum class VisualizerMode {
     WIRE_TERRAIN,
     NEON_TOPO,
     PSY_KALEIDO,
-    ACID_TUNNEL
+    ACID_TUNNEL,
+    // --- Shadertoy ST01–ST03 (Compose interpretations) ---
+    ST01_GRAF_EQ,
+    ST02_LUNCHBREAK,
+    ST03_CYBER_FUJI,
+    // --- MILK//LAB (Apollo originals; XorDev aesthetic vein) ---
+    ML_BLACK_HOLE,
+    ML_EVENT_HORIZON,
+    ML_XOR_PLASMA,
+    ML_INFERNAL_MESH,
+    ML_ASTRAL_COLLAPSE,
+    ML_NEON_RITUAL,
+    ML_LIQUID_WARP,
+    ML_GLITCH_CORE,
+    ML_CHAOS_TUNNEL,
+    ML_FRACTAL_BITE
 }
 
 /**

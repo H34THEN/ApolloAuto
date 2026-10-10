@@ -3,7 +3,7 @@
 **Codename:** APOLLO // AUDIO COMMAND SYSTEM  
 **Workspace:** `/Users/Gengar/Desktop/local-github/ApolloAuto`  
 **Package:** `com.apolloauto.player` (debug: `com.apolloauto.player.debug`)  
-**Last updated:** 2026-10-09 (V5.2.1 — Stars2 crash fix, retire SIER, ECHOHUNT Settings UI)
+**Last updated:** 2026-10-10 (V5.3 — Shadertoy ST01–ST03 + MILK//LAB gallery; see APOLLO_V5_3_SHADER_SCENES.md)
 
 ## Phase A — Existing Application Audit
 
