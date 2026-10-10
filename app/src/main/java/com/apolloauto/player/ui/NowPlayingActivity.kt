@@ -64,6 +64,7 @@ import com.apolloauto.player.media.PlayerController
 import com.apolloauto.player.media.RepeatModeUi
 import com.apolloauto.player.media.VisualizerMode
 import com.apolloauto.player.theme.ApolloCyberTheme
+import com.apolloauto.player.data.TrackMetadataFormatter
 import com.apolloauto.player.theme.LocalBodyFont
 import com.apolloauto.player.theme.LocalHudFont
 import com.apolloauto.player.theme.LocalHudPalette
@@ -200,6 +201,7 @@ private fun NowPlayingScreen(onClose: () -> Unit) {
                 PlayerLayoutMode.TACTICAL -> TacticalLayout(
                     playbackTitle = playback.title,
                     artist = playback.artist,
+                    album = playback.album,
                     artwork = playback.artworkUri,
                     playing = playback.playing,
                     shuffle = playback.shuffle,
@@ -287,6 +289,7 @@ private fun NowPlayingScreen(onClose: () -> Unit) {
 private fun TacticalLayout(
     playbackTitle: String,
     artist: String,
+    album: String,
     artwork: android.net.Uri?,
     playing: Boolean,
     shuffle: Boolean,
@@ -365,22 +368,25 @@ private fun TacticalLayout(
         }
 
         ApolloSciFiPanel(title = "TRACK DATA") {
+            val lines = TrackMetadataFormatter.displayLines(playbackTitle, artist, album)
             Text(
-                playbackTitle,
+                lines[0],
                 color = p.soft,
                 fontSize = 22.sp,
                 fontFamily = bodyFont,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
-            Text(
-                artist,
-                color = p.dim,
-                fontSize = 15.sp,
-                fontFamily = bodyFont,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            if (lines.size > 1) {
+                Text(
+                    lines[1],
+                    color = p.dim,
+                    fontSize = 15.sp,
+                    fontFamily = bodyFont,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
             Spacer(Modifier.height(8.dp))
             ApolloHudProgress(progress, height = 14.dp)
             Spacer(Modifier.height(4.dp))

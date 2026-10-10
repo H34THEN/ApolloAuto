@@ -42,7 +42,8 @@ class UsbMusicScanner(
                 out += Track(
                     id = child.uri.toString(),
                     title = title,
-                    artist = folderLabel,
+                    // Keep folder as album context; do not duplicate into artist (D3 metadata policy).
+                    artist = "Unknown Artist",
                     album = folderLabel,
                     uri = child.uri,
                     folder = folderLabel

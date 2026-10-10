@@ -8,6 +8,7 @@ import com.apolloauto.player.data.PlaylistStore
 import com.apolloauto.player.media.AudioVisualizerController
 import com.apolloauto.player.media.EqualizerController
 import com.apolloauto.player.media.SleepTimerController
+import com.apolloauto.player.media.StablePlaybackQueue
 import com.apolloauto.player.theme.ThemeStore
 import com.apolloauto.player.usb.UsbMusicScanner
 import kotlinx.coroutines.CoroutineScope
@@ -36,6 +37,8 @@ class ApolloApp : Application() {
         private set
     lateinit var visualizerController: AudioVisualizerController
         private set
+    lateinit var stablePlaybackQueue: StablePlaybackQueue
+        private set
 
     /** Bound by playback service when live. */
     @Volatile
@@ -52,6 +55,7 @@ class ApolloApp : Application() {
         themeStore = ThemeStore(this)
         equalizerController = EqualizerController(this)
         visualizerController = AudioVisualizerController()
+        stablePlaybackQueue = StablePlaybackQueue()
         sleepTimerController = SleepTimerController(
             context = this,
             scope = appScope,

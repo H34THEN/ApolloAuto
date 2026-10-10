@@ -3,7 +3,7 @@
 **Codename:** APOLLO // AUDIO COMMAND SYSTEM  
 **Workspace:** `/Users/Gengar/Desktop/local-github/ApolloAuto`  
 **Package:** `com.apolloauto.player` (debug: `com.apolloauto.player.debug`)  
-**Last updated:** 2026-10-09 (Phase D.2 HUD UX refinement)
+**Last updated:** 2026-10-09 (Phase D.3 metadata / car heart / stable shuffle)
 
 ## Phase A — Existing Application Audit
 
@@ -47,7 +47,8 @@
 - Git baseline: `b29787a` — phase-2 baseline before HUD/EQ/theme expansion
 - Pre-Kenney tag: `apollo-pre-kenney-hud` → `7632dc8`
 - Kenney branch: `feature/kenney-cyberpunk-hud` @ `5787582`
-- UX branch: `feature/apollo-hud-ux-refinement` (active)
+- UX branch: `feature/apollo-hud-ux-refinement`
+- Active fix branch: `fix/apollo-metadata-car-controls-shuffle`
 - Device: `00021157P002695` (authorized)
 - Rollback: `docs/UI_REDESIGN_ROLLBACK.md` (+ `docs/HUD_ROLLBACK.md` for Kenney)
 
@@ -146,3 +147,18 @@
 **Acceptance progress:** Header density, nav readability, NP spacing, art fallback, library hierarchy, Car Mode clipping/empty state — addressed. Full §15 screenshot matrix and deep EQ/sleep/AA regression still open.
 
 **Next:** Extended visual QA (themes + Settings/EQ/sleep), optional Albums/Artists categories, merge approval gate
+
+### Phase D.3 — Metadata, Car heart, stable shuffle
+**Branch:** `fix/apollo-metadata-car-controls-shuffle` (not merged)  
+**Reports:** `docs/APOLLO_D3_FIX_REPORT.md`, `docs/APOLLO_QUEUE_BEHAVIOR.md`
+
+**Features completed:**
+- `TrackMetadataFormatter` suppresses redundant artist/album lines (storage unchanged)
+- USB scan no longer duplicates folder into artist+album
+- Car Mode SAVE TO CAR → heart icon (Car Favorites toggle)
+- `StablePlaybackQueue` one-shot shuffle reorder; NEXT does not reshuffle
+- Car Mode QUEUE shows player timeline order
+- Unit tests for formatter + shuffle order helper
+
+**Verified:** unit tests + debug install (device).  
+**Unverified:** Android Auto NEXT parity, process-death shuffle restore.

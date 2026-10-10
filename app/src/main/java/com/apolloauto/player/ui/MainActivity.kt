@@ -68,6 +68,9 @@ import com.apolloauto.player.data.LibrarySource
 import com.apolloauto.player.data.Playlist
 import com.apolloauto.player.data.PlaylistStore
 import com.apolloauto.player.data.Track
+import com.apolloauto.player.data.displayArtist
+import com.apolloauto.player.data.displaySecondary
+import com.apolloauto.player.data.displayTitle
 import com.apolloauto.player.media.PlayerController
 import com.apolloauto.player.theme.ApolloCyberTheme
 import com.apolloauto.player.theme.ApolloSpace
@@ -756,7 +759,7 @@ private fun TrackRow(
         Spacer(Modifier.width(ApolloSpace.space12))
         Column(Modifier.weight(1f)) {
             Text(
-                track.title,
+                track.displayTitle(),
                 color = if (playing) p.accent else p.soft,
                 fontFamily = body,
                 fontSize = ApolloTypeScale.bodySp.sp,
@@ -764,21 +767,24 @@ private fun TrackRow(
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                track.artist,
+                track.displayArtist(),
                 color = p.dim,
                 fontFamily = body,
                 fontSize = ApolloTypeScale.metaSp.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Text(
-                track.album.ifBlank { track.folder },
-                color = p.dim.copy(alpha = 0.8f),
-                fontFamily = body,
-                fontSize = 11.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            val secondary = track.displaySecondary()
+            if (secondary != null) {
+                Text(
+                    secondary,
+                    color = p.dim.copy(alpha = 0.8f),
+                    fontFamily = body,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
         if (inCar) {
             Icon(

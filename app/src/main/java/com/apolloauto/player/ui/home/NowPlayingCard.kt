@@ -36,15 +36,16 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.apolloauto.player.data.TrackMetadataFormatter
 import com.apolloauto.player.media.RepeatModeUi
 import com.apolloauto.player.theme.ApolloSpace
 import com.apolloauto.player.theme.ApolloTypeScale
+import com.apolloauto.player.theme.InterfaceStyle
 import com.apolloauto.player.theme.LocalBodyFont
 import com.apolloauto.player.theme.LocalHudPalette
 import com.apolloauto.player.ui.components.ArtworkThumb
 import com.apolloauto.player.ui.hud.ApolloHudProgress
 import com.apolloauto.player.ui.hud.useKenneyChrome
-import com.apolloauto.player.theme.InterfaceStyle
 
 @Composable
 fun NowPlayingCard(
@@ -74,6 +75,7 @@ fun NowPlayingCard(
     val body = LocalBodyFont.current
     val kenney = useKenneyChrome(interfaceStyle)
     val shape = RoundedCornerShape(ApolloSpace.corner)
+    val lines = TrackMetadataFormatter.displayLines(title, artist, album)
 
     Column(
         modifier = modifier
@@ -97,24 +99,26 @@ fun NowPlayingCard(
             Spacer(Modifier.size(ApolloSpace.space12))
             Column(Modifier.weight(1f)) {
                 Text(
-                    title,
+                    lines.getOrElse(0) { title },
                     color = p.soft,
                     fontFamily = body,
                     fontSize = ApolloTypeScale.trackTitleSp.sp,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
-                Text(
-                    artist,
-                    color = p.dim,
-                    fontFamily = body,
-                    fontSize = ApolloTypeScale.metaSp.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                if (album.isNotBlank()) {
+                if (lines.size > 1) {
                     Text(
-                        album,
+                        lines[1],
+                        color = p.dim,
+                        fontFamily = body,
+                        fontSize = ApolloTypeScale.metaSp.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                if (lines.size > 2) {
+                    Text(
+                        lines[2],
                         color = p.dim.copy(alpha = 0.85f),
                         fontFamily = body,
                         fontSize = ApolloTypeScale.metaSp.sp,
