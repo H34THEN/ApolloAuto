@@ -37,10 +37,17 @@ class DeviceMusicScanner(
                 MediaStore.Audio.Media.DISPLAY_NAME,
                 MediaStore.Audio.Media.RELATIVE_PATH
             )
-            val selection = "${MediaStore.Audio.Media.IS_MUSIC}!=0"
+            // Exclude ringtones / notifications / alarms even if MediaStore source is enabled.
+            val selection = buildString {
+                append("${MediaStore.Audio.Media.IS_MUSIC}!=0")
+                append(" AND ${MediaStore.Audio.Media.IS_RINGTONE}==0")
+                append(" AND ${MediaStore.Audio.Media.IS_NOTIFICATION}==0")
+                append(" AND ${MediaStore.Audio.Media.IS_ALARM}==0")
+            }
             val sort = "${MediaStore.Audio.Media.TITLE} COLLATE NOCASE ASC"
 
             val found = ArrayList<Track>(256)
+            val artByAlbum = HashMap<Long, Uri?>()
             context.contentResolver.query(collection, projection, selection, null, sort)?.use { cursor ->
                 val idCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
                 val titleCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
@@ -75,14 +82,19 @@ class DeviceMusicScanner(
                         it.equals(rawTitle, ignoreCase = true)
                     } ?: albumFromName
                     val uri = ContentUris.withAppendedId(collection, id)
-                    val art = if (albumId > 0) {
-                        ContentUris.withAppendedId(
-                            Uri.parse("content://media/external/audio/albumart"),
-                            albumId
-                        )
-                    } else null
+                    val trackKey = "phone:$id"
+                    var art = AlbumArtResolver.resolvePhoneArt(
+                        context = context,
+                        albumId = albumId,
+                        mediaUri = uri,
+                        trackKey = trackKey,
+                        cache = artByAlbum
+                    )
+                    if (art == null) {
+                        art = AlbumArtResolver.loadThumbnailUri(context, uri, trackKey)
+                    }
                     found += Track(
-                        id = "phone:$id",
+                        id = trackKey,
                         title = title,
                         artist = artist,
                         album = album,

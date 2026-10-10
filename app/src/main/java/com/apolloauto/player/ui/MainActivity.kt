@@ -1,11 +1,14 @@
 package com.apolloauto.player.ui
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.OpenableColumns
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -240,11 +243,13 @@ private fun ApolloHomeScreen() {
                         .padding(horizontal = ApolloSpace.screenPadding)
                         .padding(top = ApolloSpace.space8)
                 ) {
+                    val companionLine by app.themeStore.companionLine.collectAsState()
                     CompactApolloHeader(
                         themeLabel = themeId.label.take(14),
                         sourceLabel = source.name,
                         playing = playback.playing,
                         sleepLabel = if (sleep.running) "SLEEP ${sleep.remainingMs / 60000}m" else null,
+                        companionLine = companionLine,
                         onSettings = ::openSettings
                     )
 
@@ -348,7 +353,16 @@ private fun ApolloHomeScreen() {
                                 playingId = playback.mediaId,
                                 playlistStore = app.playlistStore,
                                 modifier = Modifier.weight(1f),
-                                onPlay = { list, index -> controller.playTracks(list, index) },
+                                onPlay = { list, index ->
+                                    // Preview list is capped for UI; always queue the full filtered library.
+                                    val id = list.getOrNull(index)?.id
+                                    val fullIndex = if (id != null) {
+                                        filtered.indexOfFirst { it.id == id }.coerceAtLeast(0)
+                                    } else {
+                                        index.coerceIn(0, (filtered.size - 1).coerceAtLeast(0))
+                                    }
+                                    controller.playTracks(filtered, fullIndex)
+                                },
                                 onAdd = { track ->
                                     addTrackId = track.id
                                     addTrackTitle = track.title
@@ -368,11 +382,21 @@ private fun ApolloHomeScreen() {
                                 }
                             )
                             Spacer(Modifier.height(ApolloSpace.space8))
+                            val recentTracks = remember(tracks) {
+                                app.playHistoryStore.recentlyPlayed(tracks)
+                            }
+                            val topTracks = remember(tracks) {
+                                app.playHistoryStore.mostPlayed(tracks)
+                            }
                             Text(
                                 when (libraryCategory) {
                                     LibraryCategory.TRACKS -> "LIBRARY // ${filtered.size}"
                                     LibraryCategory.CAR -> "CAR FAVORITES // ${carTracks.size}"
                                     LibraryCategory.PLAYLISTS -> "PLAYLISTS // ${playlists.size}"
+                                    LibraryCategory.RECENT -> "RECENT // ${recentTracks.size}"
+                                    LibraryCategory.TOP -> "MOST PLAYED // ${topTracks.size}"
+                                    LibraryCategory.ARTISTS -> "ARTISTS"
+                                    LibraryCategory.ALBUMS -> "ALBUMS"
                                 },
                                 color = p.primary,
                                 fontFamily = hud,
@@ -408,6 +432,90 @@ private fun ApolloHomeScreen() {
                                     },
                                     onToggleCar = { app.playlistStore.toggleCarFavorite(it.id) }
                                 )
+
+                                LibraryCategory.RECENT -> TrackList(
+                                    tracks = recentTracks,
+                                    playingId = playback.mediaId,
+                                    playlistStore = app.playlistStore,
+                                    emptyText = "Nothing played yet. The void is patient.",
+                                    modifier = Modifier.weight(1f),
+                                    onPlay = { list, index -> controller.playTracks(list, index) },
+                                    onAdd = { track ->
+                                        addTrackId = track.id
+                                        addTrackTitle = track.title
+                                    },
+                                    onToggleCar = { app.playlistStore.toggleCarFavorite(it.id) }
+                                )
+
+                                LibraryCategory.TOP -> TrackList(
+                                    tracks = topTracks,
+                                    playingId = playback.mediaId,
+                                    playlistStore = app.playlistStore,
+                                    emptyText = "No habits formed. Concerning.",
+                                    modifier = Modifier.weight(1f),
+                                    onPlay = { list, index -> controller.playTracks(list, index) },
+                                    onAdd = { track ->
+                                        addTrackId = track.id
+                                        addTrackTitle = track.title
+                                    },
+                                    onToggleCar = { app.playlistStore.toggleCarFavorite(it.id) }
+                                )
+
+                                LibraryCategory.ARTISTS -> {
+                                    val artists = remember(filtered) {
+                                        filtered.map { it.artist.ifBlank { "Unknown" } }.distinct().sorted()
+                                    }
+                                    LazyColumn(
+                                        Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(ApolloSpace.space8)
+                                    ) {
+                                        items(artists, key = { it }) { artist ->
+                                            val artistTracks = filtered.filter {
+                                                it.artist.ifBlank { "Unknown" } == artist
+                                            }
+                                            Text(
+                                                "$artist · ${artistTracks.size}",
+                                                color = p.soft,
+                                                fontFamily = body,
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .border(1.dp, p.primary.copy(alpha = 0.3f), RoundedCornerShape(4.dp))
+                                                    .clickable {
+                                                        controller.playTracks(artistTracks, 0)
+                                                    }
+                                                    .padding(12.dp)
+                                            )
+                                        }
+                                    }
+                                }
+
+                                LibraryCategory.ALBUMS -> {
+                                    val albums = remember(filtered) {
+                                        filtered.map { it.album.ifBlank { "Unknown Album" } }.distinct().sorted()
+                                    }
+                                    LazyColumn(
+                                        Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(ApolloSpace.space8)
+                                    ) {
+                                        items(albums, key = { it }) { album ->
+                                            val albumTracks = filtered.filter {
+                                                it.album.ifBlank { "Unknown Album" } == album
+                                            }
+                                            Text(
+                                                "$album · ${albumTracks.size}",
+                                                color = p.soft,
+                                                fontFamily = body,
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .border(1.dp, p.primary.copy(alpha = 0.3f), RoundedCornerShape(4.dp))
+                                                    .clickable {
+                                                        controller.playTracks(albumTracks, 0)
+                                                    }
+                                                    .padding(12.dp)
+                                            )
+                                        }
+                                    }
+                                }
 
                                 LibraryCategory.PLAYLISTS -> {
                                     if (selectedPlaylistId == null) {
@@ -738,7 +846,7 @@ private fun SourceScanRow(
             )
             Spacer(Modifier.width(4.dp))
             Text(
-                "Multi-source library · Settings → Library for full matrix",
+                "PHONE FOLDER = only that folder (no ringtones) · Settings → Library",
                 color = p.dim,
                 fontFamily = body,
                 fontSize = 11.sp
@@ -920,9 +1028,17 @@ private fun PlaylistBrowser(
     val p = LocalHudPalette.current
     val body = LocalBodyFont.current
     val hud = LocalHudFont.current
+    val context = LocalContext.current
     val importM3u = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
-    ) { uri -> if (uri != null) onImportM3u(uri) }
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        if (!isM3uUri(context, uri)) {
+            Toast.makeText(context, "Please select an .m3u or .m3u8 file", Toast.LENGTH_SHORT).show()
+            return@rememberLauncherForActivityResult
+        }
+        onImportM3u(uri)
+    }
     Column(modifier.fillMaxSize()) {
         Row(
             Modifier.fillMaxWidth(),
@@ -945,7 +1061,16 @@ private fun PlaylistBrowser(
                         .clip(RoundedCornerShape(4.dp))
                         .border(1.dp, p.accent.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
                         .clickable {
-                            importM3u.launch(arrayOf("audio/x-mpegurl", "application/vnd.apple.mpegurl", "text/*", "*/*"))
+                            // MIME hints vary by OEM; acceptance is enforced by extension check.
+                            importM3u.launch(
+                                arrayOf(
+                                    "audio/x-mpegurl",
+                                    "audio/mpegurl",
+                                    "application/vnd.apple.mpegurl",
+                                    "application/x-mpegurl",
+                                    "text/plain"
+                                )
+                            )
                         }
                         .padding(horizontal = 10.dp, vertical = 8.dp),
                     fontSize = 11.sp
@@ -1049,6 +1174,20 @@ private fun filterList(list: List<Track>, query: String): List<Track> {
             it.album.lowercase().contains(q) ||
             it.folder.lowercase().contains(q)
     }
+}
+
+private fun isM3uUri(context: Context, uri: Uri): Boolean {
+    val name = runCatching {
+        context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+            ?.use { cursor ->
+                val idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (idx >= 0 && cursor.moveToFirst()) cursor.getString(idx) else null
+            }
+    }.getOrNull()
+        ?: uri.lastPathSegment
+        ?: return false
+    val lower = name.lowercase()
+    return lower.endsWith(".m3u") || lower.endsWith(".m3u8")
 }
 
 private fun progressOf(position: Long, duration: Long): Float {

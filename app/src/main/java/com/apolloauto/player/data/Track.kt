@@ -11,6 +11,8 @@ data class Track(
     val folder: String,
     val durationMs: Long = 0L,
     val artworkUri: Uri? = null,
+    /** Sidecar `.lrc` URI when discovered next to the audio file. */
+    val lyricsUri: Uri? = null,
     val albumId: Long = -1L,
     val sourceId: String = MusicSourceStore.PHONE_MEDIASTORE_ID,
     val sourceKind: MusicSourceKind = MusicSourceKind.PHONE_MEDIASTORE,

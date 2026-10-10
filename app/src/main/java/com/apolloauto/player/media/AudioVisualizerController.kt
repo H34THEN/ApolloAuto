@@ -22,7 +22,57 @@ enum class VisualizerMode {
     RAVE_CORE,
     SIGNAL_OCEAN,
     PLASMA_HEART,
-    FRACTURE
+    FRACTURE,
+    /** audiospectr-inspired symmetric wavebars */
+    WAVEBARS,
+    /** audiospectr-inspired mirrored neon spectrum */
+    MIRROR_BARS,
+    /** audiospectr-inspired bass pulse rings */
+    PULSE,
+    /** audiospectr-inspired radial particles */
+    PARTICLES,
+    /** MusicVisualizerV2-inspired radial HSB bars */
+    BASS_NATION,
+    /** MusicVisualizerV2-inspired floating FFT bubbles */
+    BUBBLE_BASS,
+    /** MusicVisualizerV2-inspired radial spokes + core */
+    CIRCULAR_PULSE,
+    /** MusicVisualizerV2-inspired zigzag color spectrum */
+    COLOR_SIGNAL,
+    /** MusicVisualizerV2-inspired mirrored dual spectrum */
+    DUAL_SIGNAL,
+    /** MusicVisualizerV2-inspired sine-warped spectrum */
+    MIXED_WAVE,
+    /** MusicVisualizerV2-inspired reactive shape grid */
+    SHAPE_WAVE,
+    /** MusicVisualizerV2-inspired warp starfield */
+    STAR_FIELD,
+    /** mostafa7904 Stars-Audio-Visualizer-inspired streaking stars */
+    STARS2,
+    /** Original DNA helix (MusicDNA-inspired aesthetic, not a source port) */
+    DNA_HELIX,
+    /** DNA ribbon spectrum fill */
+    DNA_WAVE,
+    /** Soft beat tunnel (MilkDrop/BeatDrop-inspired, Compose-only) */
+    BEAT_TUNNEL,
+    /** Cascading beat columns */
+    BEAT_CASCADE,
+    /** XR3Player-inspired stereo oscilloscope */
+    XR3_OSCILLO,
+    /** XR3Player-inspired radial circle-with-lines */
+    XR3_CIRCLE,
+    /** XR3Player-inspired polyspiral / rosette */
+    XR3_POLY,
+    /** XR3Player-inspired classic spectrum bars + peaks */
+    XR3_BARS,
+    /** XR3Player-inspired dual VU meters */
+    XR3_VU,
+    /** XR3Player-inspired Sierpinski triangles */
+    XR3_SIERPINSKI,
+    /** XR3Player-inspired Julia-set point field */
+    XR3_JULIA,
+    /** XR3Player-inspired wireframe 3D sphere sprite */
+    XR3_SPRITE
 }
 
 /**
@@ -156,7 +206,7 @@ class AudioVisualizerController {
                             }
                             val avg = if (count > 0) sum / count else 0f
                             // Compress + amplify quiet streams so bars react to real tracks.
-                            val boosted = (ln(1f + avg * 0.085f) * 1.65f).coerceIn(0f, 1.4f)
+                            val boosted = (ln(1f + avg * 0.11f) * 1.9f).coerceIn(0f, 1.5f)
                             out[i] = boosted.coerceIn(0f, 1f)
                         }
                         for (i in out.indices) {

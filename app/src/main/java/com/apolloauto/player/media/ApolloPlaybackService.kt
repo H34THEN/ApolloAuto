@@ -119,6 +119,11 @@ class ApolloPlaybackService : MediaLibraryService() {
             controller: MediaSession.ControllerInfo
         ): MediaSession.ConnectionResult {
             val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS
+                .buildUpon()
+                .add(SessionCommand(MediaIds.CMD_NEXT_VISUAL, Bundle.EMPTY))
+                .add(SessionCommand(MediaIds.CMD_TOGGLE_DRIVE, Bundle.EMPTY))
+                .add(SessionCommand(MediaIds.CMD_SAVE_CAR_FAV, Bundle.EMPTY))
+                .build()
             return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                 .setAvailableSessionCommands(sessionCommands)
                 .build()
@@ -129,13 +134,13 @@ class ApolloPlaybackService : MediaLibraryService() {
             browser: MediaSession.ControllerInfo,
             params: LibraryParams?
         ): ListenableFuture<LibraryResult<MediaItem>> {
+            val trackCount = ApolloApp.instance.libraryStore.tracks.value.size
             val root = MediaItem.Builder()
                 .setMediaId(MediaIds.ROOT)
                 .setMediaMetadata(
                     MediaMetadata.Builder()
-                        .setTitle(
-                            "Apollo Auto · ${ApolloApp.instance.libraryStore.source.value.name}"
-                        )
+                        .setTitle("Apollo Deck · $trackCount signals")
+                        .setSubtitle("Car Favorites · Playlists · Artists · Folders")
                         .setIsBrowsable(true)
                         .setIsPlayable(false)
                         .setMediaType(MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
@@ -170,6 +175,7 @@ class ApolloPlaybackService : MediaLibraryService() {
             val app = ApolloApp.instance
             val store = app.libraryStore
             val playlists = app.playlistStore.playlists.value
+            val tracks = store.tracks.value
             val items = when {
                 parentId == MediaIds.ROOT -> {
                     val car = app.playlistStore.carFavorites()
@@ -181,8 +187,13 @@ class ApolloPlaybackService : MediaLibraryService() {
                             )
                         )
                         .add(folderItem(MediaIds.PLAYLISTS, "Playlists (${playlists.size})"))
-                        .add(folderItem(MediaIds.ALL, "All Tracks (${store.tracks.value.size})"))
-                        .addAll(store.folders().map { folderBrowsable(it) })
+                        .add(folderItem(MediaIds.RECENT, "Recently Played"))
+                        .add(folderItem(MediaIds.MOST_PLAYED, "Most Played"))
+                        .add(folderItem(MediaIds.ARTISTS, "Artists"))
+                        .add(folderItem(MediaIds.ALBUMS, "Albums"))
+                        .add(folderItem(MediaIds.FOLDERS, "Folders (${store.folders().size})"))
+                        .add(folderItem(MediaIds.ALL, "All Tracks (${tracks.size})"))
+                        .add(folderItem(MediaIds.VISUALIZERS, "Visualizer Modes"))
                         .build()
                 }
                 parentId == MediaIds.PLAYLISTS -> {
@@ -195,13 +206,68 @@ class ApolloPlaybackService : MediaLibraryService() {
                         }
                     )
                 }
+                parentId == MediaIds.FOLDERS -> {
+                    ImmutableList.copyOf(store.folders().map { folderBrowsable(it) })
+                }
+                parentId == MediaIds.RECENT -> {
+                    ImmutableList.copyOf(
+                        app.playHistoryStore.recentlyPlayed(tracks).map { it.toPlayable() }
+                    )
+                }
+                parentId == MediaIds.MOST_PLAYED -> {
+                    ImmutableList.copyOf(
+                        app.playHistoryStore.mostPlayed(tracks).map { it.toPlayable() }
+                    )
+                }
+                parentId == MediaIds.ARTISTS -> {
+                    val artists = tracks.map { it.artist.ifBlank { "Unknown" } }.distinct().sorted()
+                    ImmutableList.copyOf(
+                        artists.map { folderItem(MediaIds.ARTIST_PREFIX + it, it) }
+                    )
+                }
+                parentId.startsWith(MediaIds.ARTIST_PREFIX) -> {
+                    val artist = parentId.removePrefix(MediaIds.ARTIST_PREFIX)
+                    ImmutableList.copyOf(
+                        tracks.filter { it.artist.ifBlank { "Unknown" } == artist }.map { it.toPlayable() }
+                    )
+                }
+                parentId == MediaIds.ALBUMS -> {
+                    val albums = tracks.map { it.album.ifBlank { "Unknown Album" } }.distinct().sorted()
+                    ImmutableList.copyOf(
+                        albums.map { folderItem(MediaIds.ALBUM_PREFIX + it, it) }
+                    )
+                }
+                parentId.startsWith(MediaIds.ALBUM_PREFIX) -> {
+                    val album = parentId.removePrefix(MediaIds.ALBUM_PREFIX)
+                    ImmutableList.copyOf(
+                        tracks.filter { it.album.ifBlank { "Unknown Album" } == album }.map { it.toPlayable() }
+                    )
+                }
+                parentId == MediaIds.VISUALIZERS -> {
+                    val enabled = app.themeStore.enabledVisualizerModes.value
+                    ImmutableList.copyOf(
+                        VisualizerMode.entries.filter { it in enabled }.map { mode ->
+                            folderItem(MediaIds.VIZ_PREFIX + mode.name, mode.name.replace('_', ' '))
+                        }
+                    )
+                }
+                parentId.startsWith(MediaIds.VIZ_PREFIX) -> {
+                    val name = parentId.removePrefix(MediaIds.VIZ_PREFIX)
+                    runCatching {
+                        val mode = VisualizerMode.valueOf(name)
+                        app.themeStore.setVisualizerMode(mode)
+                        app.visualizerController.setMode(mode)
+                        app.themeStore.speak(com.apolloauto.player.companion.CompanionVoice.vizLine())
+                    }
+                    ImmutableList.of()
+                }
                 parentId == MediaIds.ALL -> {
-                    ImmutableList.copyOf(store.tracks.value.map { it.toPlayable() })
+                    ImmutableList.copyOf(tracks.map { it.toPlayable() })
                 }
                 parentId.startsWith(MediaIds.PLAYLIST_PREFIX) -> {
                     val id = parentId.removePrefix(MediaIds.PLAYLIST_PREFIX)
                     ImmutableList.copyOf(
-                        app.playlistStore.resolveById(id, store.tracks.value).map { it.toPlayable() }
+                        app.playlistStore.resolveById(id, tracks).map { it.toPlayable() }
                     )
                 }
                 parentId.startsWith(MediaIds.FOLDER_PREFIX) -> {
@@ -255,6 +321,34 @@ class ApolloPlaybackService : MediaLibraryService() {
             customCommand: SessionCommand,
             args: Bundle
         ): ListenableFuture<SessionResult> {
+            val app = ApolloApp.instance
+            when (customCommand.customAction) {
+                MediaIds.CMD_NEXT_VISUAL -> {
+                    val enabled = app.themeStore.enabledVisualizerModes.value
+                    val current = app.visualizerController.mode.value
+                    val next = com.apolloauto.player.ui.VisualizerModeCatalog.nextMode(current, enabled)
+                    app.themeStore.setVisualizerMode(next)
+                    app.visualizerController.setMode(next)
+                    app.themeStore.speak(com.apolloauto.player.companion.CompanionVoice.vizLine())
+                    return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                }
+                MediaIds.CMD_TOGGLE_DRIVE -> {
+                    val on = app.themeStore.toggleDriveMode()
+                    app.themeStore.speak(
+                        if (on) com.apolloauto.player.companion.CompanionVoice.driveOnLine()
+                        else com.apolloauto.player.companion.CompanionVoice.driveOffLine()
+                    )
+                    return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                }
+                MediaIds.CMD_SAVE_CAR_FAV -> {
+                    val id = player?.currentMediaItem?.mediaId
+                    if (!id.isNullOrBlank()) {
+                        app.playlistStore.toggleCarFavorite(id)
+                        app.themeStore.speak(com.apolloauto.player.companion.CompanionVoice.favoriteLine())
+                    }
+                    return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                }
+            }
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED))
         }
 
@@ -263,6 +357,19 @@ class ApolloPlaybackService : MediaLibraryService() {
             controller: MediaSession.ControllerInfo
         ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
             val app = ApolloApp.instance
+            val saved = app.playbackSessionStore.load()
+            if (saved != null) {
+                val items = saved.toMediaItems().filter { it.localConfiguration?.uri != null }
+                if (items.isNotEmpty()) {
+                    return Futures.immediateFuture(
+                        MediaSession.MediaItemsWithStartPosition(
+                            items,
+                            saved.index.coerceIn(0, items.lastIndex),
+                            saved.positionMs
+                        )
+                    )
+                }
+            }
             val car = app.playlistStore.resolveById(
                 PlaylistStore.CAR_FAVORITES_ID,
                 app.libraryStore.tracks.value

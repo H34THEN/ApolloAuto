@@ -100,6 +100,36 @@ class ThemeStore(context: Context) {
     )
     val visualizerMode: StateFlow<VisualizerMode> = _visualizerMode.asStateFlow()
 
+    private val _vizRandomizer = MutableStateFlow(prefs.getBoolean(KEY_VIZ_RANDOM, false))
+    val vizRandomizer: StateFlow<Boolean> = _vizRandomizer.asStateFlow()
+
+    private val _enabledVisualizerModes = MutableStateFlow(loadEnabledModes())
+    val enabledVisualizerModes: StateFlow<Set<VisualizerMode>> = _enabledVisualizerModes.asStateFlow()
+
+    private val _driveMode = MutableStateFlow(prefs.getBoolean(KEY_DRIVE_MODE, false))
+    val driveMode: StateFlow<Boolean> = _driveMode.asStateFlow()
+
+    private val _beatFlash = MutableStateFlow(prefs.getFloat(KEY_BEAT_FLASH, 0.35f))
+    val beatFlash: StateFlow<Float> = _beatFlash.asStateFlow()
+
+    private val _artColorLock = MutableStateFlow(prefs.getBoolean(KEY_ART_COLOR_LOCK, false))
+    val artColorLock: StateFlow<Boolean> = _artColorLock.asStateFlow()
+
+    private val _cinematicViz = MutableStateFlow(prefs.getBoolean(KEY_CINEMATIC, false))
+    val cinematicViz: StateFlow<Boolean> = _cinematicViz.asStateFlow()
+
+    private val _phoneGain = MutableStateFlow(prefs.getFloat(KEY_PHONE_GAIN, 1f))
+    val phoneGain: StateFlow<Float> = _phoneGain.asStateFlow()
+
+    private val _usbGain = MutableStateFlow(prefs.getFloat(KEY_USB_GAIN, 1f))
+    val usbGain: StateFlow<Float> = _usbGain.asStateFlow()
+
+    private val _crossfadeMs = MutableStateFlow(prefs.getInt(KEY_CROSSFADE, 0))
+    val crossfadeMs: StateFlow<Int> = _crossfadeMs.asStateFlow()
+
+    private val _companionLine = MutableStateFlow("Deck standing by.")
+    val companionLine: StateFlow<String> = _companionLine.asStateFlow()
+
     fun activePalette(): HudPalette =
         paletteFor(_themeId.value, _custom.value.toPalette(), _glow.value)
 
@@ -137,6 +167,105 @@ class ThemeStore(context: Context) {
     fun setVisualizerMode(mode: VisualizerMode) {
         _visualizerMode.value = mode
         prefs.edit().putString(KEY_VIZ_MODE, mode.name).apply()
+    }
+
+    fun setVizRandomizer(enabled: Boolean) {
+        _vizRandomizer.value = enabled
+        prefs.edit().putBoolean(KEY_VIZ_RANDOM, enabled).apply()
+    }
+
+    fun toggleVizRandomizer(): Boolean {
+        val next = !_vizRandomizer.value
+        setVizRandomizer(next)
+        return next
+    }
+
+    fun isVisualizerModeEnabled(mode: VisualizerMode): Boolean =
+        mode in _enabledVisualizerModes.value
+
+    fun setVisualizerModeEnabled(mode: VisualizerMode, enabled: Boolean) {
+        val current = _enabledVisualizerModes.value.toMutableSet()
+        if (enabled) {
+            current += mode
+        } else {
+            if (current.size <= 1 && mode in current) return
+            current -= mode
+            if (_visualizerMode.value == mode) {
+                val fallback = current.firstOrNull() ?: VisualizerMode.SPECTRUM
+                setVisualizerMode(fallback)
+            }
+        }
+        persistEnabledModes(current)
+    }
+
+    fun setEnabledVisualizerModes(modes: Set<VisualizerMode>) {
+        val next = modes.ifEmpty { setOf(VisualizerMode.SPECTRUM) }
+        persistEnabledModes(next)
+        if (_visualizerMode.value !in next) {
+            setVisualizerMode(next.first())
+        }
+    }
+
+    fun enableAllVisualizerModes() {
+        setEnabledVisualizerModes(VisualizerMode.entries.toSet())
+    }
+
+    fun setDriveMode(enabled: Boolean) {
+        _driveMode.value = enabled
+        prefs.edit().putBoolean(KEY_DRIVE_MODE, enabled).apply()
+        if (enabled) {
+            setVizRandomizer(true)
+            setMotion(MotionProfile.REDUCED)
+        }
+    }
+
+    fun toggleDriveMode(): Boolean {
+        val next = !_driveMode.value
+        setDriveMode(next)
+        return next
+    }
+
+    fun setBeatFlash(value: Float) {
+        val v = value.coerceIn(0f, 1f)
+        _beatFlash.value = v
+        prefs.edit().putFloat(KEY_BEAT_FLASH, v).apply()
+    }
+
+    fun setArtColorLock(locked: Boolean) {
+        _artColorLock.value = locked
+        prefs.edit().putBoolean(KEY_ART_COLOR_LOCK, locked).apply()
+    }
+
+    fun setCinematicViz(enabled: Boolean) {
+        _cinematicViz.value = enabled
+        prefs.edit().putBoolean(KEY_CINEMATIC, enabled).apply()
+    }
+
+    fun setPhoneGain(value: Float) {
+        val v = value.coerceIn(0.5f, 1.5f)
+        _phoneGain.value = v
+        prefs.edit().putFloat(KEY_PHONE_GAIN, v).apply()
+    }
+
+    fun setUsbGain(value: Float) {
+        val v = value.coerceIn(0.5f, 1.5f)
+        _usbGain.value = v
+        prefs.edit().putFloat(KEY_USB_GAIN, v).apply()
+    }
+
+    fun setCrossfadeMs(ms: Int) {
+        val v = ms.coerceIn(0, 3000)
+        _crossfadeMs.value = v
+        prefs.edit().putInt(KEY_CROSSFADE, v).apply()
+    }
+
+    fun speak(line: String) {
+        _companionLine.value = line
+    }
+
+    fun enableVisualizerCategory(predicate: (VisualizerMode) -> Boolean) {
+        val matched = VisualizerMode.entries.filter(predicate).toSet()
+        setEnabledVisualizerModes(matched.ifEmpty { setOf(VisualizerMode.SPECTRUM) })
     }
 
     fun updateCustom(draft: CustomThemeDraft) {
@@ -195,6 +324,41 @@ class ThemeStore(context: Context) {
         prefs.edit().putString(KEY_CUSTOM, obj.toString()).apply()
     }
 
+    private fun loadEnabledModes(): Set<VisualizerMode> {
+        val all = VisualizerMode.entries.toSet()
+        val knownRaw = prefs.getString(KEY_VIZ_KNOWN, null)
+        val previouslyKnown = knownRaw
+            ?.split(',')
+            ?.mapNotNull { name -> runCatching { VisualizerMode.valueOf(name.trim()) }.getOrNull() }
+            ?.toSet()
+            .orEmpty()
+        val newlyAdded = all.filter { it !in previouslyKnown }.toSet()
+
+        val raw = prefs.getString(KEY_VIZ_ENABLED, null)
+        val base = if (raw.isNullOrBlank()) {
+            all
+        } else {
+            raw.split(',')
+                .mapNotNull { name -> runCatching { VisualizerMode.valueOf(name.trim()) }.getOrNull() }
+                .toSet()
+                .ifEmpty { all }
+        }
+        val merged = base + newlyAdded
+        prefs.edit()
+            .putString(KEY_VIZ_KNOWN, all.joinToString(",") { it.name })
+            .putString(KEY_VIZ_ENABLED, merged.joinToString(",") { it.name })
+            .apply()
+        return merged
+    }
+
+    private fun persistEnabledModes(modes: Set<VisualizerMode>) {
+        _enabledVisualizerModes.value = modes
+        prefs.edit()
+            .putString(KEY_VIZ_ENABLED, modes.joinToString(",") { it.name })
+            .putString(KEY_VIZ_KNOWN, VisualizerMode.entries.joinToString(",") { it.name })
+            .apply()
+    }
+
     companion object {
         private const val PREFS = "apollo_theme"
         private const val KEY_THEME = "hud_theme"
@@ -205,5 +369,15 @@ class ThemeStore(context: Context) {
         private const val KEY_PLAYER_LAYOUT = "player_layout"
         private const val KEY_FONT = "hud_font"
         private const val KEY_VIZ_MODE = "visualizer_mode"
+        private const val KEY_VIZ_RANDOM = "viz_randomizer"
+        private const val KEY_VIZ_ENABLED = "viz_enabled_modes"
+        private const val KEY_VIZ_KNOWN = "viz_known_modes"
+        private const val KEY_DRIVE_MODE = "drive_mode"
+        private const val KEY_BEAT_FLASH = "beat_flash"
+        private const val KEY_ART_COLOR_LOCK = "art_color_lock"
+        private const val KEY_CINEMATIC = "cinematic_viz"
+        private const val KEY_PHONE_GAIN = "phone_gain"
+        private const val KEY_USB_GAIN = "usb_gain"
+        private const val KEY_CROSSFADE = "crossfade_ms"
     }
 }

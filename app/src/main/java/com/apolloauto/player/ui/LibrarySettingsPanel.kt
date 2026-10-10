@@ -80,7 +80,7 @@ fun LibrarySettingsPanel() {
 
     Panel("APOLLO // STORAGE MATRIX") {
         Text(
-            "Configure phone folders, USB SSD, and SD card roots. Removing a source never deletes music files.",
+            "CHANGE PHONE FOLDER uses only that folder — MediaStore (ringtones / system audio) is turned off. Removing a source never deletes music files.",
             color = p.dim,
             fontFamily = body,
             fontSize = 12.sp

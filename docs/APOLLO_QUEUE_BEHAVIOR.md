@@ -22,9 +22,10 @@ Ordinary NEXT / PREVIOUS / track-end advancement never call `setMediaItems` and 
 
 ## Next / previous
 
-- NEXT → `seekToNextMediaItem()`
-- PREVIOUS → `seekToPreviousMediaItem()`
+- NEXT → `seekToNextMediaItem()` when available; at end of queue with no next item, wraps to index 0
+- PREVIOUS → `seekToPreviousMediaItem()` when available; otherwise wraps to last item
 - Queue tap → `seekTo(index, 0)` via `PlayerController.seekToQueueIndex`
+- Home “preview” list is UI-capped (40 rows) but play always queues the full filtered library
 
 ## Repeat
 

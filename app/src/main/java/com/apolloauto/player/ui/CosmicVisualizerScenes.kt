@@ -15,72 +15,22 @@ import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
-fun DrawScope.drawHyperdriveScene(
-    features: AudioFeatures,
-    palette: HudPalette,
-    phase: Float,
-    pulse: Float,
-    playing: Boolean
-) {
-    val cx = size.width / 2f
-    val cy = size.height / 2f
-    val speed = (0.35f + features.bass * 0.55f + features.onset * 0.25f) * if (playing) 1f else 0.45f
-    val starCount = 120
-    val depth = size.minDimension * 0.55f
-    drawRect(palette.voidBlack)
-    for (i in 0 until starCount) {
-        val seed = i * 97.13f
-        val angle = (seed * 0.017f + phase * 0.002f) % (PI.toFloat() * 2f)
-        var z = ((seed * 0.31f + phase * speed * 0.08f) % 1f)
-        z = z * z
-        val spread = depth * (0.15f + z * 0.85f)
-        val x = cx + cos(angle) * spread * (0.35f + features.mid * 0.15f)
-        val y = cy + sin(angle) * spread * (0.35f + features.mid * 0.15f)
-        val streak = (4f + z * 28f + features.onset * 12f) * pulse.coerceIn(0.9f, 1.1f)
-        val color = when {
-            i % 5 == 0 -> palette.accent
-            i % 3 == 0 -> palette.secondary
-            else -> palette.primary
-        }
-        val alpha = (0.12f + z * 0.65f + features.rms * 0.15f).coerceIn(0.08f, 0.92f)
-        drawLine(
-            color = color.copy(alpha = alpha),
-            start = Offset(x, y),
-            end = Offset(
-                cx + (x - cx) * (1f - streak / spread.coerceAtLeast(1f)),
-                cy + (y - cy) * (1f - streak / spread.coerceAtLeast(1f))
-            ),
-            strokeWidth = 1f + z * 2.5f,
-            cap = StrokeCap.Round
-        )
-    }
-    drawCircle(
-        brush = Brush.radialGradient(
-            listOf(
-                palette.primary.copy(alpha = 0.35f + features.bass * 0.25f),
-                palette.voidBlack.copy(alpha = 0f)
-            ),
-            center = Offset(cx, cy),
-            radius = depth * (0.22f + features.bass * 0.12f)
-        ),
-        radius = depth * 0.5f,
-        center = Offset(cx, cy)
-    )
-}
-
 fun DrawScope.drawNebulaScene(
     features: AudioFeatures,
     palette: HudPalette,
     phase: Float,
-    pulse: Float
+    pulse: Float,
+    clearBackdrop: Boolean = false
 ) {
-    drawRect(
-        Brush.radialGradient(
-            listOf(palette.panel.copy(alpha = 0.95f), palette.voidBlack),
-            center = Offset(size.width * 0.4f, size.height * 0.35f),
-            radius = size.maxDimension
+    if (!clearBackdrop) {
+        drawRect(
+            Brush.radialGradient(
+                listOf(palette.panel.copy(alpha = 0.95f), palette.voidBlack),
+                center = Offset(size.width * 0.4f, size.height * 0.35f),
+                radius = size.maxDimension
+            )
         )
-    )
+    }
     val blobs = 14
     for (b in 0 until blobs) {
         val t = phase * 0.0015f + b * 0.7f
@@ -129,9 +79,10 @@ fun DrawScope.drawRaveCoreScene(
     features: AudioFeatures,
     palette: HudPalette,
     phase: Float,
-    fft: FloatArray
+    fft: FloatArray,
+    clearBackdrop: Boolean = false
 ) {
-    drawRect(palette.voidBlack)
+    if (!clearBackdrop) drawRect(palette.voidBlack)
     val floorY = size.height * 0.88f
     drawLine(
         color = palette.primary.copy(alpha = 0.35f),
@@ -190,13 +141,16 @@ fun DrawScope.drawSignalOceanScene(
     features: AudioFeatures,
     palette: HudPalette,
     phase: Float,
-    wave: FloatArray
+    wave: FloatArray,
+    clearBackdrop: Boolean = false
 ) {
-    drawRect(
-        Brush.verticalGradient(
-            listOf(palette.voidBlack, palette.panel.copy(alpha = 0.9f), palette.voidBlack)
+    if (!clearBackdrop) {
+        drawRect(
+            Brush.verticalGradient(
+                listOf(palette.voidBlack, palette.panel.copy(alpha = 0.9f), palette.voidBlack)
+            )
         )
-    )
+    }
     val rows = 14
     val cols = 24
     val cellW = size.width / cols
@@ -208,9 +162,10 @@ fun DrawScope.drawSignalOceanScene(
             val x = col * cellW
             val waveIdx = (col * wave.size / cols.toFloat()).toInt().coerceIn(0, wave.lastIndex)
             val wv = wave[waveIdx]
-            val swell = sin(phase * 0.003f + col * 0.35f + row * 0.2f) * 0.5f + 0.5f
+            val swell = sin(phase * 0.01f + col * 0.35f + row * 0.2f) * 0.5f + 0.5f
             val y = baseY + row * (size.height * 0.028f) +
-                (wv * 22f + swell * 18f + features.bass * 28f) * (1f - row / rows.toFloat())
+                (wv * 36f + swell * 26f + features.bass * 42f + features.mid * 18f) *
+                (1f - row / rows.toFloat())
             if (!started) {
                 path.moveTo(x, y)
                 started = true
@@ -245,9 +200,10 @@ fun DrawScope.drawPlasmaHeartScene(
     features: AudioFeatures,
     palette: HudPalette,
     phase: Float,
-    pulse: Float
+    pulse: Float,
+    clearBackdrop: Boolean = false
 ) {
-    drawRect(palette.voidBlack)
+    if (!clearBackdrop) drawRect(palette.voidBlack)
     val cx = size.width / 2f
     val cy = size.height / 2f
     val layers = 6
@@ -302,9 +258,10 @@ fun DrawScope.drawFractureScene(
     palette: HudPalette,
     phase: Float,
     fft: FloatArray,
-    spin: Float
+    spin: Float,
+    clearBackdrop: Boolean = false
 ) {
-    drawRect(palette.voidBlack.copy(alpha = 0.98f))
+    if (!clearBackdrop) drawRect(palette.voidBlack.copy(alpha = 0.98f))
     val cx = size.width / 2f
     val cy = size.height / 2f
     val segments = 8

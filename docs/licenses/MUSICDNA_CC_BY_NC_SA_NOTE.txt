@@ -1,0 +1,13 @@
+Apollo II — MusicDNA attribution / license note
+==============================================
+
+https://github.com/harjot-oberai/MusicDNA is licensed under
+Creative Commons Attribution-NonCommercial-ShareAlike 4.0 (CC BY-NC-SA 4.0).
+
+Apollo does NOT copy or redistribute MusicDNA source. The DNA_HELIX / DNA_WAVE
+Compose scenes are original Apollo implementations inspired by the general idea
+of a “music DNA” waveform aesthetic, using Apollo’s session Visualizer FFT feed.
+
+If you redistribute Apollo commercially, treat DNA modes as Apollo-original art
+and keep this notice. Do not vendor MusicDNA Java sources under a proprietary
+license without complying with CC BY-NC-SA 4.0.

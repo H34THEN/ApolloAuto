@@ -1,0 +1,15 @@
+Apollo II — Cosmic "WIRE" visualizer attribution
+================================================
+
+The WIRE immersive scene is an original Jetpack Compose Canvas reimplementation
+inspired by the look and triangle-band displacement approach of:
+
+  https://github.com/nixonyh/UnityAudioVisualizer
+  Copyright contributors to nixonyh/UnityAudioVisualizer
+  Licensed under the Apache License, Version 2.0
+
+Apollo does NOT embed Unity, VFX Graph assets, Burst jobs, or that repository's
+shader/mesh binaries. Only the aesthetic concept (wireframe sphere + spectrum-
+driven triangle displacement + radial energy) was recreated for Android.
+
+Apache License 2.0: https://www.apache.org/licenses/LICENSE-2.0

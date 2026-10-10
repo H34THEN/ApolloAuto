@@ -34,7 +34,16 @@ class LibraryScanCoordinator(
         when (source.kind) {
             MusicSourceKind.PHONE_MEDIASTORE -> {
                 val tracks = deviceScanner.scanPhoneLibrary(publishDirectly = false)
-                sourceStore.recordScanResult(source.id, tracks, emptyList())
+                if (tracks.isEmpty() && sourceStore.tracksForSource(source.id).isNotEmpty()) {
+                    // Permission blip / MediaStore hiccup — keep last good phone catalog.
+                    sourceStore.recordScanFailure(
+                        source.id,
+                        "Phone scan returned empty — keeping previous library",
+                        connected = true
+                    )
+                } else {
+                    sourceStore.recordScanResult(source.id, tracks, emptyList())
+                }
             }
             MusicSourceKind.PHONE_FOLDER,
             MusicSourceKind.USB_SSD,
@@ -48,6 +57,11 @@ class LibraryScanCoordinator(
         }
     }
 
+    /**
+     * User-selected phone music folder becomes the phone library.
+     * Disables MediaStore (ringtones/notifications/etc.) and other phone folders
+     * so the catalog only shows files under this tree.
+     */
     suspend fun addPhoneFolder(treeUri: Uri, displayName: String?): MusicSource {
         val kind = MusicSourceStore.inferKindFromDisplayName(displayName)
         // Prefer PHONE_FOLDER when SAF root looks like internal storage.
@@ -62,7 +76,11 @@ class LibraryScanCoordinator(
             makePreferred = true
         )
         takePersistablePermission(treeUri)
+        sourceStore.useExclusivePhoneFolder(source.id)
         scanOne(source)
+        libraryStore.setStatus(
+            "Phone folder active — ${source.label}. MediaStore (ringtones) off."
+        )
         return source
     }
 

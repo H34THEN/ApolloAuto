@@ -1,0 +1,9 @@
+XR3Player (https://github.com/goxr3plus/XR3Player) is licensed under LGPL-3.0.
+
+Apollo II does NOT vendor or copy XR3Player JavaFX visualizer source.
+The XR3_* VisualizerMode scenes in Apollo are original Compose Canvas
+implementations inspired by XR3Player's display-mode concepts
+(oscilloscope, circle-with-lines, polyspiral, spectrum bars, VU, Sierpinski,
+Julia-set aesthetics, 3D sprite sphere).
+
+Attribution: goxr3plus / XR3Player — thank you for the inspiration.

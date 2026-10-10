@@ -27,8 +27,13 @@ import com.apolloauto.player.theme.LocalHudPalette
 
 enum class VisualizerCategory(val title: String) {
     SIGNAL("SIGNAL"),
+    SPECTR("SPECTR"),
     COSMIC("COSMIC"),
-    RAVE("RAVE")
+    RAVE("RAVE"),
+    MV2("MV2"),
+    DNA("DNA"),
+    DROP("DROP"),
+    XR3("XR3")
 }
 
 data class VisualizerModeEntry(
@@ -47,19 +52,200 @@ object VisualizerModeCatalog {
         VisualizerModeEntry(VisualizerMode.RINGS, VisualizerCategory.SIGNAL, "RINGS", "Concentric energy rings"),
         VisualizerModeEntry(VisualizerMode.LEVEL, VisualizerCategory.SIGNAL, "VU", "Dual VU meters"),
         VisualizerModeEntry(VisualizerMode.MINIMAL, VisualizerCategory.SIGNAL, "MIN", "Clean level strips"),
-        VisualizerModeEntry(VisualizerMode.HYPERDRIVE, VisualizerCategory.COSMIC, "DRIVE", "Star tunnel warp"),
+        VisualizerModeEntry(
+            VisualizerMode.WAVEBARS,
+            VisualizerCategory.SPECTR,
+            "WBAR",
+            "Symmetric seewav-style bars (audiospectr)"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.MIRROR_BARS,
+            VisualizerCategory.SPECTR,
+            "MIRR",
+            "Mirrored neon spectrum (audiospectr)"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.PULSE,
+            VisualizerCategory.SPECTR,
+            "PULSE",
+            "Bass rings + spokes (audiospectr)"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.PARTICLES,
+            VisualizerCategory.SPECTR,
+            "DOTS",
+            "Radial sparks (audiospectr)"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.HYPERDRIVE,
+            VisualizerCategory.COSMIC,
+            "WIRE",
+            "Wireframe audio mesh (nixonyh-inspired)"
+        ),
         VisualizerModeEntry(VisualizerMode.NEBULA, VisualizerCategory.COSMIC, "NEBULA", "Soft gas cloud drift"),
         VisualizerModeEntry(VisualizerMode.SIGNAL_OCEAN, VisualizerCategory.COSMIC, "OCEAN", "Wave mesh horizon"),
         VisualizerModeEntry(VisualizerMode.PLASMA_HEART, VisualizerCategory.COSMIC, "PLASMA", "Pulsing reactor core"),
         VisualizerModeEntry(VisualizerMode.RAVE_CORE, VisualizerCategory.RAVE, "CORE", "Industrial pillar grid"),
         VisualizerModeEntry(VisualizerMode.FRACTURE, VisualizerCategory.RAVE, "FRACT", "Kaleidoscope shards"),
-        VisualizerModeEntry(VisualizerMode.DECORATIVE, VisualizerCategory.RAVE, "DECO", "Ambient idle sweep")
+        VisualizerModeEntry(VisualizerMode.DECORATIVE, VisualizerCategory.RAVE, "DECO", "Ambient idle sweep"),
+        VisualizerModeEntry(
+            VisualizerMode.BASS_NATION,
+            VisualizerCategory.MV2,
+            "NATION",
+            "Radial HSB bars (MusicVisualizerV2)"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.BUBBLE_BASS,
+            VisualizerCategory.MV2,
+            "BUBBLE",
+            "Floating FFT bubbles (MusicVisualizerV2)"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.CIRCULAR_PULSE,
+            VisualizerCategory.MV2,
+            "CPULSE",
+            "Radial spokes + core (MusicVisualizerV2)"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.COLOR_SIGNAL,
+            VisualizerCategory.MV2,
+            "CSIG",
+            "Zigzag color spectrum (MusicVisualizerV2)"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.DUAL_SIGNAL,
+            VisualizerCategory.MV2,
+            "DUAL",
+            "Mirrored dual spectrum (MusicVisualizerV2)"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.MIXED_WAVE,
+            VisualizerCategory.MV2,
+            "MIXED",
+            "Sine-warped spectrum (MusicVisualizerV2)"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.SHAPE_WAVE,
+            VisualizerCategory.MV2,
+            "SHAPE",
+            "Reactive shape grid (MusicVisualizerV2)"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.STAR_FIELD,
+            VisualizerCategory.MV2,
+            "STARS",
+            "Warp starfield (MusicVisualizerV2)"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.STARS2,
+            VisualizerCategory.MV2,
+            "STARS2",
+            "Streaking FFT stars (mostafa7904-inspired)"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.DNA_HELIX,
+            VisualizerCategory.DNA,
+            "HELIX",
+            "Double-helix waveform (MusicDNA-inspired)"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.DNA_WAVE,
+            VisualizerCategory.DNA,
+            "STRAND",
+            "Twisted spectrum ribbon"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.BEAT_TUNNEL,
+            VisualizerCategory.DROP,
+            "TUNNEL",
+            "Beat warp rings (MilkDrop-inspired)"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.BEAT_CASCADE,
+            VisualizerCategory.DROP,
+            "DROP",
+            "Cascading beat columns"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.XR3_OSCILLO,
+            VisualizerCategory.XR3,
+            "OSC",
+            "Stereo oscilloscope (XR3-inspired)"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.XR3_CIRCLE,
+            VisualizerCategory.XR3,
+            "CIRC",
+            "Circle with lines (XR3-inspired)"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.XR3_POLY,
+            VisualizerCategory.XR3,
+            "POLY",
+            "Polyspiral / rosette (XR3-inspired)"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.XR3_BARS,
+            VisualizerCategory.XR3,
+            "XBARS",
+            "Classic spectrum + peaks (XR3-inspired)"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.XR3_VU,
+            VisualizerCategory.XR3,
+            "XVU",
+            "Dual VU meters (XR3-inspired)"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.XR3_SIERPINSKI,
+            VisualizerCategory.XR3,
+            "SIER",
+            "Sierpinski triangles (XR3-inspired)"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.XR3_JULIA,
+            VisualizerCategory.XR3,
+            "JULIA",
+            "Julia-set point field (XR3-inspired)"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.XR3_SPRITE,
+            VisualizerCategory.XR3,
+            "SPHERE",
+            "Wireframe sprite sphere (XR3-inspired)"
+        )
     )
+
+    /** Modes cycled by immersive next / randomizer (skip idle-only variants). */
+    val rotatable: List<VisualizerMode> = all
+        .map { it.mode }
+        .filter { it != VisualizerMode.DECORATIVE && it != VisualizerMode.MINIMAL }
 
     fun entry(mode: VisualizerMode): VisualizerModeEntry =
         all.firstOrNull { it.mode == mode } ?: all.first()
 
     fun compactLabel(mode: VisualizerMode): String = entry(mode).shortName
+
+    fun activePool(enabled: Set<VisualizerMode>): List<VisualizerMode> {
+        val pool = rotatable.filter { it in enabled }
+        return pool.ifEmpty {
+            rotatable.take(1).ifEmpty { listOf(VisualizerMode.SPECTRUM) }
+        }
+    }
+
+    fun nextMode(current: VisualizerMode, enabled: Set<VisualizerMode> = VisualizerMode.entries.toSet()): VisualizerMode {
+        val list = activePool(enabled)
+        val idx = list.indexOf(current).let { if (it < 0) 0 else it }
+        return list[(idx + 1) % list.size]
+    }
+
+    fun randomMode(
+        excluding: VisualizerMode? = null,
+        enabled: Set<VisualizerMode> = VisualizerMode.entries.toSet()
+    ): VisualizerMode {
+        val pool = activePool(enabled).filter { it != excluding }.ifEmpty { activePool(enabled) }
+        return pool.random()
+    }
 }
 
 @Composable
@@ -67,13 +253,20 @@ fun VisualizerModeSelector(
     selected: VisualizerMode,
     onSelect: (VisualizerMode) -> Unit,
     modifier: Modifier = Modifier,
-    showDescriptions: Boolean = true
+    showDescriptions: Boolean = true,
+    enabledModes: Set<VisualizerMode>? = null
 ) {
     val p = LocalHudPalette.current
     val hud = LocalHudFont.current
-    val body = LocalBodyFont.current
+    val visible = if (enabledModes == null) {
+        VisualizerModeCatalog.all
+    } else {
+        VisualizerModeCatalog.all.filter { it.mode in enabledModes }
+    }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         VisualizerCategory.entries.forEach { cat ->
+            val entries = visible.filter { it.category == cat }
+            if (entries.isEmpty()) return@forEach
             Text(
                 cat.title,
                 color = p.primary,
@@ -82,8 +275,7 @@ fun VisualizerModeSelector(
                 letterSpacing = 1.2.sp
             )
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                VisualizerModeCatalog.all
-                    .filter { it.category == cat }
+                entries
                     .chunked(3)
                     .forEach { row ->
                         Row(
@@ -113,14 +305,20 @@ fun VisualizerModeSelector(
 fun VisualizerModeCompactChips(
     selected: VisualizerMode,
     onSelect: (VisualizerMode) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabledModes: Set<VisualizerMode>? = null
 ) {
     val scroll = rememberScrollState()
+    val entries = if (enabledModes == null) {
+        VisualizerModeCatalog.all
+    } else {
+        VisualizerModeCatalog.all.filter { it.mode in enabledModes }
+    }
     Row(
         modifier = modifier.horizontalScroll(scroll),
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        VisualizerModeCatalog.all.forEach { entry ->
+        entries.forEach { entry ->
             CompactModeChip(
                 label = entry.shortName,
                 selected = selected == entry.mode,

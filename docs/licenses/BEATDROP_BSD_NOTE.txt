@@ -1,0 +1,9 @@
+Apollo II — BeatDrop / MilkDrop inspiration note
+================================================
+
+https://github.com/mvsoft74/BeatDrop is a MilkDrop2-style desktop visualizer
+(BSD-3-Clause wrapper around MilkDrop heritage code).
+
+Apollo does NOT embed BeatDrop, MilkDrop, DirectX, or ns-eel presets.
+BEAT_TUNNEL / BEAT_CASCADE are original Jetpack Compose Canvas scenes inspired
+by soft beat-reactive warp / cascade aesthetics only.

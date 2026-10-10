@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -72,7 +73,7 @@ class SettingsActivity : ComponentActivity() {
     }
 }
 
-private enum class SettingsTab { DISPLAY, LIBRARY, AUDIO, PLAYBACK }
+private enum class SettingsTab { DISPLAY, LIBRARY, AUDIO, VISUALIZER, PLAYBACK }
 
 @Composable
 private fun SettingsScreen(onClose: () -> Unit) {
@@ -106,7 +107,10 @@ private fun SettingsScreen(onClose: () -> Unit) {
                 )
             }
             Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 SettingsTab.entries.forEach { t ->
                     val selected = tab == t
                     Text(
@@ -134,6 +138,7 @@ private fun SettingsScreen(onClose: () -> Unit) {
                     SettingsTab.DISPLAY -> DisplaySettings()
                     SettingsTab.LIBRARY -> LibrarySettingsPanel()
                     SettingsTab.AUDIO -> AudioSettings()
+                    SettingsTab.VISUALIZER -> VisualizerSettingsPanel()
                     SettingsTab.PLAYBACK -> PlaybackSettings()
                 }
                 Spacer(Modifier.height(24.dp))
@@ -348,7 +353,6 @@ private fun AudioSettings() {
     val app = ApolloApp.instance
     val p = LocalHudPalette.current
     val eq by app.equalizerController.state.collectAsState()
-    val mode by app.visualizerController.mode.collectAsState()
     val capturing by app.visualizerController.capturing.collectAsState()
     val captureSource by app.visualizerController.captureSource.collectAsState()
     val interfaceStyle by app.themeStore.interfaceStyle.collectAsState()
@@ -366,23 +370,11 @@ private fun AudioSettings() {
             color = if (capturing) p.accent else p.dim,
             fontSize = 13.sp
         )
-        Spacer(Modifier.height(8.dp))
-        ApolloVisualizerSurface(
-            playing = true,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(160.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .border(1.dp, p.primary.copy(alpha = 0.35f), RoundedCornerShape(4.dp))
-                .background(p.voidBlack)
-        )
-        Spacer(Modifier.height(8.dp))
-        VisualizerModeSelector(
-            selected = mode,
-            onSelect = { m ->
-                app.themeStore.setVisualizerMode(m)
-                app.visualizerController.setMode(m)
-            }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "Visualizer modes, randomizer, and customizer → VISUALIZER tab",
+            color = p.dim,
+            fontSize = 12.sp
         )
     }
 

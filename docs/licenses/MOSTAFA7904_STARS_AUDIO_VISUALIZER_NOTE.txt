@@ -1,0 +1,11 @@
+Apollo II — Stars-Audio-Visualizer inspiration note
+===================================================
+
+STARS2 Compose scene is inspired by:
+
+  https://github.com/mostafa7904/Stars-Audio-Visualizer
+  (browser AudioContext star streaks; no SPDX license declared upstream)
+
+Apollo does NOT embed the HTML/JS demo. Behavior was reimplemented for
+Jetpack Compose Canvas using Apollo's playback-session Visualizer FFT feed:
+FFT-driven velocity, 2D drifting stars with short trailing strokes.

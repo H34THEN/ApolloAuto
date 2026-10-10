@@ -43,11 +43,20 @@ import kotlin.math.sin
 @Composable
 fun ApolloVisualizerSurface(
     playing: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** Skip opaque void fills so album art can show through (immersive). */
+    clearBackdrop: Boolean = false
 ) {
-    val p = LocalHudPalette.current
+    val themePalette = LocalHudPalette.current
+    val app = ApolloApp.instance
+    val artTint by app.albumArtColors.tint.collectAsState()
+    val artLock by app.themeStore.artColorLock.collectAsState()
+    val beatFlash by app.themeStore.beatFlash.collectAsState()
+    val cinematic by app.themeStore.cinematicViz.collectAsState()
+    app.albumArtColors.colorLock = artLock
+    val p = artTint?.applyTo(themePalette) ?: themePalette
     val motion = LocalMotionProfile.current
-    val viz = ApolloApp.instance.visualizerController
+    val viz = app.visualizerController
     val fft by viz.fft.collectAsState()
     val wave by viz.waveform.collectAsState()
     val level by viz.level.collectAsState()
@@ -56,6 +65,7 @@ fun ApolloVisualizerSurface(
     val capturing by viz.capturing.collectAsState()
     val mode by viz.mode.collectAsState()
     val animate = motion != MotionProfile.STATIC
+    val cinematicAmt = if (cinematic) 1f else 0f
 
     val spin = rememberInfiniteTransition(label = "vizSpin")
     val spinAngle by spin.animateFloat(
@@ -76,6 +86,16 @@ fun ApolloVisualizerSurface(
         ),
         label = "pulse"
     )
+    // Faster clock for warp / ocean motion so scenes feel alive.
+    val warpClock by spin.animateFloat(
+        initialValue = 0f,
+        targetValue = 1000f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(3200, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "warp"
+    )
 
     Box(modifier = modifier) {
         Canvas(Modifier.fillMaxSize()) {
@@ -85,10 +105,35 @@ fun ApolloVisualizerSurface(
                 VisualizerMode.RAVE_CORE,
                 VisualizerMode.SIGNAL_OCEAN,
                 VisualizerMode.PLASMA_HEART,
-                VisualizerMode.FRACTURE -> true
+                VisualizerMode.FRACTURE,
+                VisualizerMode.WAVEBARS,
+                VisualizerMode.MIRROR_BARS,
+                VisualizerMode.PULSE,
+                VisualizerMode.PARTICLES,
+                VisualizerMode.DNA_HELIX,
+                VisualizerMode.DNA_WAVE,
+                VisualizerMode.BEAT_TUNNEL,
+                VisualizerMode.BEAT_CASCADE,
+                VisualizerMode.BASS_NATION,
+                VisualizerMode.BUBBLE_BASS,
+                VisualizerMode.CIRCULAR_PULSE,
+                VisualizerMode.COLOR_SIGNAL,
+                VisualizerMode.DUAL_SIGNAL,
+                VisualizerMode.MIXED_WAVE,
+                VisualizerMode.SHAPE_WAVE,
+                VisualizerMode.STAR_FIELD,
+                VisualizerMode.STARS2,
+                VisualizerMode.XR3_OSCILLO,
+                VisualizerMode.XR3_CIRCLE,
+                VisualizerMode.XR3_POLY,
+                VisualizerMode.XR3_BARS,
+                VisualizerMode.XR3_VU,
+                VisualizerMode.XR3_SIERPINSKI,
+                VisualizerMode.XR3_JULIA,
+                VisualizerMode.XR3_SPRITE -> true
                 else -> false
             }
-            if (!cosmicScene) {
+            if (!cosmicScene && !clearBackdrop) {
                 val gridStep = size.width / 12f
                 for (i in 0..12) {
                     val x = i * gridStep
@@ -136,7 +181,7 @@ fun ApolloVisualizerSurface(
                     silence = 1f - energy
                 )
             }
-            val phase = spinAngle
+            val fastPhase = warpClock
 
             when (mode) {
                 VisualizerMode.SPECTRUM, VisualizerMode.DECORATIVE -> {
@@ -396,59 +441,281 @@ fun ApolloVisualizerSurface(
                     meter(topR, right, 0.1f)
                 }
 
-                VisualizerMode.HYPERDRIVE -> drawHyperdriveScene(
+                VisualizerMode.HYPERDRIVE -> drawWireframeSphereScene(
                     features = liveFeatures,
                     palette = p,
-                    phase = phase,
+                    phase = fastPhase,
                     pulse = pulse,
-                    playing = playing
+                    fft = spectrum,
+                    playing = playing,
+                    clearBackdrop = clearBackdrop
                 )
 
                 VisualizerMode.NEBULA -> drawNebulaScene(
                     features = liveFeatures,
                     palette = p,
-                    phase = phase,
-                    pulse = pulse
+                    phase = fastPhase,
+                    pulse = pulse,
+                    clearBackdrop = clearBackdrop
                 )
 
                 VisualizerMode.RAVE_CORE -> drawRaveCoreScene(
                     features = liveFeatures,
                     palette = p,
-                    phase = phase,
-                    fft = spectrum
+                    phase = fastPhase,
+                    fft = spectrum,
+                    clearBackdrop = clearBackdrop
                 )
 
                 VisualizerMode.SIGNAL_OCEAN -> drawSignalOceanScene(
                     features = liveFeatures,
                     palette = p,
-                    phase = phase,
-                    wave = waveData
+                    phase = fastPhase,
+                    wave = waveData,
+                    clearBackdrop = clearBackdrop
                 )
 
                 VisualizerMode.PLASMA_HEART -> drawPlasmaHeartScene(
                     features = liveFeatures,
                     palette = p,
-                    phase = phase,
-                    pulse = pulse
+                    phase = fastPhase,
+                    pulse = pulse,
+                    clearBackdrop = clearBackdrop
                 )
 
                 VisualizerMode.FRACTURE -> drawFractureScene(
                     features = liveFeatures,
                     palette = p,
-                    phase = phase,
+                    phase = fastPhase,
                     fft = spectrum,
-                    spin = spinAngle
+                    spin = spinAngle + fastPhase * 0.05f,
+                    clearBackdrop = clearBackdrop
+                )
+
+                VisualizerMode.WAVEBARS -> drawWavebarsScene(
+                    features = liveFeatures,
+                    palette = p,
+                    wave = waveData,
+                    playing = playing,
+                    clearBackdrop = clearBackdrop
+                )
+
+                VisualizerMode.MIRROR_BARS -> drawMirrorBarsScene(
+                    features = liveFeatures,
+                    palette = p,
+                    fft = spectrum,
+                    playing = playing,
+                    clearBackdrop = clearBackdrop
+                )
+
+                VisualizerMode.PULSE -> drawPulseScene(
+                    features = liveFeatures,
+                    palette = p,
+                    phase = fastPhase,
+                    playing = playing,
+                    clearBackdrop = clearBackdrop
+                )
+
+                VisualizerMode.PARTICLES -> drawParticlesScene(
+                    features = liveFeatures,
+                    palette = p,
+                    playing = playing,
+                    clearBackdrop = clearBackdrop
+                )
+
+                VisualizerMode.BASS_NATION -> drawBassNationScene(
+                    features = liveFeatures,
+                    palette = p,
+                    fft = spectrum,
+                    playing = playing,
+                    clearBackdrop = clearBackdrop
+                )
+
+                VisualizerMode.BUBBLE_BASS -> drawBubbleBassScene(
+                    features = liveFeatures,
+                    palette = p,
+                    fft = spectrum,
+                    phase = fastPhase,
+                    playing = playing,
+                    clearBackdrop = clearBackdrop
+                )
+
+                VisualizerMode.CIRCULAR_PULSE -> drawCircularPulseMvScene(
+                    features = liveFeatures,
+                    palette = p,
+                    fft = spectrum,
+                    playing = playing,
+                    clearBackdrop = clearBackdrop
+                )
+
+                VisualizerMode.COLOR_SIGNAL -> drawColorSignalScene(
+                    features = liveFeatures,
+                    palette = p,
+                    fft = spectrum,
+                    playing = playing,
+                    clearBackdrop = clearBackdrop
+                )
+
+                VisualizerMode.DUAL_SIGNAL -> drawDualSignalScene(
+                    features = liveFeatures,
+                    palette = p,
+                    fft = spectrum,
+                    playing = playing,
+                    clearBackdrop = clearBackdrop
+                )
+
+                VisualizerMode.MIXED_WAVE -> drawMixedWaveScene(
+                    features = liveFeatures,
+                    palette = p,
+                    fft = spectrum,
+                    phase = fastPhase,
+                    playing = playing,
+                    clearBackdrop = clearBackdrop
+                )
+
+                VisualizerMode.SHAPE_WAVE -> drawShapeWaveScene(
+                    features = liveFeatures,
+                    palette = p,
+                    phase = fastPhase,
+                    playing = playing,
+                    clearBackdrop = clearBackdrop
+                )
+
+                VisualizerMode.STAR_FIELD -> drawStarFieldScene(
+                    features = liveFeatures,
+                    palette = p,
+                    phase = fastPhase,
+                    playing = playing,
+                    clearBackdrop = clearBackdrop
+                )
+
+                VisualizerMode.STARS2 -> drawStars2Scene(
+                    features = liveFeatures,
+                    palette = p,
+                    fft = spectrum,
+                    playing = playing,
+                    clearBackdrop = clearBackdrop
+                )
+
+                VisualizerMode.DNA_HELIX -> drawDnaHelixScene(
+                    features = liveFeatures,
+                    palette = p,
+                    wave = waveData,
+                    phase = fastPhase,
+                    playing = playing,
+                    clearBackdrop = clearBackdrop,
+                    cinematic = cinematicAmt
+                )
+
+                VisualizerMode.DNA_WAVE -> drawDnaWaveScene(
+                    features = liveFeatures,
+                    palette = p,
+                    fft = spectrum,
+                    phase = fastPhase,
+                    playing = playing,
+                    clearBackdrop = clearBackdrop
+                )
+
+                VisualizerMode.BEAT_TUNNEL -> drawBeatTunnelScene(
+                    features = liveFeatures,
+                    palette = p,
+                    phase = fastPhase,
+                    playing = playing,
+                    clearBackdrop = clearBackdrop,
+                    beatFlash = beatFlash,
+                    cinematic = cinematicAmt
+                )
+
+                VisualizerMode.BEAT_CASCADE -> drawBeatCascadeScene(
+                    features = liveFeatures,
+                    palette = p,
+                    fft = spectrum,
+                    phase = fastPhase,
+                    playing = playing,
+                    clearBackdrop = clearBackdrop,
+                    beatFlash = beatFlash
+                )
+
+                VisualizerMode.XR3_OSCILLO -> drawXr3OscilloScene(
+                    features = liveFeatures,
+                    palette = p,
+                    wave = waveData,
+                    playing = playing,
+                    clearBackdrop = clearBackdrop
+                )
+
+                VisualizerMode.XR3_CIRCLE -> drawXr3CircleScene(
+                    features = liveFeatures,
+                    palette = p,
+                    spectrum = spectrum,
+                    phase = fastPhase,
+                    playing = playing,
+                    clearBackdrop = clearBackdrop
+                )
+
+                VisualizerMode.XR3_POLY -> drawXr3PolyScene(
+                    features = liveFeatures,
+                    palette = p,
+                    spectrum = spectrum,
+                    phase = fastPhase,
+                    playing = playing,
+                    clearBackdrop = clearBackdrop
+                )
+
+                VisualizerMode.XR3_BARS -> drawXr3BarsScene(
+                    features = liveFeatures,
+                    palette = p,
+                    spectrum = spectrum,
+                    playing = playing,
+                    clearBackdrop = clearBackdrop
+                )
+
+                VisualizerMode.XR3_VU -> drawXr3VuScene(
+                    features = liveFeatures,
+                    palette = p,
+                    level = lvl,
+                    bass = bassLvl,
+                    playing = playing,
+                    clearBackdrop = clearBackdrop
+                )
+
+                VisualizerMode.XR3_SIERPINSKI -> drawXr3SierpinskiScene(
+                    features = liveFeatures,
+                    palette = p,
+                    spectrum = spectrum,
+                    phase = fastPhase,
+                    playing = playing,
+                    clearBackdrop = clearBackdrop
+                )
+
+                VisualizerMode.XR3_JULIA -> drawXr3JuliaScene(
+                    features = liveFeatures,
+                    palette = p,
+                    phase = fastPhase,
+                    playing = playing,
+                    clearBackdrop = clearBackdrop
+                )
+
+                VisualizerMode.XR3_SPRITE -> drawXr3SpriteScene(
+                    features = liveFeatures,
+                    palette = p,
+                    spectrum = spectrum,
+                    phase = fastPhase,
+                    playing = playing,
+                    clearBackdrop = clearBackdrop
                 )
             }
         }
-        Image(
-            painter = painterResource(R.drawable.apollo_crosshair_c),
-            contentDescription = null,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(4.dp)
-                .size(16.dp),
-            colorFilter = ColorFilter.tint(p.primary.copy(alpha = 0.7f), BlendMode.SrcAtop)
-        )
+        if (!clearBackdrop) {
+            Image(
+                painter = painterResource(R.drawable.apollo_crosshair_c),
+                contentDescription = null,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(4.dp)
+                    .size(16.dp),
+                colorFilter = ColorFilter.tint(p.primary.copy(alpha = 0.7f), BlendMode.SrcAtop)
+            )
+        }
     }
 }

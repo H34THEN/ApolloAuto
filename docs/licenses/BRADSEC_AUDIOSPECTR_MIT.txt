@@ -1,0 +1,16 @@
+Apollo II — SPECTR visualizer styles attribution
+================================================
+
+Realtime Compose scenes WAVEBARS / MIRROR_BARS / PULSE / PARTICLES and the
+immersive blurred album-art backdrop are inspired by layer concepts from:
+
+  https://github.com/bradsec/audiospectr
+  Copyright (c) 2026 audiovidwave contributors
+  MIT License
+
+Apollo does NOT embed the Python CLI, librosa analysis pipeline, or FFmpeg
+MP4 exporter. Styles were reimplemented for Jetpack Compose Canvas using
+Apollo's existing playback-session Visualizer FFT/waveform feeds.
+
+MIT License text from upstream is included by reference; see the repository
+LICENSE file for the full terms.

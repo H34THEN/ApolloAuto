@@ -37,8 +37,9 @@ class SafLibraryScanner(
             ScanOutcome(tracks, playlists)
         } catch (t: Throwable) {
             val msg = t.message ?: "scan failed"
-            sourceStore.recordScanResult(source.id, emptyList(), emptyList(), error = msg, connected = false)
-            libraryStore.setStatus("Scan failed: $msg")
+            // Keep last good catalog — wiping to [] made static folders "disappear" after a bad rescan.
+            sourceStore.recordScanFailure(source.id, msg, connected = false)
+            libraryStore.setStatus("Scan failed: $msg (keeping previous library)")
             ScanOutcome(emptyList(), emptyList(), msg, connected = false)
         } finally {
             libraryStore.setScanning(false)
@@ -54,6 +55,18 @@ class SafLibraryScanner(
         playlists: MutableList<DiscoveredPlaylistFile>
     ) {
         val children = dir.listFiles()
+        val lyricsByBase = HashMap<String, Uri>(8)
+        var folderCover: Uri? = null
+        for (child in children) {
+            val name = child.name ?: continue
+            if (!child.isFile || name.startsWith(".")) continue
+            if (LyricsLoader.isLyricsFile(name)) {
+                val base = name.substringBeforeLast('.').lowercase(Locale.US)
+                lyricsByBase[base] = child.uri
+            } else if (folderCover == null && AlbumArtResolver.isCoverFileName(name)) {
+                folderCover = child.uri
+            }
+        }
         for (child in children) {
             val name = child.name ?: continue
             if (name.startsWith(".")) continue
@@ -71,16 +84,22 @@ class SafLibraryScanner(
                             displayName = name,
                             folderFallback = folderLabel
                         )
+                        val base = name.substringBeforeLast('.').lowercase(Locale.US)
+                        val trackId = "saf:${source.id}:${child.uri}"
+                        val art = folderCover
+                            ?: AlbumArtResolver.extractEmbedded(context, child.uri, trackId)
                         tracks += Track(
-                            id = "saf:${source.id}:${child.uri}",
+                            id = trackId,
                             title = title,
                             artist = artist,
                             album = album,
                             uri = child.uri,
                             folder = folderLabel,
+                            artworkUri = art,
                             sourceId = source.id,
                             sourceKind = source.kind,
                             relativePath = childRel.replace('\\', '/'),
+                            lyricsUri = lyricsByBase[base],
                             available = true
                         )
                     }

@@ -5,12 +5,16 @@ import com.apolloauto.player.data.DeviceMusicScanner
 import com.apolloauto.player.data.FavoritesStore
 import com.apolloauto.player.data.LibraryScanCoordinator
 import com.apolloauto.player.data.LibraryStore
+import com.apolloauto.player.companion.CompanionVoice
 import com.apolloauto.player.data.M3uPlaylistService
 import com.apolloauto.player.data.MusicSourceStore
+import com.apolloauto.player.data.PlayHistoryStore
 import com.apolloauto.player.data.PlaylistStore
 import com.apolloauto.player.data.SafLibraryScanner
+import com.apolloauto.player.media.AlbumArtColorStore
 import com.apolloauto.player.media.AudioVisualizerController
 import com.apolloauto.player.media.EqualizerController
+import com.apolloauto.player.media.PlaybackSessionStore
 import com.apolloauto.player.media.SleepTimerController
 import com.apolloauto.player.media.StablePlaybackQueue
 import com.apolloauto.player.theme.ThemeStore
@@ -51,6 +55,12 @@ class ApolloApp : Application() {
         private set
     lateinit var stablePlaybackQueue: StablePlaybackQueue
         private set
+    lateinit var albumArtColors: AlbumArtColorStore
+        private set
+    lateinit var playHistoryStore: PlayHistoryStore
+        private set
+    lateinit var playbackSessionStore: PlaybackSessionStore
+        private set
 
     /** Bound by playback service when live. */
     @Volatile
@@ -82,6 +92,10 @@ class ApolloApp : Application() {
             it.setMode(themeStore.visualizerMode.value)
         }
         stablePlaybackQueue = StablePlaybackQueue()
+        albumArtColors = AlbumArtColorStore(this, appScope)
+        playHistoryStore = PlayHistoryStore(this)
+        playbackSessionStore = PlaybackSessionStore(this)
+        themeStore.speak(CompanionVoice.bootLine())
         sleepTimerController = SleepTimerController(
             context = this,
             scope = appScope,

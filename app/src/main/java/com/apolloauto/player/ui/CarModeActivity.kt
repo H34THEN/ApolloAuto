@@ -146,6 +146,22 @@ private fun CarDeckScreen(onExit: () -> Unit) {
     } else 0f
     val metaLines = TrackMetadataFormatter.displayLines(playback.title, playback.artist, playback.album)
     val vizMode by app.visualizerController.mode.collectAsState()
+    val enabledVizModes by app.themeStore.enabledVisualizerModes.collectAsState()
+    val driveMode by app.themeStore.driveMode.collectAsState()
+    val companionLine by app.themeStore.companionLine.collectAsState()
+    val view = androidx.compose.ui.platform.LocalView.current
+
+    DisposableEffect(driveMode) {
+        val window = (view.context as? android.app.Activity)?.window
+        if (driveMode) {
+            window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+        onDispose {
+            window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
 
     val micPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -222,6 +238,16 @@ private fun CarDeckScreen(onExit: () -> Unit) {
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                         ModeToggleChip(
+                            label = if (driveMode) "DRIVE ON" else "DRIVE",
+                            selected = driveMode
+                        ) {
+                            val on = app.themeStore.toggleDriveMode()
+                            app.themeStore.speak(
+                                if (on) com.apolloauto.player.companion.CompanionVoice.driveOnLine()
+                                else com.apolloauto.player.companion.CompanionVoice.driveOffLine()
+                            )
+                        }
+                        ModeToggleChip(
                             label = if (deckMode == CarDeckMode.VISUALIZER) "VIZ ONLY" else "FULL HUD",
                             selected = deckMode == CarDeckMode.VISUALIZER
                         ) {
@@ -255,6 +281,13 @@ private fun CarDeckScreen(onExit: () -> Unit) {
                     }
                 }
 
+                Text(
+                    companionLine,
+                    color = p.dim,
+                    fontFamily = body,
+                    fontSize = 11.sp,
+                    maxLines = 1
+                )
                 Spacer(Modifier.height(ApolloSpace.space8))
 
                 when (deckMode) {
@@ -305,6 +338,7 @@ private fun CarDeckScreen(onExit: () -> Unit) {
                                     }
                                     VisualizerModeCompactChips(
                                         selected = vizMode,
+                                        enabledModes = enabledVizModes,
                                         onSelect = { m ->
                                             app.themeStore.setVisualizerMode(m)
                                             app.visualizerController.setMode(m)
@@ -440,8 +474,10 @@ private fun VisualizerOnlyDeck(
         )
         val app = ApolloApp.instance
         val vizMode by app.visualizerController.mode.collectAsState()
+        val enabledVizModes by app.themeStore.enabledVisualizerModes.collectAsState()
         VisualizerModeCompactChips(
             selected = vizMode,
+            enabledModes = enabledVizModes,
             onSelect = { m ->
                 app.themeStore.setVisualizerMode(m)
                 app.visualizerController.setMode(m)

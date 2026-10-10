@@ -51,6 +51,7 @@ fun CompactApolloHeader(
     playing: Boolean,
     sleepLabel: String?,
     onSettings: () -> Unit,
+    companionLine: String? = null,
     modifier: Modifier = Modifier
 ) {
     val p = LocalHudPalette.current
@@ -74,7 +75,8 @@ fun CompactApolloHeader(
                 maxLines = 1
             )
             Text(
-                "AUDIO COMMAND // ${themeLabel.uppercase()}",
+                companionLine?.takeIf { it.isNotBlank() }
+                    ?: "AUDIO COMMAND // ${themeLabel.uppercase()}",
                 color = p.secondary,
                 fontFamily = body,
                 fontSize = ApolloTypeScale.techSp.sp,
@@ -204,5 +206,9 @@ fun LibraryFilterChips(
 enum class LibraryCategory(val label: String) {
     TRACKS("Tracks"),
     CAR("Car ★"),
-    PLAYLISTS("Lists")
+    PLAYLISTS("Lists"),
+    RECENT("Recent"),
+    TOP("Top"),
+    ARTISTS("Artists"),
+    ALBUMS("Albums")
 }

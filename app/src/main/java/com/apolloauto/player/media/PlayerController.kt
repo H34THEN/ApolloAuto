@@ -3,12 +3,17 @@ package com.apolloauto.player.media
 import android.content.ComponentName
 import android.content.Context
 import android.net.Uri
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.apolloauto.player.ApolloApp
+import com.apolloauto.player.companion.CompanionVoice
 import com.apolloauto.player.data.Track
 import com.apolloauto.player.data.TrackMetadataFormatter
 import com.google.common.util.concurrent.MoreExecutors
@@ -44,6 +49,8 @@ class PlayerController(private val context: Context) {
     private val stableQueue: StablePlaybackQueue
         get() = ApolloApp.instance.stablePlaybackQueue
     private var applyingQueue = false
+    private var lastRecordedMediaId: String = ""
+    private var lastPersistAt = 0L
 
     private val _state = MutableStateFlow(PlaybackUiState())
     val state: StateFlow<PlaybackUiState> = _state.asStateFlow()
@@ -64,6 +71,7 @@ class PlayerController(private val context: Context) {
                 ctrl.shuffleModeEnabled = false
             }
             publish(ctrl)
+            restoreSessionIfNeeded()
         }, MoreExecutors.directExecutor())
     }
 
@@ -102,11 +110,25 @@ class PlayerController(private val context: Context) {
 
     fun skipNext() {
         // Advances within the existing Media3 timeline — does not rebuild the queue.
-        controller?.seekToNextMediaItem()
+        val ctrl = controller ?: return
+        when {
+            ctrl.hasNextMediaItem() -> ctrl.seekToNextMediaItem()
+            // Repeat OFF at end of queue used to soft-lock NEXT; wrap so skip never dies.
+            ctrl.mediaItemCount > 1 -> ctrl.seekTo(0, 0L)
+            else -> Unit
+        }
+        tickHaptic()
+        ApolloApp.instance.themeStore.speak(CompanionVoice.skipLine())
     }
 
     fun skipPrevious() {
-        controller?.seekToPreviousMediaItem()
+        val ctrl = controller ?: return
+        when {
+            ctrl.hasPreviousMediaItem() -> ctrl.seekToPreviousMediaItem()
+            ctrl.mediaItemCount > 1 -> ctrl.seekTo(ctrl.mediaItemCount - 1, 0L)
+            else -> Unit
+        }
+        tickHaptic()
     }
 
     fun seekTo(positionMs: Long) {
@@ -225,6 +247,105 @@ class PlayerController(private val context: Context) {
             queue = queue,
             queueIndex = player.currentMediaItemIndex.coerceAtLeast(0)
         )
+        val app = ApolloApp.instance
+        app.albumArtColors.update(_state.value.artworkUri)
+        val mediaId = _state.value.mediaId
+        if (mediaId.isNotBlank() && mediaId != lastRecordedMediaId && player.isPlaying) {
+            lastRecordedMediaId = mediaId
+            app.playHistoryStore.recordPlay(mediaId)
+            app.themeStore.speak(
+                CompanionVoice.nowPlayingLine(_state.value.title, _state.value.artist)
+            )
+        }
+        maybePersistSession(player)
+    }
+
+    fun restoreSessionIfNeeded() {
+        val ctrl = controller ?: return
+        if (ctrl.mediaItemCount > 0) return
+        val session = ApolloApp.instance.playbackSessionStore.load() ?: return
+        val items = session.toMediaItems().filter { it.localConfiguration?.uri != null }
+        if (items.isEmpty()) return
+        applyingQueue = true
+        try {
+            if (session.shuffle) {
+                ApolloApp.instance.stablePlaybackQueue.replaceQueue(items, session.index)
+            } else {
+                ApolloApp.instance.stablePlaybackQueue.replaceQueue(items, session.index)
+            }
+            // Align shuffle flag without reshuffling again if already matching order.
+            ctrl.shuffleModeEnabled = false
+            ctrl.setMediaItems(items, session.index.coerceIn(0, items.lastIndex), session.positionMs)
+            ctrl.repeatMode = session.repeatMode
+            ctrl.prepare()
+            runCatching {
+                val mode = VisualizerMode.valueOf(session.visualizerMode)
+                ApolloApp.instance.themeStore.setVisualizerMode(mode)
+                ApolloApp.instance.visualizerController.setMode(mode)
+            }
+            ApolloApp.instance.themeStore.setDriveMode(session.driveMode)
+        } finally {
+            applyingQueue = false
+        }
+        publish(ctrl)
+    }
+
+    private fun maybePersistSession(player: Player) {
+        val now = System.currentTimeMillis()
+        if (now - lastPersistAt < 2_500L) return
+        lastPersistAt = now
+        val count = player.mediaItemCount
+        if (count <= 0) return
+        val app = ApolloApp.instance
+        val ids = ArrayList<String>(count)
+        val uris = ArrayList<String>(count)
+        val titles = ArrayList<String>(count)
+        val artists = ArrayList<String>(count)
+        val albums = ArrayList<String>(count)
+        val arts = ArrayList<String?>(count)
+        for (i in 0 until count) {
+            val item = player.getMediaItemAt(i)
+            ids += item.mediaId.orEmpty()
+            uris += item.localConfiguration?.uri?.toString().orEmpty()
+            titles += item.mediaMetadata.title?.toString().orEmpty()
+            artists += item.mediaMetadata.artist?.toString().orEmpty()
+            albums += item.mediaMetadata.albumTitle?.toString().orEmpty()
+            arts += item.mediaMetadata.artworkUri?.toString()
+        }
+        app.playbackSessionStore.save(
+            PersistedSession(
+                mediaIds = ids,
+                uris = uris,
+                titles = titles,
+                artists = artists,
+                albums = albums,
+                artworkUris = arts,
+                index = player.currentMediaItemIndex.coerceAtLeast(0),
+                positionMs = player.currentPosition.coerceAtLeast(0L),
+                shuffle = stableQueue.shuffleEnabled,
+                repeatMode = player.repeatMode,
+                visualizerMode = app.themeStore.visualizerMode.value.name,
+                driveMode = app.themeStore.driveMode.value
+            )
+        )
+    }
+
+    private fun tickHaptic() {
+        runCatching {
+            val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val vm = context.getSystemService(VibratorManager::class.java)
+                vm?.defaultVibrator
+            } else {
+                @Suppress("DEPRECATION")
+                context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+            } ?: return
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator.vibrate(VibrationEffect.createOneShot(18, VibrationEffect.DEFAULT_AMPLITUDE))
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator.vibrate(18)
+            }
+        }
     }
 
     private fun currentItems(player: Player): List<MediaItem> {

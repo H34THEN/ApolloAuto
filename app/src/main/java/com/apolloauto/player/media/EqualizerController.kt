@@ -265,6 +265,9 @@ class EqualizerController(context: Context) {
 
         fun builtInPresets(): List<EqPreset> = listOf(
             EqPreset("flat", "Flat", List(10) { 0 }, 0),
+            EqPreset("void", "VOID", listOf(-80, -40, 0, 60, 120, 80, 40, 0, -60, -120), 80),
+            EqPreset("neon", "NEON", listOf(120, 80, 40, 0, 150, 280, 320, 260, 180, 100), 220),
+            EqPreset("bass_ritual", "BASS RITUAL", listOf(700, 550, 320, 120, -40, 0, 80, 140, 100, 40), 900),
             EqPreset("bass_boost", "Bass Boost", listOf(600, 450, 250, 80, 0, 0, 0, 0, 0, 0), 700),
             EqPreset("vocal", "Vocal Clarity", listOf(-150, -80, 0, 200, 350, 400, 250, 80, 0, -50), 100),
             EqPreset("rock", "Rock", listOf(350, 250, 120, 0, -80, 80, 220, 300, 280, 200), 350),
