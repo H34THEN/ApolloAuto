@@ -222,6 +222,32 @@ class MusicSourceStore(
     fun tracksForSource(sourceId: String): List<Track> =
         tracksBySource[sourceId].orEmpty()
 
+    /**
+     * Drop cached `file://…/album_art/…` URIs after an art-cache migration so the next
+     * library scan re-extracts unique covers (fixes colliding SAF emb_*.jpg keys).
+     */
+    fun invalidateCachedFileArtwork() {
+        var changed = false
+        for ((sourceId, tracks) in tracksBySource.toMap()) {
+            var sourceChanged = false
+            val next = tracks.map { t ->
+                val uri = t.artworkUri?.toString().orEmpty()
+                if (uri.startsWith("file:") && uri.contains("/album_art/")) {
+                    sourceChanged = true
+                    t.copy(artworkUri = null)
+                } else {
+                    t
+                }
+            }
+            if (sourceChanged) {
+                tracksBySource[sourceId] = next
+                catalogCache.save(sourceId, next)
+                changed = true
+            }
+        }
+        if (changed) publishMerged()
+    }
+
     fun markDisconnected(sourceId: String) {
         val existing = tracksBySource[sourceId].orEmpty().map { it.copy(available = false) }
         tracksBySource[sourceId] = existing

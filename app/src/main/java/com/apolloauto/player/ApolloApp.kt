@@ -1,6 +1,7 @@
 package com.apolloauto.player
 
 import android.app.Application
+import com.apolloauto.player.data.AlbumArtResolver
 import com.apolloauto.player.data.DeviceMusicScanner
 import com.apolloauto.player.data.FavoritesStore
 import com.apolloauto.player.data.LibraryScanCoordinator
@@ -27,6 +28,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class ApolloApp : Application() {
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -121,6 +123,13 @@ class ApolloApp : Application() {
                 visualizerController.setMode(VisualizerMode.TOPO_CONTOUR, reason = "retire_rain")
             }
             else -> Unit
+        }
+        // Fix colliding SAF album-art cache keys (all covers became one emb_*.jpg).
+        if (AlbumArtResolver.migrateCacheIfNeeded(this)) {
+            musicSourceStore.invalidateCachedFileArtwork()
+            appScope.launch(Dispatchers.IO) {
+                runCatching { libraryScanCoordinator.scanAllEnabled() }
+            }
         }
         themeStore.speak(CompanionVoice.bootLine())
         sleepTimerController = SleepTimerController(

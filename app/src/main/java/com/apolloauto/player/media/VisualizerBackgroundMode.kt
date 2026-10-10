@@ -105,7 +105,10 @@ object VisualizerBackgroundPolicy {
         VisualizerMode.ML_LIQUID_WARP,
         VisualizerMode.ML_GLITCH_CORE,
         VisualizerMode.ML_CHAOS_TUNNEL,
-        VisualizerMode.ML_FRACTAL_BITE -> SceneBackgroundPreference.BLACK
+        VisualizerMode.ML_FRACTAL_BITE,
+        VisualizerMode.TRON_GRID,
+        VisualizerMode.TRON_DISC,
+        VisualizerMode.TRON_RIBBON -> SceneBackgroundPreference.BLACK
 
         // Atmospheric worlds — AUTO keeps scene-drawn void (not album art)
         VisualizerMode.HYPERDRIVE,

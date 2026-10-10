@@ -136,7 +136,11 @@ enum class VisualizerMode {
     ML_LIQUID_WARP,
     ML_GLITCH_CORE,
     ML_CHAOS_TUNNEL,
-    ML_FRACTAL_BITE
+    ML_FRACTAL_BITE,
+    // --- Tron Legacy stylized ---
+    TRON_GRID,
+    TRON_DISC,
+    TRON_RIBBON
 }
 
 /**

@@ -247,7 +247,10 @@ fun ApolloVisualizerSurface(
                 VisualizerMode.ML_LIQUID_WARP,
                 VisualizerMode.ML_GLITCH_CORE,
                 VisualizerMode.ML_CHAOS_TUNNEL,
-                VisualizerMode.ML_FRACTAL_BITE -> true
+                VisualizerMode.ML_FRACTAL_BITE,
+                VisualizerMode.TRON_GRID,
+                VisualizerMode.TRON_DISC,
+                VisualizerMode.TRON_RIBBON -> true
                 else -> false
             }
             if (!cosmicScene && !resolvedClear) {
@@ -1007,6 +1010,15 @@ fun ApolloVisualizerSurface(
                     liveFeatures, p, spectrum, fastPhase, playing, sceneClear
                 )
                 VisualizerMode.ML_FRACTAL_BITE -> drawMlFractalBiteScene(
+                    liveFeatures, p, spectrum, fastPhase, playing, sceneClear
+                )
+                VisualizerMode.TRON_GRID -> drawTronGridScene(
+                    liveFeatures, p, spectrum, fastPhase, playing, sceneClear
+                )
+                VisualizerMode.TRON_DISC -> drawTronDiscScene(
+                    liveFeatures, p, spectrum, fastPhase, playing, sceneClear
+                )
+                VisualizerMode.TRON_RIBBON -> drawTronRibbonScene(
                     liveFeatures, p, spectrum, fastPhase, playing, sceneClear
                 )
             }

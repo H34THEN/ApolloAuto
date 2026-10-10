@@ -70,7 +70,8 @@ fun VisualizerGallerySheet(
         VisualizerCategory.TRANCE,
         VisualizerCategory.EXPERIMENTAL,
         VisualizerCategory.SHADERTOY,
-        VisualizerCategory.MILK_LAB
+        VisualizerCategory.MILK_LAB,
+        VisualizerCategory.TRON
     )
 
     Column(

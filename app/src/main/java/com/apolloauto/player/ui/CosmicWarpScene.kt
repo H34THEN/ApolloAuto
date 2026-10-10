@@ -1,8 +1,10 @@
 package com.apolloauto.player.ui
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -58,31 +60,44 @@ fun DrawScope.drawCosmicWarpScene(
         )
     )
 
-    // Warp tunnel rings (FFT-warped)
-    val rings = 11
+    // Warp tunnel rings (FFT-warped) — denser, more elliptical for widescreen
+    val rings = 16
     for (i in 0 until rings) {
-        val t = ((i / rings.toFloat()) + phaseSafe * speed * 0.00045f) % 1f
+        val t = ((i / rings.toFloat()) + phaseSafe * speed * 0.00055f) % 1f
         val depth = t * t
         val bin = fft.getOrElse((t * fft.lastIndex.coerceAtLeast(0)).toInt()) { d.rms }
             .coerceIn(0f, 1.2f)
-        val r = 6f + depth * fov * (1.05f + bin * 0.35f * drive + kick * 0.08f)
-        val wobble = 1f + d.lowMid * 0.12f * sin(phaseSafe * 0.03f + i) +
-            bin * 0.18f * drive
-        val hue = safeHue(hueBase + t * 140f + i * 12f)
-        val alpha = ((1f - depth) * (0.35f + d.rms * 0.35f + spark * 0.15f))
-            .coerceIn(0.08f, 0.85f)
-        drawCircle(
-            color = Color.hsv(hue, 0.85f.coerceIn(0f, 1f), 0.85f.coerceIn(0f, 1f), alpha),
-            radius = r * wobble,
-            center = Offset(cx, cy),
+        val r = 5f + depth * fov * (1.1f + bin * 0.4f * drive + kick * 0.1f)
+        val wobble = 1f + d.lowMid * 0.14f * sin(phaseSafe * 0.035f + i) +
+            bin * 0.22f * drive
+        val squash = 0.62f + d.upperMid * 0.2f + sin(phaseSafe * 0.02f + i * 0.3f) * 0.06f
+        val hue = safeHue(hueBase + t * 160f + i * 14f + kick * 20f)
+        val alpha = ((1f - depth) * (0.4f + d.rms * 0.4f + spark * 0.18f))
+            .coerceIn(0.1f, 0.9f)
+        drawOval(
+            color = Color.hsv(hue, 0.9f.coerceIn(0f, 1f), 0.9f.coerceIn(0f, 1f), alpha),
+            topLeft = Offset(cx - r * wobble, cy - r * wobble * squash),
+            size = Size(r * 2f * wobble, r * 2f * wobble * squash),
             style = Stroke(
-                width = (1.2f + (1f - depth) * 2.5f + bin * 2f).coerceIn(1f, 7f)
+                width = (1.4f + (1f - depth) * 3f + bin * 2.5f + kick * 0.8f).coerceIn(1f, 9f)
             )
         )
+        // Ghost trail ring (mid energy)
+        if (i % 2 == 0) {
+            drawOval(
+                color = Color.hsv(safeHue(hue + 180f), 0.7f, 0.7f, alpha * 0.35f),
+                topLeft = Offset(cx - r * wobble * 1.08f, cy - r * wobble * squash * 1.08f),
+                size = Size(
+                    r * 2.16f * wobble,
+                    r * 2.16f * wobble * squash
+                ),
+                style = Stroke(width = 1f)
+            )
+        }
     }
 
-    // Hyperspace star streaks
-    val count = 140
+    // Hyperspace star streaks — denser warp field
+    val count = 200
     for (i in 0 until count) {
         val seed = i * 97.13f
         val zCycle = fract01(phaseSafe * speed * 0.085f + seed * 13f)
@@ -162,7 +177,7 @@ fun DrawScope.drawCosmicWarpScene(
     )
 
     // Soft dust motes for depth (treble)
-    val dust = (28 + (d.treble * 20f).toInt()).coerceIn(20, 48)
+    val dust = (36 + (d.treble * 28f).toInt()).coerceIn(28, 64)
     for (i in 0 until dust) {
         val a = i * (PI.toFloat() * 2f / dust) + phaseSafe * 0.004f
         val rad = fov * (0.15f + (i % 7) * 0.08f) * (1f + d.presence * 0.15f)
@@ -173,6 +188,27 @@ fun DrawScope.drawCosmicWarpScene(
             color = palette.soft.copy(alpha = (0.1f + aBin * 0.3f + spark * 0.08f).coerceIn(0.06f, 0.45f)),
             radius = 1.2f + aBin * 2.2f,
             center = Offset(x, y)
+        )
+    }
+
+    // Midrange spiral arms (hyperspace lanes)
+    val arms = 3
+    for (arm in 0 until arms) {
+        val path = Path()
+        val segs = 56
+        for (s in 0..segs) {
+            val t = s / segs.toFloat()
+            val ang = arm * (PI.toFloat() * 2f / arms) + t * 4.2f + phaseSafe * 0.03f * drive
+            val rad = span * t * (0.48f + d.bass * 0.08f) * (0.85f + kick * 0.08f)
+            val x = cx + cos(ang) * rad
+            val y = cy + sin(ang) * rad * (0.7f + d.lowMid * 0.15f)
+            if (s == 0) path.moveTo(x, y) else path.lineTo(x, y)
+        }
+        drawPath(
+            path,
+            Color.hsv(safeHue(hueBase + arm * 40f + 200f), 0.75f, 0.85f)
+                .copy(alpha = (0.18f + d.upperMid * 0.25f + spark * 0.1f) * drive),
+            style = Stroke((1.5f + d.rms * 2f).coerceIn(1f, 4.5f), cap = StrokeCap.Round)
         )
     }
 }

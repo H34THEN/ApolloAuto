@@ -47,7 +47,8 @@ enum class VisualizerCategory(val title: String) {
     EXPERIMENTAL("apollo // experimental"),
     FUN("apollo // fun"),
     SHADERTOY("shadertoy // ST"),
-    MILK_LAB("milk // lab")
+    MILK_LAB("milk // lab"),
+    TRON("tron // legacy")
 }
 
 data class VisualizerModeEntry(
@@ -98,7 +99,10 @@ object VisualizerModeCatalog {
         VisualizerMode.ML_LIQUID_WARP,
         VisualizerMode.ML_GLITCH_CORE,
         VisualizerMode.ML_CHAOS_TUNNEL,
-        VisualizerMode.ML_FRACTAL_BITE
+        VisualizerMode.ML_FRACTAL_BITE,
+        VisualizerMode.TRON_GRID,
+        VisualizerMode.TRON_DISC,
+        VisualizerMode.TRON_RIBBON
     )
 
     val all: List<VisualizerModeEntry> = listOf(
@@ -277,7 +281,7 @@ object VisualizerModeCatalog {
             VisualizerMode.SPACE_WARP,
             VisualizerCategory.APOLLO,
             "WARP",
-            "Cosmic reactive hyperspace warp"
+            "Hyperspace tunnel + star streaks (enhanced)"
         ),
         // --- nixonyh ---
         VisualizerModeEntry(
