@@ -19,6 +19,8 @@ object MediaIds {
     const val FOLDERS = "folders"
     const val VISUALIZERS = "visualizers"
     const val VIZ_PREFIX = "viz:"
+    /** Secondary browse categories — keeps the AA root shallow on small HUDs. */
+    const val MORE = "more"
 
     const val CMD_NEXT_VISUAL = "apollo.next_visual"
     const val CMD_TOGGLE_DRIVE = "apollo.toggle_drive"

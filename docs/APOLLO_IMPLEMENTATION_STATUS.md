@@ -3,7 +3,7 @@
 **Codename:** APOLLO // AUDIO COMMAND SYSTEM  
 **Workspace:** `/Users/Gengar/Desktop/local-github/ApolloAuto`  
 **Package:** `com.apolloauto.player` (debug: `com.apolloauto.player.debug`)  
-**Last updated:** 2026-10-10 (V5.3 — Shadertoy ST01–ST03 + MILK//LAB gallery; see APOLLO_V5_3_SHADER_SCENES.md)
+**Last updated:** 2026-10-10 (AA UX hotfix beta.2 — queue expand, shallow browse; see `docs/release/ANDROID_AUTO_UX_AUDIT.md`)
 
 ## Phase A — Existing Application Audit
 
@@ -28,7 +28,8 @@
 | Playlist membership sheet | Implemented | |
 | ALL / CAR ★ / LISTS | Implemented | |
 | Car Mode | Implemented | Landscape HUD |
-| Android Auto browse | Implemented / Untested on DHU | Car Favorites first |
+| Android Auto browse | Implemented / Owner HU confirmed | Shallow root + More; see AA UX docs |
+| Android Auto Next/Queue | Fixed in beta.2 | Single-track expand via `MediaQueueExpand` |
 | Theme presets (6) | Implemented | Apollo Prime → Monochrome |
 | Custom theme editor | Implemented | Hue + hex + glow; readability guard |
 | Motion profiles | Implemented | Full / Reduced / Static / System |
@@ -241,3 +242,18 @@
 - 30-minute soak / FPS profiling
 - Full synthetic Audio Test Lab PCM fixtures
 - Broader V5 / ECHOHUNT product work (paused per gate)
+
+### Phase AA UX hotfix — `1.0.0-beta.2`
+**Branch:** `hotfix/android-auto-ux-p0`  
+**Docs:** `docs/release/ANDROID_AUTO_*.md`, `RELEASE_CHECKLIST.md`
+
+**Completed in code:**
+- `MediaQueueExpand` restores AA Next/Queue for single-track browse taps
+- Shallow root browse + `More` secondary categories; short titles
+- Automotive controllers get fewer custom session commands
+- OEM ringtone MediaStore filter + SAF album-art enrich (checkpoint on same branch)
+
+**Not claimed finished:**
+- Physical Sobalai retest of Next/Queue after install
+- Car App Library MediaPlaybackTemplate migration (deferred; see UX audit)
+- GitHub Release publish for beta.2 (APK built locally)

@@ -3,6 +3,7 @@ package com.apolloauto.player.media
 import android.app.PendingIntent
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -127,13 +128,31 @@ class ApolloPlaybackService : MediaLibraryService() {
             session: MediaSession,
             controller: MediaSession.ControllerInfo
         ): MediaSession.ConnectionResult {
+            val automotive = AndroidAutoBrowse.isAutomotiveController(controller.packageName)
+            Log.i(TAG, "onConnect pkg=${controller.packageName} automotive=$automotive")
+
+            // Keep transport commands available; AA hides Next when the timeline has <2 items
+            // (see MediaQueueExpand) — not when commands are missing from this list.
+            val playerCommands = MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS
+
             val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS
                 .buildUpon()
-                .add(SessionCommand(MediaIds.CMD_NEXT_VISUAL, Bundle.EMPTY))
-                .add(SessionCommand(MediaIds.CMD_TOGGLE_DRIVE, Bundle.EMPTY))
-                .add(SessionCommand(MediaIds.CMD_SAVE_CAR_FAV, Bundle.EMPTY))
+                .apply {
+                    // One car-safe custom action. Extra customs crowd the small Now Playing row
+                    // and can displace Next on compact HUDs.
+                    add(SessionCommand(MediaIds.CMD_SAVE_CAR_FAV, Bundle.EMPTY))
+                    if (!automotive) {
+                        add(SessionCommand(MediaIds.CMD_NEXT_VISUAL, Bundle.EMPTY))
+                        add(SessionCommand(MediaIds.CMD_TOGGLE_DRIVE, Bundle.EMPTY))
+                    }
+                }
                 .build()
+
+            // Do not set a customLayout here: on compact AA Now Playing rows, extra
+            // custom buttons can crowd out the host Next control. Car Fav remains
+            // available via session commands / browse → Car Favorites.
             return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+                .setAvailablePlayerCommands(playerCommands)
                 .setAvailableSessionCommands(sessionCommands)
                 .build()
         }
@@ -148,8 +167,8 @@ class ApolloPlaybackService : MediaLibraryService() {
                 .setMediaId(MediaIds.ROOT)
                 .setMediaMetadata(
                     MediaMetadata.Builder()
-                        .setTitle("Apollo Deck · $trackCount signals")
-                        .setSubtitle("Car Favorites · Playlists · Artists · Folders")
+                        .setTitle("Apollo II")
+                        .setSubtitle("$trackCount tracks")
                         .setIsBrowsable(true)
                         .setIsPlayable(false)
                         .setMediaType(MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
@@ -188,31 +207,28 @@ class ApolloPlaybackService : MediaLibraryService() {
             val items = when {
                 parentId == MediaIds.ROOT -> {
                     val car = app.playlistStore.carFavorites()
-                    ImmutableList.builder<MediaItem>()
-                        .add(
-                            folderItem(
-                                MediaIds.PLAYLIST_PREFIX + PlaylistStore.CAR_FAVORITES_ID,
-                                "★ Car Favorites (${car.trackIds.size})"
-                            )
-                        )
-                        .add(folderItem(MediaIds.PLAYLISTS, "Playlists (${playlists.size})"))
-                        .add(folderItem(MediaIds.RECENTLY_ADDED, "Recently Added"))
-                        .add(folderItem(MediaIds.UNPLAYED, "Unplayed"))
-                        .add(folderItem(MediaIds.RECENT, "Recently Played"))
-                        .add(folderItem(MediaIds.MOST_PLAYED, "Most Played"))
-                        .add(folderItem(MediaIds.ARTISTS, "Artists"))
-                        .add(folderItem(MediaIds.ALBUMS, "Albums"))
-                        .add(folderItem(MediaIds.FOLDERS, "Folders (${store.folders().size})"))
-                        .add(folderItem(MediaIds.ALL, "All Tracks (${tracks.size})"))
-                        .add(folderItem(MediaIds.VISUALIZERS, "Visualizer Modes"))
-                        .build()
+                    ImmutableList.copyOf(
+                        AndroidAutoBrowse.rootNodes(
+                            favoritesMediaId = MediaIds.PLAYLIST_PREFIX + PlaylistStore.CAR_FAVORITES_ID,
+                            favoritesCount = car.trackIds.size,
+                            playlistCount = playlists.size,
+                            trackCount = tracks.size
+                        ).map { folderItem(it.id, it.title, it.subtitle) }
+                    )
+                }
+                parentId == MediaIds.MORE -> {
+                    ImmutableList.copyOf(
+                        AndroidAutoBrowse.moreNodes(store.folders().size)
+                            .map { folderItem(it.id, it.title, it.subtitle) }
+                    )
                 }
                 parentId == MediaIds.PLAYLISTS -> {
                     ImmutableList.copyOf(
                         playlists.map {
                             folderItem(
                                 MediaIds.PLAYLIST_PREFIX + it.id,
-                                "${it.name} (${it.trackIds.size})"
+                                it.name,
+                                "${it.trackIds.size} tracks"
                             )
                         }
                     )
@@ -274,7 +290,11 @@ class ApolloPlaybackService : MediaLibraryService() {
                     val enabled = app.themeStore.enabledVisualizerModes.value
                     ImmutableList.copyOf(
                         VisualizerMode.entries.filter { it in enabled }.map { mode ->
-                            folderItem(MediaIds.VIZ_PREFIX + mode.name, mode.name.replace('_', ' '))
+                            folderItem(
+                                MediaIds.VIZ_PREFIX + mode.name,
+                                mode.name.replace('_', ' '),
+                                "Phone Immersive only"
+                            )
                         }
                     )
                 }
@@ -327,18 +347,42 @@ class ApolloPlaybackService : MediaLibraryService() {
             startPositionMs: Long
         ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
             val store = ApolloApp.instance.libraryStore
+            val catalog = store.tracks.value
             val resolved = mediaItems.mapNotNull { item ->
-                store.tracks.value.find { it.id == item.mediaId }?.toPlayable()
+                catalog.find { it.id == item.mediaId }?.toPlayable()
                     ?: if (item.localConfiguration != null) item else null
             }
-            if (resolved.isEmpty() && store.tracks.value.isNotEmpty()) {
-                val all = store.tracks.value.map { it.toPlayable() }
+
+            if (resolved.isEmpty() && catalog.isNotEmpty()) {
+                val all = catalog.map { it.toPlayable() }
                 return Futures.immediateFuture(
                     MediaSession.MediaItemsWithStartPosition(all, 0, C.TIME_UNSET)
                 )
             }
+
+            // Single-track taps from AA browse must expand or Next/Queue stay empty.
+            if (resolved.size == 1) {
+                val expanded = MediaQueueExpand.expandSingle(
+                    selected = resolved[0],
+                    catalog = catalog,
+                    toPlayable = { it.toPlayable() }
+                )
+                Log.i(
+                    TAG,
+                    "expandSingle -> ${expanded.items.size} items start=${expanded.startIndex}"
+                )
+                return Futures.immediateFuture(
+                    MediaSession.MediaItemsWithStartPosition(
+                        expanded.items,
+                        expanded.startIndex,
+                        startPositionMs
+                    )
+                )
+            }
+
+            val safeIndex = startIndex.coerceIn(0, (resolved.size - 1).coerceAtLeast(0))
             return Futures.immediateFuture(
-                MediaSession.MediaItemsWithStartPosition(resolved, startIndex, startPositionMs)
+                MediaSession.MediaItemsWithStartPosition(resolved, safeIndex, startPositionMs)
             )
         }
 
@@ -408,12 +452,13 @@ class ApolloPlaybackService : MediaLibraryService() {
         }
     }
 
-    private fun folderItem(id: String, title: String): MediaItem =
+    private fun folderItem(id: String, title: String, subtitle: String? = null): MediaItem =
         MediaItem.Builder()
             .setMediaId(id)
             .setMediaMetadata(
                 MediaMetadata.Builder()
                     .setTitle(title)
+                    .apply { if (!subtitle.isNullOrBlank()) setSubtitle(subtitle) }
                     .setIsBrowsable(true)
                     .setIsPlayable(false)
                     .setMediaType(MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
@@ -440,4 +485,8 @@ class ApolloPlaybackService : MediaLibraryService() {
                     .build()
             )
             .build()
+
+    companion object {
+        private const val TAG = "ApolloAASession"
+    }
 }
