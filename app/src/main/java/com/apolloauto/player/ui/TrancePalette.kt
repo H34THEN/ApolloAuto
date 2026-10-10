@@ -15,15 +15,22 @@ object TrancePalette {
         artPrimary: Color? = null,
         artSecondary: Color? = null
     ): Color {
-        val sat = saturation.coerceIn(0.2f, 1.4f)
+        // Color.hsv requires S,V in 0..1 — never pass sat>1 (crashed RAIN/SMOKE).
+        val satBoost = saturation.coerceIn(0.2f, 1.4f)
+        val s = satBoost.coerceAtMost(1f)
         val g = glow.coerceIn(0.2f, 1.6f)
+        val vBoost = (1f + (satBoost - 1f).coerceAtLeast(0f) * 0.15f)
         val base = when (mode) {
             VizPaletteMode.THEME -> lerp(palette.primary, palette.secondary, wrap01(t))
-            VizPaletteMode.RAINBOW -> Color.hsv(wrap01(t) * 360f, 0.9f * sat, (0.85f * g).coerceIn(0.2f, 1f))
+            VizPaletteMode.RAINBOW -> Color.hsv(
+                wrap01(t) * 360f,
+                (0.9f * s).coerceIn(0f, 1f),
+                (0.85f * g * vBoost).coerceIn(0.2f, 1f)
+            )
             VizPaletteMode.SPECTRAL -> Color.hsv(
                 (wrap01(t) * 280f + 20f).coerceIn(0f, 360f),
-                0.85f * sat,
-                (0.9f * g).coerceIn(0.2f, 1f)
+                (0.85f * s).coerceIn(0f, 1f),
+                (0.9f * g * vBoost).coerceIn(0.2f, 1f)
             )
             VizPaletteMode.ALBUM_ART -> {
                 val a = artPrimary ?: palette.primary
@@ -32,8 +39,8 @@ object TrancePalette {
             }
             VizPaletteMode.SCENE -> Color.hsv(
                 (wrap01(t) * 360f + 40f) % 360f,
-                0.95f * sat,
-                (0.95f * g).coerceIn(0.2f, 1f)
+                (0.95f * s).coerceIn(0f, 1f),
+                (0.95f * g * vBoost).coerceIn(0.2f, 1f)
             )
         }
         return base.copy(
@@ -47,8 +54,8 @@ object TrancePalette {
         "cyber" -> lerp(Color(0xFF00F0FF), Color(0xFF7A5CFF), wrap01(t))
         "hades" -> lerp(Color(0xFFFF2244), Color(0xFF8B0000), wrap01(t))
         "ultraviolet" -> lerp(Color(0xFFB14EFF), Color(0xFF3D1B6E), wrap01(t))
-        "acid" -> Color.hsv((wrap01(t) * 90f + 60f), 1f, 1f)
-        else -> Color.hsv(wrap01(t) * 360f, 0.92f, 1f) // rainbow plasma
+        "acid" -> Color.hsv((wrap01(t) * 90f + 60f).coerceIn(0f, 360f), 1f, 1f)
+        else -> Color.hsv(wrap01(t) * 360f, 0.92f.coerceIn(0f, 1f), 1f) // rainbow plasma
     }
 
     private fun wrap01(t: Float): Float {

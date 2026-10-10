@@ -186,5 +186,9 @@ fun VisualBackgroundSheet(
                 }
             }
         }
+        if (scene == VisualizerMode.PARTY_MARQUEE) {
+            Spacer(Modifier.height(12.dp))
+            PartyMarqueeEditor()
+        }
     }
 }

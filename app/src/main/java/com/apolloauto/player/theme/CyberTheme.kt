@@ -11,8 +11,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.sp
 import com.apolloauto.player.ApolloApp
 
@@ -26,7 +28,9 @@ fun ApolloCyberTheme(content: @Composable () -> Unit) {
     val glow by themeStore.glowIntensity.collectAsState()
     val motion by themeStore.motionProfile.collectAsState()
     val fontOption by themeStore.hudFont.collectAsState()
+    val uiFontScale by themeStore.uiFontScale.collectAsState()
     val context = LocalContext.current
+    val density = LocalDensity.current
 
     val animatorScale = remember {
         runCatching {
@@ -50,11 +54,19 @@ fun ApolloCyberTheme(content: @Composable () -> Unit) {
         color = palette.soft
     )
 
+    val scaledDensity = remember(density, uiFontScale) {
+        Density(
+            density = density.density,
+            fontScale = density.fontScale * uiFontScale.coerceIn(0.8f, 1.45f)
+        )
+    }
+
     CompositionLocalProvider(
         LocalHudPalette provides palette,
         LocalMotionProfile provides effectiveMotion,
         LocalHudFont provides appFont,
-        LocalBodyFont provides appFont
+        LocalBodyFont provides appFont,
+        LocalDensity provides scaledDensity
     ) {
         MaterialTheme(
             colorScheme = darkColorScheme(

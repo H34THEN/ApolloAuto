@@ -88,9 +88,53 @@ data class BandDrive(
 
 enum class SpiralFillMode { FIT, FILL }
 
+/**
+ * Per-mode visualizer size presets (Immersive cycle + Settings).
+ * Applied via DrawScope.scale on geometry only — backdrop stays full-bleed.
+ */
+enum class VizSizePreset(val title: String, val shortLabel: String, val scale: Float) {
+    XS("Compact", "XS", 0.52f),
+    S("Small", "S", 0.68f),
+    M("Medium", "M", 0.84f),
+    L("Large", "L", 1.0f),
+    XL("Max", "XL", 1.18f);
+
+    fun next(): VizSizePreset = entries[(ordinal + 1) % entries.size]
+}
+
+/** Map retired / aliased visualizer modes to their live replacements. */
+fun resolveVisualizerMode(mode: VisualizerMode): VisualizerMode = when (mode) {
+    VisualizerMode.XR3_SIERPINSKI -> VisualizerMode.XR3_POLY
+    VisualizerMode.PRISM_RAIN -> VisualizerMode.TOPO_CONTOUR
+    VisualizerMode.STAR_FIELD, VisualizerMode.STARS2 -> VisualizerMode.SPACE_WARP
+    else -> mode
+}
+
 /** Viewport scale for spiral/poly scenes — FILL uses max side so landscape is occupied. */
 fun spiralViewportDim(width: Float, height: Float, mode: SpiralFillMode): Float =
     when (mode) {
         SpiralFillMode.FIT -> min(width, height)
         SpiralFillMode.FILL -> max(width, height)
     }
+
+/**
+ * Immersive / Car Mode span — longer edge (FILL).
+ * Per-mode size is applied by [VisualizerCanvas] via DrawScope.scale, not here
+ * (avoids double-scaling and animation trail resets).
+ */
+fun immersiveViewportDim(width: Float, height: Float): Float =
+    spiralViewportDim(width, height, SpiralFillMode.FILL)
+
+/** Safe HSV hue in 0..360 (Kotlin `%` can be negative). */
+fun safeHue(degrees: Float): Float {
+    if (!degrees.isFinite()) return 0f
+    val m = degrees % 360f
+    return if (m < 0f) m + 360f else m
+}
+
+/** Boost FFT bins for geometry (clamped); gain is relative to REACTIVE baseline. */
+fun boostSpectrum(fft: FloatArray, intensity: VisualIntensity): FloatArray {
+    val g = intensity.gain / VisualIntensity.REACTIVE.gain
+    if (kotlin.math.abs(g - 1f) < 0.01f || fft.isEmpty()) return fft
+    return FloatArray(fft.size) { i -> (fft[i] * g).coerceIn(0f, 1.6f) }
+}

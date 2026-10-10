@@ -13,6 +13,7 @@ import com.apolloauto.player.media.VisualIntensity
 import com.apolloauto.player.media.VisualResponseMapper
 import com.apolloauto.player.media.VizPaletteMode
 import com.apolloauto.player.media.VizQualityTier
+import com.apolloauto.player.media.immersiveViewportDim
 import com.apolloauto.player.theme.HudPalette
 import kotlin.math.PI
 import kotlin.math.cos
@@ -39,7 +40,7 @@ fun DrawScope.drawChromaticPhiScene(
     val n = (220 * quality.particleScale).toInt().coerceIn(80, 360)
     val cx = size.width / 2f
     val cy = size.height / 2f
-    val maxR = min(size.width, size.height) * (0.42f + features.bass * 0.08f)
+    val maxR = immersiveViewportDim(size.width, size.height) * (0.42f + features.bass * 0.08f)
     for (i in 0 until n) {
         val ang = i * GOLDEN_ANGLE + phase * 0.002f * (1f + features.upperMid)
         val rNorm = sqrt((i + 1f) / n)
@@ -79,12 +80,12 @@ fun DrawScope.drawEctoplasmScene(
     for (i in 0 until blobs) {
         val t = i / blobs.toFloat()
         val ang = t * PI.toFloat() * 2f + phase * 0.004f
-        val orbit = min(size.width, size.height) *
-            (0.12f + features.lowMid * 0.08f + features.bass * 0.06f)
+        val span = immersiveViewportDim(size.width, size.height)
+        val orbit = span * (0.14f + features.lowMid * 0.1f + features.bass * 0.08f)
         val bx = cx + cos(ang) * orbit * (1f + sin(phase * 0.01f + i) * 0.2f)
         val by = cy + sin(ang * 1.3f) * orbit * 0.85f
-        val rad = min(size.width, size.height) *
-            (0.1f + features.rms * 0.08f + features.subBass * 0.06f) *
+        val rad = span *
+            (0.12f + features.rms * 0.1f + features.subBass * 0.08f) *
             (0.7f + TrancePalette.hash01(i) * 0.5f) * drive
         val c = TrancePalette.color(t + features.upperMid * 0.2f, paletteMode, palette, sat, glow)
         drawCircle(
@@ -116,13 +117,13 @@ fun DrawScope.drawCircInfinityScene(
     val drive = if (playing) 1f else 0.35f
     val cx = size.width / 2f
     val cy = size.height / 2f
-    val baseR = min(size.width, size.height) * 0.18f
+    val baseR = immersiveViewportDim(size.width, size.height) * 0.2f
     val spokes = (fft.size * quality.meshScale).toInt().coerceIn(24, fft.size)
     for (i in 0 until spokes) {
         val ang = i / spokes.toFloat() * PI.toFloat() * 2f + phase * 0.003f
         val v = fft[i % fft.size]
         val inner = baseR * (1f + features.lowMid * 0.25f)
-        val outer = baseR * (1.6f + features.bass * 0.5f + v * 1.4f) * drive
+        val outer = baseR * (1.8f + features.bass * 0.55f + v * 1.55f) * drive
         val c = TrancePalette.color(i / spokes.toFloat() + features.treble * 0.1f, paletteMode, palette, sat, glow)
         drawLine(
             c.copy(alpha = 0.75f),
@@ -155,23 +156,31 @@ fun DrawScope.drawPrismRainScene(
     glow: Float
 ) {
     if (!clearBackdrop) drawRect(palette.voidBlack)
+    if (size.width <= 1f || size.height <= 1f) return
     val drive = if (playing) 1f else 0.28f
     val d = VisualResponseMapper.bandDrive(features, VisualIntensity.REACTIVE)
-    val kick = VisualResponseMapper.kickPressure(d) * drive
-    val spark = VisualResponseMapper.sparkle(d) * drive
+    val kick = VisualResponseMapper.kickPressure(d).coerceIn(0f, 2.2f) * drive
+    val spark = VisualResponseMapper.sparkle(d).coerceIn(0f, 1.8f) * drive
     // Ambient drizzle + event-driven density (not timer-only rain).
     val drops = ((36 + d.rms * 40f + kick * 28f + spark * 20f) * quality.particleScale)
         .toInt().coerceIn(24, 120)
     val fall = phase * (1.6f + d.rms * 5.5f + kick * 3f) * drive
     val ground = size.height * 0.88f
+    val w = size.width
+    val h = size.height
     for (i in 0 until drops) {
-        val x = (TrancePalette.hash01(i) * size.width + d.upperMid * 48f + d.lowMid * 24f) % size.width
-        val speed = 0.45f + TrancePalette.hash01(i + 3) * 0.85f + d.treble * 1.1f + kick * 0.6f
-        val y = ((fall * speed * 42f) + TrancePalette.hash01(i + 7) * size.height) % size.height
-        val band = fft[i % fft.size]
+        val xRaw = TrancePalette.hash01(i) * w + d.upperMid * 48f + d.lowMid * 24f
+        val x = if (w > 0f) ((xRaw % w) + w) % w else 0f
+        val speed = (0.45f + TrancePalette.hash01(i + 3) * 0.85f + d.treble * 1.1f + kick * 0.6f)
+            .coerceIn(0.2f, 8f)
+        val yRaw = (fall * speed * 42f) + TrancePalette.hash01(i + 7) * h
+        val y = if (h > 0f) ((yRaw % h) + h) % h else 0f
+        val band = if (fft.isNotEmpty()) fft[i % fft.size].coerceIn(0f, 1.5f) else 0.2f
         // Kick → thick long drops; treble → fine needles; onset → impact length.
-        val len = 6f + band * 32f + kick * 36f + spark * 14f + d.onset * 22f
-        val thick = 1.1f + d.presence * 1.4f + kick * 2.2f + if (i % 7 == 0) kick * 2f else 0f
+        val len = (6f + band * 32f + kick * 36f + spark * 14f + d.onset * 22f).coerceIn(4f, 120f)
+        val thick = (1.1f + d.presence * 1.4f + kick * 2.2f + if (i % 7 == 0) kick * 2f else 0f)
+            .coerceIn(0.5f, 12f)
+        if (!x.isFinite() || !y.isFinite() || !len.isFinite() || !thick.isFinite()) continue
         val c = TrancePalette.color(
             i / drops.toFloat() + phase * 0.0005f + d.lowMid * 0.08f,
             paletteMode, palette, sat, glow
@@ -186,18 +195,17 @@ fun DrawScope.drawPrismRainScene(
         // Impact ripples — driven by onset/kick, not a constant splash.
         val impact = kick > 0.5f || d.onset > 0.32f
         if (impact && (i % 4 == 0 || (d.onset > 0.55f && i % 2 == 0))) {
-            val ix = x
-            val ripple = 8f + kick * 42f + d.onset * 28f + band * 12f
+            val ripple = (8f + kick * 42f + d.onset * 28f + band * 12f).coerceIn(2f, 160f)
             drawCircle(
                 c.copy(alpha = (0.2f + d.onset * 0.45f).coerceAtMost(0.55f)),
                 radius = ripple,
-                center = Offset(ix, ground),
-                style = Stroke(1.4f + kick * 2f)
+                center = Offset(x, ground),
+                style = Stroke((1.4f + kick * 2f).coerceIn(0.5f, 8f))
             )
             drawCircle(
-                c.copy(alpha = 0.35f + kick * 0.3f),
-                radius = 2.5f + kick * 4f,
-                center = Offset(ix, ground)
+                c.copy(alpha = (0.35f + kick * 0.3f).coerceAtMost(0.85f)),
+                radius = (2.5f + kick * 4f).coerceIn(1f, 24f),
+                center = Offset(x, ground)
             )
         }
     }
@@ -231,8 +239,8 @@ fun DrawScope.drawNoteSwarmScene(
             else -> features.treble
         }
         val ang = region * PI.toFloat() * 6f + phase * 0.005f * (1f + energy)
-        val r = min(size.width, size.height) * (0.1f + region * 0.35f) *
-            (1f + band * 0.5f + energy * 0.3f) * drive
+        val r = immersiveViewportDim(size.width, size.height) * (0.1f + region * 0.38f) *
+            (1f + band * 0.55f + energy * 0.35f) * drive
         val x = size.width / 2f + cos(ang) * r * (1.1f + features.onset * 0.2f)
         val y = size.height / 2f + sin(ang) * r * 0.75f
         val c = TrancePalette.color(region + band * 0.2f, paletteMode, palette, sat, glow)
@@ -260,8 +268,8 @@ fun DrawScope.drawHarmonicMandalaScene(
     val rings = (4 * quality.meshScale).toInt().coerceIn(3, 7)
     rotate(phase * 0.02f * (1f + features.presence * 0.5f), Offset(cx, cy)) {
         for (r in 0 until rings) {
-            val rad = min(size.width, size.height) * (0.12f + r * 0.08f) *
-                (1f + features.bass * 0.1f) * drive
+            val rad = immersiveViewportDim(size.width, size.height) * (0.12f + r * 0.09f) *
+                (1f + features.bass * 0.12f) * drive
             val path = Path()
             val steps = folds * 8
             for (i in 0..steps) {

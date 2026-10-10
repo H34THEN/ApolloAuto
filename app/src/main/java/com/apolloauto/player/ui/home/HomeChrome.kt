@@ -3,6 +3,7 @@ package com.apolloauto.player.ui.home
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -32,9 +34,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.apolloauto.player.theme.ApolloSpace
 import com.apolloauto.player.theme.ApolloTypeScale
+import com.apolloauto.player.theme.InterfaceStyle
 import com.apolloauto.player.theme.LocalBodyFont
 import com.apolloauto.player.theme.LocalHudFont
 import com.apolloauto.player.theme.LocalHudPalette
+import com.apolloauto.player.ui.hud.useKenneyChrome
 
 enum class HomeDestination(val label: String, val icon: ImageVector) {
     HOME("Home", Icons.Default.Home),
@@ -174,12 +178,16 @@ fun ApolloBottomNav(
 fun LibraryFilterChips(
     selected: LibraryCategory,
     onSelect: (LibraryCategory) -> Unit,
+    interfaceStyle: InterfaceStyle = InterfaceStyle.CYBERPUNK_HUD,
     modifier: Modifier = Modifier
 ) {
     val p = LocalHudPalette.current
     val body = LocalBodyFont.current
+    val kenney = useKenneyChrome(interfaceStyle)
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(ApolloSpace.space8)
     ) {
         LibraryCategory.entries.forEach { cat ->
@@ -190,12 +198,18 @@ fun LibraryFilterChips(
                 fontFamily = body,
                 fontSize = ApolloTypeScale.metaSp.sp,
                 modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(ApolloSpace.cornerTight))
-                    .border(1.dp, if (on) p.accent else p.primary.copy(alpha = 0.25f), RoundedCornerShape(ApolloSpace.cornerTight))
-                    .background(if (on) p.accent.copy(alpha = 0.14f) else p.voidBlack.copy(alpha = 0.25f))
+                    .clip(RoundedCornerShape(if (kenney) 2.dp else ApolloSpace.cornerTight))
+                    .border(
+                        1.dp,
+                        if (on) p.accent else p.primary.copy(alpha = if (kenney) 0.4f else 0.25f),
+                        RoundedCornerShape(if (kenney) 2.dp else ApolloSpace.cornerTight)
+                    )
+                    .background(
+                        if (on) p.accent.copy(alpha = if (kenney) 0.22f else 0.14f)
+                        else p.voidBlack.copy(alpha = 0.25f)
+                    )
                     .clickable { onSelect(cat) }
-                    .padding(vertical = 10.dp),
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 maxLines = 1
             )
@@ -207,6 +221,8 @@ enum class LibraryCategory(val label: String) {
     TRACKS("Tracks"),
     CAR("Car ★"),
     PLAYLISTS("Lists"),
+    NEW("New"),
+    UNPLAYED("Unplayed"),
     RECENT("Recent"),
     TOP("Top"),
     ARTISTS("Artists"),

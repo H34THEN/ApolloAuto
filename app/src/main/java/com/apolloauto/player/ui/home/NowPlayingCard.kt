@@ -45,6 +45,7 @@ import com.apolloauto.player.theme.InterfaceStyle
 import com.apolloauto.player.theme.LocalBodyFont
 import com.apolloauto.player.theme.LocalHudPalette
 import com.apolloauto.player.ui.components.ArtworkThumb
+import com.apolloauto.player.ui.hud.ApolloHudIconButton
 import com.apolloauto.player.ui.hud.ApolloHudProgress
 import com.apolloauto.player.ui.hud.useKenneyChrome
 
@@ -99,8 +100,14 @@ fun NowPlayingCard(
         Row(verticalAlignment = Alignment.CenterVertically) {
             ArtworkThumb(artworkUri = artworkUri, size = ApolloSpace.playerArt)
             Spacer(Modifier.size(ApolloSpace.space8))
-            IconButton(onClick = onPrev, modifier = Modifier.size(ApolloSpace.touchMin)) {
-                Icon(Icons.Default.SkipPrevious, "Previous", tint = p.primary, modifier = Modifier.size(28.dp))
+            if (kenney) {
+                ApolloHudIconButton(onClick = onPrev, size = ApolloSpace.touchMin) {
+                    Icon(Icons.Default.SkipPrevious, "Previous", tint = p.primary, modifier = Modifier.size(28.dp))
+                }
+            } else {
+                IconButton(onClick = onPrev, modifier = Modifier.size(ApolloSpace.touchMin)) {
+                    Icon(Icons.Default.SkipPrevious, "Previous", tint = p.primary, modifier = Modifier.size(28.dp))
+                }
             }
             Column(
                 Modifier
@@ -136,8 +143,14 @@ fun NowPlayingCard(
                     )
                 }
             }
-            IconButton(onClick = onNext, modifier = Modifier.size(ApolloSpace.touchMin)) {
-                Icon(Icons.Default.SkipNext, "Next", tint = p.primary, modifier = Modifier.size(28.dp))
+            if (kenney) {
+                ApolloHudIconButton(onClick = onNext, size = ApolloSpace.touchMin) {
+                    Icon(Icons.Default.SkipNext, "Next", tint = p.primary, modifier = Modifier.size(28.dp))
+                }
+            } else {
+                IconButton(onClick = onNext, modifier = Modifier.size(ApolloSpace.touchMin)) {
+                    Icon(Icons.Default.SkipNext, "Next", tint = p.primary, modifier = Modifier.size(28.dp))
+                }
             }
         }
         Spacer(Modifier.height(ApolloSpace.space12))

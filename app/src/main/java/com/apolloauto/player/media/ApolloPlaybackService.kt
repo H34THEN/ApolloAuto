@@ -82,6 +82,15 @@ class ApolloPlaybackService : MediaLibraryService() {
             }
 
             override fun audioSessionId(): Int = exo.audioSessionId
+
+            override fun currentPositionMs(): Long =
+                exo.currentPosition.coerceAtLeast(0L)
+
+            override fun currentMediaId(): String =
+                exo.currentMediaItem?.mediaId.orEmpty()
+
+            override fun currentTitle(): String =
+                exo.currentMediaItem?.mediaMetadata?.title?.toString().orEmpty()
         }
 
         val sessionActivity = PendingIntent.getActivity(
@@ -187,6 +196,8 @@ class ApolloPlaybackService : MediaLibraryService() {
                             )
                         )
                         .add(folderItem(MediaIds.PLAYLISTS, "Playlists (${playlists.size})"))
+                        .add(folderItem(MediaIds.RECENTLY_ADDED, "Recently Added"))
+                        .add(folderItem(MediaIds.UNPLAYED, "Unplayed"))
                         .add(folderItem(MediaIds.RECENT, "Recently Played"))
                         .add(folderItem(MediaIds.MOST_PLAYED, "Most Played"))
                         .add(folderItem(MediaIds.ARTISTS, "Artists"))
@@ -208,6 +219,22 @@ class ApolloPlaybackService : MediaLibraryService() {
                 }
                 parentId == MediaIds.FOLDERS -> {
                     ImmutableList.copyOf(store.folders().map { folderBrowsable(it) })
+                }
+                parentId == MediaIds.RECENTLY_ADDED -> {
+                    ImmutableList.copyOf(
+                        com.apolloauto.player.data.SmartPlaylistQueries.recentlyAdded(
+                            tracks,
+                            app.trackFirstSeenStore.map.value
+                        ).map { it.toPlayable() }
+                    )
+                }
+                parentId == MediaIds.UNPLAYED -> {
+                    ImmutableList.copyOf(
+                        com.apolloauto.player.data.SmartPlaylistQueries.unplayed(
+                            tracks,
+                            app.playHistoryStore.stats.value
+                        ).map { it.toPlayable() }
+                    )
                 }
                 parentId == MediaIds.RECENT -> {
                     ImmutableList.copyOf(

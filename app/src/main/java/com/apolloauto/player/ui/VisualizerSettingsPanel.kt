@@ -32,11 +32,11 @@ import com.apolloauto.player.media.VisualizerBackgroundPolicy
 import com.apolloauto.player.media.VisualizerMode
 import com.apolloauto.player.media.VizPaletteMode
 import com.apolloauto.player.media.VizQualityTier
+import com.apolloauto.player.media.VizSizePreset
+import com.apolloauto.player.media.resolveVisualizerMode
 import com.apolloauto.player.theme.LocalBodyFont
 import com.apolloauto.player.theme.LocalHudPalette
-import com.apolloauto.player.ui.hud.ApolloHudPanel
-import com.apolloauto.player.ui.hud.ApolloSciFiPanel
-import com.apolloauto.player.ui.hud.useKenneyChrome
+import com.apolloauto.player.ui.hud.ApolloStylePanel
 // SpiralVariant is in this package
 
 @Composable
@@ -44,7 +44,8 @@ fun VisualizerSettingsPanel() {
     val app = ApolloApp.instance
     val p = LocalHudPalette.current
     val body = LocalBodyFont.current
-    val mode by app.visualizerController.mode.collectAsState()
+    val modeRaw by app.visualizerController.mode.collectAsState()
+    val mode = resolveVisualizerMode(modeRaw)
     val randomizer by app.themeStore.vizRandomizer.collectAsState()
     val enabled by app.themeStore.enabledVisualizerModes.collectAsState()
     val driveMode by app.themeStore.driveMode.collectAsState()
@@ -66,12 +67,12 @@ fun VisualizerSettingsPanel() {
     val albumDark by app.themeStore.albumDarkness.collectAsState()
     val albumSat by app.themeStore.albumSaturation.collectAsState()
     val debugOverlay by app.themeStore.vizDebugOverlay.collectAsState()
-    val kenney = useKenneyChrome(interfaceStyle)
+    val vizSizePresets by app.themeStore.vizSizePresets.collectAsState()
+    val sizePreset = vizSizePresets[mode] ?: VizSizePreset.M
     val effectiveBg = VisualizerBackgroundPolicy.resolve(bgMode, mode)
 
     val Panel: @Composable (String, @Composable () -> Unit) -> Unit = { title, content ->
-        if (kenney) ApolloSciFiPanel(title = title) { content() }
-        else ApolloHudPanel(title = title) { content() }
+        ApolloStylePanel(title = title, interfaceStyle = interfaceStyle) { content() }
     }
 
     Panel("LIVE PREVIEW") {
@@ -86,10 +87,32 @@ fun VisualizerSettingsPanel() {
             playing = true,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(150.dp)
+                .height(168.dp)
                 .clip(RoundedCornerShape(4.dp))
                 .border(1.dp, p.primary.copy(alpha = 0.35f), RoundedCornerShape(4.dp))
                 .background(p.voidBlack)
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Size for ${VisualizerModeCatalog.compactLabel(mode)}: ${sizePreset.title}",
+            color = p.soft,
+            fontFamily = body,
+            fontSize = 12.sp
+        )
+        Spacer(Modifier.height(4.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            VizSizePreset.entries.forEach { preset ->
+                QuickFilterChip(preset.shortLabel) {
+                    app.themeStore.setVizSizePreset(mode, preset)
+                }
+            }
+        }
+        Text(
+            "Saved per visualizer · Immersive SZ button cycles the same presets",
+            color = p.dim,
+            fontFamily = body,
+            fontSize = 10.sp,
+            modifier = Modifier.padding(top = 4.dp)
         )
         Spacer(Modifier.height(8.dp))
         VisualizerModeSelector(
@@ -474,6 +497,22 @@ fun VisualizerSettingsPanel() {
         }
     }
 
+    // Always visible so users can load SNARKY / edit without hunting mode-gated panels.
+    Panel("PARTY SCROLL") {
+        PartyMarqueeEditor()
+    }
+
+    if (mode == VisualizerMode.LYRICS_RAINBOW) {
+        Panel("RAINBOW LYRICS") {
+            Text(
+                "Uses sidecar .lrc files when present. Always draws in baked-in E1D1C (not the HUD font). Letters pulse with bass/onset.",
+                color = p.dim,
+                fontFamily = body,
+                fontSize = 11.sp
+            )
+        }
+    }
+
     Panel("VISUAL INTENSITY") {
         val intensity by app.themeStore.visualIntensity.collectAsState()
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -565,20 +604,36 @@ fun VisualizerSettingsPanel() {
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             QuickFilterChip("ALL") { app.themeStore.enableAllVisualizerModes() }
-            QuickFilterChip("SIGNAL") {
-                app.themeStore.enableVisualizerCategory { m ->
-                    VisualizerModeCatalog.entry(m).category == VisualizerCategory.SIGNAL &&
-                        m != VisualizerMode.MINIMAL
+            QuickFilterChip("SOURCE PACKS") { app.themeStore.ensureSourcePackModesEnabled() }
+            QuickFilterChip("APOLLO") {
+                app.themeStore.enableVisualizerCategory {
+                    VisualizerModeCatalog.entry(it).category == VisualizerCategory.APOLLO &&
+                        it != VisualizerMode.MINIMAL
                 }
             }
-            QuickFilterChip("SPECTR") {
+            QuickFilterChip("projectM") {
                 app.themeStore.enableVisualizerCategory {
-                    VisualizerModeCatalog.entry(it).category == VisualizerCategory.SPECTR
+                    VisualizerModeCatalog.entry(it).category == VisualizerCategory.PROJECTM
                 }
             }
-            QuickFilterChip("COSMIC") {
+            QuickFilterChip("MilkDrop") {
                 app.themeStore.enableVisualizerCategory {
-                    VisualizerModeCatalog.entry(it).category == VisualizerCategory.COSMIC
+                    VisualizerModeCatalog.entry(it).category == VisualizerCategory.MILKDROP
+                }
+            }
+            QuickFilterChip("gauravk") {
+                app.themeStore.enableVisualizerCategory {
+                    VisualizerModeCatalog.entry(it).category == VisualizerCategory.GAURAVK
+                }
+            }
+            QuickFilterChip("bauer") {
+                app.themeStore.enableVisualizerCategory {
+                    VisualizerModeCatalog.entry(it).category == VisualizerCategory.BAUER
+                }
+            }
+            QuickFilterChip("MusicDNA") {
+                app.themeStore.enableVisualizerCategory {
+                    VisualizerModeCatalog.entry(it).category == VisualizerCategory.MUSICDNA
                 }
             }
             QuickFilterChip("MV2") {
@@ -586,29 +641,14 @@ fun VisualizerSettingsPanel() {
                     VisualizerModeCatalog.entry(it).category == VisualizerCategory.MV2
                 }
             }
-            QuickFilterChip("DNA") {
-                app.themeStore.enableVisualizerCategory {
-                    VisualizerModeCatalog.entry(it).category == VisualizerCategory.DNA
-                }
-            }
-            QuickFilterChip("DROP") {
-                app.themeStore.enableVisualizerCategory {
-                    VisualizerModeCatalog.entry(it).category == VisualizerCategory.DROP
-                }
-            }
             QuickFilterChip("XR3") {
                 app.themeStore.enableVisualizerCategory {
                     VisualizerModeCatalog.entry(it).category == VisualizerCategory.XR3
                 }
             }
-            QuickFilterChip("TRANCE") {
+            QuickFilterChip("FUN") {
                 app.themeStore.enableVisualizerCategory {
-                    VisualizerModeCatalog.entry(it).category == VisualizerCategory.TRANCE
-                }
-            }
-            QuickFilterChip("XPER") {
-                app.themeStore.enableVisualizerCategory {
-                    VisualizerModeCatalog.entry(it).category == VisualizerCategory.EXPERIMENTAL
+                    VisualizerModeCatalog.entry(it).category == VisualizerCategory.FUN
                 }
             }
         }

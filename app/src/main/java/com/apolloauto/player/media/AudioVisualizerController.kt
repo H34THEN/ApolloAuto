@@ -47,10 +47,12 @@ enum class VisualizerMode {
     MIXED_WAVE,
     /** MusicVisualizerV2-inspired reactive shape grid */
     SHAPE_WAVE,
-    /** MusicVisualizerV2-inspired warp starfield */
+    /** @deprecated Retained for prefs; resolves to [SPACE_WARP]. */
     STAR_FIELD,
-    /** mostafa7904 Stars-Audio-Visualizer-inspired streaking stars */
+    /** @deprecated Retained for prefs; resolves to [SPACE_WARP]. */
     STARS2,
+    /** Cosmic reactive hyperspace warp (replaces Stars / Stars2). */
+    SPACE_WARP,
     /** Original DNA helix (MusicDNA-inspired aesthetic, not a source port) */
     DNA_HELIX,
     /** DNA ribbon spectrum fill */
@@ -89,7 +91,37 @@ enum class VisualizerMode {
     FLUCTUS_FLOW,
     WAVEFORM_VOID,
     OBSIDIAN_REACTOR,
-    VISSONANCE_MATRIX
+    VISSONANCE_MATRIX,
+    /** Rainbow E1D1C karaoke — letters pulse with the beat (Car Mode / Immersive fun). */
+    LYRICS_RAINBOW,
+    /** Goofy user-authored scrolling marquee instead of a geometry visualizer. */
+    PARTY_MARQUEE,
+    // --- projectM-visualizer/projectm (Compose recreation of classic looks) ---
+    PROJECTM_PLASMA,
+    PROJECTM_SCOPE,
+    // --- milkdrop2077/MilkDrop3 ---
+    MILKDROP_WAVE,
+    MILKDROP_ROTOR,
+    // --- gauravk95/audio-visualizer-android (Apache-2.0 algorithm ports) ---
+    AV_BAR,
+    AV_BLAST,
+    AV_BLOB,
+    AV_WAVE,
+    AV_CIRCLE_BARS,
+    AV_HIFI,
+    // --- bradleybauer/music_visualizer ---
+    BAUER_FOUNTAIN,
+    BAUER_FFT,
+    BAUER_SPEC,
+    // --- harjot-oberai/MusicDNA (CC BY-NC-SA; non-commercial) ---
+    DNA_CIRCLE,
+    DNA_SPIRAL,
+    // --- apollo techno / trance topographic + trippy ---
+    TOPO_CONTOUR,
+    WIRE_TERRAIN,
+    NEON_TOPO,
+    PSY_KALEIDO,
+    ACID_TUNNEL
 }
 
 /**
@@ -163,8 +195,9 @@ class AudioVisualizerController {
     val captureDiagnostics: StateFlow<CaptureDiagnostics> = _captureDiag.asStateFlow()
 
     fun setMode(mode: VisualizerMode, reason: String = "user") {
-        _mode.value = mode
-        sceneRuntime.onModeSelected(mode, reason)
+        val resolved = resolveVisualizerMode(mode)
+        _mode.value = resolved
+        sceneRuntime.onModeSelected(resolved, reason)
         // Mode changes must NEVER rebuild the Visualizer capture session.
     }
 

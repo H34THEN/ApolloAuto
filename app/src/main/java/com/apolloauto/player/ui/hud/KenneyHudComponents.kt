@@ -38,6 +38,21 @@ import com.apolloauto.player.theme.InterfaceStyle
 import com.apolloauto.player.theme.LocalBodyFont
 import com.apolloauto.player.theme.LocalHudPalette
 
+/** Style-aware panel — Kenney sci-fi when [InterfaceStyle.CYBERPUNK_HUD], else classic HUD. */
+@Composable
+fun ApolloStylePanel(
+    title: String? = null,
+    interfaceStyle: InterfaceStyle,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    if (useKenneyChrome(interfaceStyle)) {
+        ApolloSciFiPanel(modifier = modifier, title = title, content = content)
+    } else {
+        ApolloHudPanel(modifier = modifier, title = title, content = content)
+    }
+}
+
 @Composable
 fun ApolloSciFiPanel(
     modifier: Modifier = Modifier,

@@ -37,7 +37,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.apolloauto.player.data.Playlist
 import com.apolloauto.player.data.PlaylistStore
+import com.apolloauto.player.theme.InterfaceStyle
 import com.apolloauto.player.theme.LocalHudPalette
+import com.apolloauto.player.ui.hud.useKenneyChrome
 
 @Composable
 fun AddToPlaylistSheet(
@@ -45,17 +47,24 @@ fun AddToPlaylistSheet(
     trackTitle: String,
     playlists: List<Playlist>,
     playlistStore: PlaylistStore,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    interfaceStyle: InterfaceStyle = InterfaceStyle.CYBERPUNK_HUD
 ) {
     val p = LocalHudPalette.current
+    val kenney = useKenneyChrome(interfaceStyle)
     var newName by remember { mutableStateOf("") }
+    val corner = if (kenney) 4.dp else 12.dp
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
+            .clip(RoundedCornerShape(topStart = corner, topEnd = corner))
             .background(p.panel.copy(alpha = 0.96f))
-            .border(1.dp, p.primary.copy(alpha = 0.45f), RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
+            .border(
+                1.dp,
+                p.primary.copy(alpha = if (kenney) 0.55f else 0.45f),
+                RoundedCornerShape(topStart = corner, topEnd = corner)
+            )
             .padding(16.dp)
     ) {
         Row(

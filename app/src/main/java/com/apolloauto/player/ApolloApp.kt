@@ -9,6 +9,7 @@ import com.apolloauto.player.companion.CompanionVoice
 import com.apolloauto.player.data.M3uPlaylistService
 import com.apolloauto.player.data.MusicSourceStore
 import com.apolloauto.player.data.PlayHistoryStore
+import com.apolloauto.player.data.TrackFirstSeenStore
 import com.apolloauto.player.echohunt.EchoHuntCredentialStore
 import com.apolloauto.player.echohunt.EchoHuntScanController
 import com.apolloauto.player.data.PlaylistStore
@@ -62,6 +63,8 @@ class ApolloApp : Application() {
         private set
     lateinit var playHistoryStore: PlayHistoryStore
         private set
+    lateinit var trackFirstSeenStore: TrackFirstSeenStore
+        private set
     lateinit var playbackSessionStore: PlaybackSessionStore
         private set
     lateinit var echoHuntCredentials: EchoHuntCredentialStore
@@ -78,8 +81,9 @@ class ApolloApp : Application() {
         instance = this
         libraryStore = LibraryStore(this)
         playlistStore = PlaylistStore(this)
+        trackFirstSeenStore = TrackFirstSeenStore(this)
         deviceScanner = DeviceMusicScanner(this, libraryStore)
-        musicSourceStore = MusicSourceStore(this, libraryStore)
+        musicSourceStore = MusicSourceStore(this, libraryStore, trackFirstSeenStore)
         m3uPlaylistService = M3uPlaylistService(this, playlistStore)
         safLibraryScanner = SafLibraryScanner(this, musicSourceStore, libraryStore)
         libraryScanCoordinator = LibraryScanCoordinator(
@@ -94,6 +98,7 @@ class ApolloApp : Application() {
         usbScanner = UsbMusicScanner(this, libraryStore)
         favoritesStore = FavoritesStore(this)
         themeStore = ThemeStore(this)
+        themeStore.ensureSourcePackModesEnabled()
         equalizerController = EqualizerController(this)
         visualizerController = AudioVisualizerController().also {
             it.setMode(themeStore.visualizerMode.value, reason = "boot")
@@ -105,10 +110,17 @@ class ApolloApp : Application() {
         playbackSessionStore = PlaybackSessionStore(this)
         echoHuntCredentials = EchoHuntCredentialStore(this)
         echoHuntScan = EchoHuntScanController(echoHuntCredentials, appScope)
-        // Retire broken SIER if persisted as active mode.
-        if (themeStore.visualizerMode.value == VisualizerMode.XR3_SIERPINSKI) {
-            themeStore.setVisualizerMode(VisualizerMode.XR3_POLY)
-            visualizerController.setMode(VisualizerMode.XR3_POLY, reason = "retire_sier")
+        // Retire broken / removed scenes if persisted as active mode.
+        when (themeStore.visualizerMode.value) {
+            VisualizerMode.XR3_SIERPINSKI -> {
+                themeStore.setVisualizerMode(VisualizerMode.XR3_POLY)
+                visualizerController.setMode(VisualizerMode.XR3_POLY, reason = "retire_sier")
+            }
+            VisualizerMode.PRISM_RAIN -> {
+                themeStore.setVisualizerMode(VisualizerMode.TOPO_CONTOUR)
+                visualizerController.setMode(VisualizerMode.TOPO_CONTOUR, reason = "retire_rain")
+            }
+            else -> Unit
         }
         themeStore.speak(CompanionVoice.bootLine())
         sleepTimerController = SleepTimerController(
@@ -144,4 +156,7 @@ interface PlaybackBridge {
     fun trackRemainingMs(): Long
     fun queueRemainingMs(): Long
     fun audioSessionId(): Int
+    fun currentPositionMs(): Long = 0L
+    fun currentMediaId(): String = ""
+    fun currentTitle(): String = ""
 }

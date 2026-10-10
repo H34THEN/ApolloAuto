@@ -9,6 +9,7 @@ import com.apolloauto.player.media.VisualIntensity
 import com.apolloauto.player.media.VisualResponseMapper
 import com.apolloauto.player.media.VizPaletteMode
 import com.apolloauto.player.media.VizQualityTier
+import com.apolloauto.player.media.immersiveViewportDim
 import com.apolloauto.player.theme.HudPalette
 import kotlin.math.PI
 import kotlin.math.cos
@@ -87,8 +88,8 @@ fun DrawScope.drawSynthSmokeScene(
     val dens = controls.density.coerceIn(0.4f, 1.6f)
     val cellsX = (12 * quality.meshScale * dens).toInt().coerceIn(10, 18)
     val cellsY = (8 * quality.meshScale * dens).toInt().coerceIn(6, 12)
-    val baseR = min(size.width, size.height) *
-        (0.14f + controls.plumeSize.coerceIn(0.4f, 1.8f) * 0.12f) *
+    val baseR = immersiveViewportDim(size.width, size.height) *
+        (0.16f + controls.plumeSize.coerceIn(0.4f, 1.8f) * 0.14f) *
         (1f + sub * 0.55f * controls.bassPressure + kick * 0.35f + ambient * 0.2f)
 
     // Thin atmospheric wash — keep black negative space (contrast).
@@ -174,7 +175,8 @@ fun DrawScope.drawSynthSmokeScene(
     if (kick > 0.4f || flux > 0.35f) {
         val cx = size.width * (0.4f + bass * 0.25f)
         val cy = size.height * (0.55f - sub * 0.12f)
-        val shock = min(size.width, size.height) * (0.18f + kick * 0.4f + flux * 0.15f)
+        val shock = immersiveViewportDim(size.width, size.height) *
+            (0.2f + kick * 0.42f + flux * 0.18f)
         val sc = smokeColor(
             0.65f + chrom * 0.1f, smokePreset, paletteMode, palette,
             sat * controls.saturation * 1.2f, glow * controls.glow

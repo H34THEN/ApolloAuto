@@ -14,6 +14,8 @@ object MediaIds {
     const val ALBUM_PREFIX = "album:"
     const val RECENT = "recent"
     const val MOST_PLAYED = "most_played"
+    const val RECENTLY_ADDED = "recently_added"
+    const val UNPLAYED = "unplayed"
     const val FOLDERS = "folders"
     const val VISUALIZERS = "visualizers"
     const val VIZ_PREFIX = "viz:"

@@ -57,9 +57,8 @@ import com.apolloauto.player.theme.fontFamilyFor
 import com.apolloauto.player.theme.parseHexColor
 import com.apolloauto.player.theme.toHexRgb
 import com.apolloauto.player.ui.hud.ApolloHudButton
-import com.apolloauto.player.ui.hud.ApolloHudPanel
 import com.apolloauto.player.ui.hud.ApolloSectionHeader
-import com.apolloauto.player.ui.hud.ApolloSciFiPanel
+import com.apolloauto.player.ui.hud.ApolloStylePanel
 import com.apolloauto.player.ui.hud.useKenneyChrome
 
 class SettingsActivity : ComponentActivity() {
@@ -158,16 +157,11 @@ private fun DisplaySettings() {
     val motion by app.themeStore.motionProfile.collectAsState()
     val interfaceStyle by app.themeStore.interfaceStyle.collectAsState()
     val hudFont by app.themeStore.hudFont.collectAsState()
-    val kenney = useKenneyChrome(interfaceStyle)
     var draft by remember(custom) { mutableStateOf(custom) }
     var hexPrimary by remember(draft.primary) { mutableStateOf(draft.primary.toHexRgb()) }
 
     val Panel: @Composable (String, @Composable () -> Unit) -> Unit = { title, content ->
-        if (kenney) {
-            ApolloSciFiPanel(title = title) { content() }
-        } else {
-            ApolloHudPanel(title = title) { content() }
-        }
+        ApolloStylePanel(title = title, interfaceStyle = interfaceStyle) { content() }
     }
 
     Panel("INTERFACE STYLE") {
@@ -193,6 +187,47 @@ private fun DisplaySettings() {
             "Classic disables Kenney chrome while keeping themes, EQ, playlists, and timers.",
             color = p.dim,
             fontSize = 12.sp
+        )
+    }
+
+    Panel("FONT SIZE") {
+        val uiScale by app.themeStore.uiFontScale.collectAsState()
+        val partySp by app.themeStore.partyScrollFontSp.collectAsState()
+        val lyricsSp by app.themeStore.lyricsFontSp.collectAsState()
+        Text(
+            "UI scale — Home, Library, Lists, Settings (${"%.0f".format(uiScale * 100)}%)",
+            color = p.soft,
+            fontSize = 12.sp
+        )
+        Slider(
+            value = uiScale,
+            onValueChange = { app.themeStore.setUiFontScale(it) },
+            valueRange = 0.8f..1.45f
+        )
+        Text(
+            "Party scroll letters (${"%.0f".format(partySp)} sp)",
+            color = p.soft,
+            fontSize = 12.sp
+        )
+        Slider(
+            value = partySp,
+            onValueChange = { app.themeStore.setPartyScrollFontSp(it) },
+            valueRange = 22f..72f
+        )
+        Text(
+            "Rainbow lyrics (${"%.0f".format(lyricsSp)} sp)",
+            color = p.soft,
+            fontSize = 12.sp
+        )
+        Slider(
+            value = lyricsSp,
+            onValueChange = { app.themeStore.setLyricsFontSp(it) },
+            valueRange = 18f..64f
+        )
+        Text(
+            "Preview: APOLLO II · NOW PLAYING",
+            color = p.primary,
+            fontSize = 14.sp
         )
     }
 
@@ -361,8 +396,7 @@ private fun AudioSettings() {
     var customName by remember { mutableStateOf("") }
 
     val Panel: @Composable (String, @Composable () -> Unit) -> Unit = { title, content ->
-        if (kenney) ApolloSciFiPanel(title = title) { content() }
-        else ApolloHudPanel(title = title) { content() }
+        ApolloStylePanel(title = title, interfaceStyle = interfaceStyle) { content() }
     }
 
     Panel("SIGNAL SCOPE") {
@@ -490,10 +524,11 @@ private fun AudioSettings() {
 private fun PlaybackSettings() {
     val app = ApolloApp.instance
     val p = LocalHudPalette.current
+    val interfaceStyle by app.themeStore.interfaceStyle.collectAsState()
     val sleep by app.sleepTimerController.state.collectAsState()
     var customMinutes by remember { mutableStateOf("20") }
 
-    ApolloHudPanel(title = "SLEEP TIMER") {
+    ApolloStylePanel(title = "SLEEP TIMER", interfaceStyle = interfaceStyle) {
         Text(
             if (sleep.running) "ACTIVE · ${formatMs(sleep.remainingMs)} · ${sleep.mode.name}"
             else "Idle",

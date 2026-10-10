@@ -25,17 +25,27 @@ import com.apolloauto.player.theme.LocalBodyFont
 import com.apolloauto.player.theme.LocalHudFont
 import com.apolloauto.player.theme.LocalHudPalette
 
+/**
+ * Gallery groups keyed by upstream GitHub source (or Apollo original).
+ * Titles match repo paths so modes are easy to rediscover.
+ */
 enum class VisualizerCategory(val title: String) {
-    SIGNAL("SIGNAL"),
-    SPECTR("SPECTR"),
-    COSMIC("COSMIC"),
-    RAVE("RAVE"),
-    MV2("MV2"),
-    DNA("DNA"),
-    DROP("DROP"),
-    XR3("XR3"),
-    TRANCE("TRANCE"),
-    EXPERIMENTAL("EXPERIMENTAL")
+    APOLLO("apollo // original"),
+    PROJECTM("projectM-visualizer/projectm"),
+    MILKDROP("milkdrop2077/MilkDrop3"),
+    GAURAVK("gauravk95/audio-visualizer-android"),
+    BAUER("bradleybauer/music_visualizer"),
+    MUSICDNA("harjot-oberai/MusicDNA"),
+    AUDIOSPECTR("audiospectr / seewav-style"),
+    MV2("MusicVisualizerV2"),
+    MOSTAFA("mostafa7904/Stars-Audio-Visualizer"),
+    XR3("goxr3plus/XR3Player"),
+    NIXON("nixonyh // wire mesh"),
+    TRANCE("apollo // trance reactor"),
+    TOPO("apollo // techno topographic"),
+    PSY("apollo // trippy / stylized"),
+    EXPERIMENTAL("apollo // experimental"),
+    FUN("apollo // fun")
 }
 
 data class VisualizerModeEntry(
@@ -46,184 +56,320 @@ data class VisualizerModeEntry(
 )
 
 object VisualizerModeCatalog {
+    /** Modes from the GitHub source packs — pinned first in Car Mode chips. */
+    val sourcePackModes: Set<VisualizerMode> = setOf(
+        VisualizerMode.PROJECTM_PLASMA,
+        VisualizerMode.PROJECTM_SCOPE,
+        VisualizerMode.BEAT_TUNNEL,
+        VisualizerMode.BEAT_CASCADE,
+        VisualizerMode.MILKDROP_WAVE,
+        VisualizerMode.MILKDROP_ROTOR,
+        VisualizerMode.AV_BAR,
+        VisualizerMode.AV_BLAST,
+        VisualizerMode.AV_BLOB,
+        VisualizerMode.AV_WAVE,
+        VisualizerMode.AV_CIRCLE_BARS,
+        VisualizerMode.AV_HIFI,
+        VisualizerMode.BAUER_FOUNTAIN,
+        VisualizerMode.BAUER_FFT,
+        VisualizerMode.BAUER_SPEC,
+        VisualizerMode.DNA_SPIRAL,
+        VisualizerMode.DNA_HELIX,
+        VisualizerMode.DNA_WAVE,
+        VisualizerMode.DNA_CIRCLE,
+        VisualizerMode.LYRICS_RAINBOW,
+        VisualizerMode.PARTY_MARQUEE,
+        VisualizerMode.TOPO_CONTOUR,
+        VisualizerMode.WIRE_TERRAIN,
+        VisualizerMode.NEON_TOPO,
+        VisualizerMode.PSY_KALEIDO,
+        VisualizerMode.ACID_TUNNEL
+    )
+
     val all: List<VisualizerModeEntry> = listOf(
-        VisualizerModeEntry(VisualizerMode.SPECTRUM, VisualizerCategory.SIGNAL, "FFT", "Full spectrum bars"),
-        VisualizerModeEntry(VisualizerMode.BARS, VisualizerCategory.SIGNAL, "BARS", "Classic level meters"),
-        VisualizerModeEntry(VisualizerMode.WAVEFORM, VisualizerCategory.SIGNAL, "WAVE", "Oscilloscope trace"),
-        VisualizerModeEntry(VisualizerMode.CIRCULAR, VisualizerCategory.SIGNAL, "ORB", "Radial FFT ring"),
-        VisualizerModeEntry(VisualizerMode.RINGS, VisualizerCategory.SIGNAL, "RINGS", "Concentric energy rings"),
-        VisualizerModeEntry(VisualizerMode.LEVEL, VisualizerCategory.SIGNAL, "VU", "Dual VU meters"),
-        VisualizerModeEntry(VisualizerMode.MINIMAL, VisualizerCategory.SIGNAL, "MIN", "Clean level strips"),
+        // --- apollo // original ---
+        VisualizerModeEntry(VisualizerMode.SPECTRUM, VisualizerCategory.APOLLO, "FFT", "Full spectrum bars"),
+        VisualizerModeEntry(VisualizerMode.BARS, VisualizerCategory.APOLLO, "BARS", "Classic level meters"),
+        VisualizerModeEntry(VisualizerMode.WAVEFORM, VisualizerCategory.APOLLO, "WAVE", "Oscilloscope trace"),
+        VisualizerModeEntry(VisualizerMode.CIRCULAR, VisualizerCategory.APOLLO, "ORB", "Radial FFT ring"),
+        VisualizerModeEntry(VisualizerMode.RINGS, VisualizerCategory.APOLLO, "RINGS", "Concentric energy rings"),
+        VisualizerModeEntry(VisualizerMode.LEVEL, VisualizerCategory.APOLLO, "VU", "Dual VU meters"),
+        VisualizerModeEntry(VisualizerMode.MINIMAL, VisualizerCategory.APOLLO, "MIN", "Clean level strips"),
+        VisualizerModeEntry(VisualizerMode.NEBULA, VisualizerCategory.APOLLO, "NEBULA", "Soft gas cloud drift"),
+        VisualizerModeEntry(VisualizerMode.SIGNAL_OCEAN, VisualizerCategory.APOLLO, "OCEAN", "Wave mesh horizon"),
+        VisualizerModeEntry(VisualizerMode.PLASMA_HEART, VisualizerCategory.APOLLO, "PLASMA", "Pulsing reactor core"),
+        VisualizerModeEntry(VisualizerMode.RAVE_CORE, VisualizerCategory.APOLLO, "CORE", "Industrial pillar grid"),
+        VisualizerModeEntry(VisualizerMode.FRACTURE, VisualizerCategory.APOLLO, "FRACT", "Kaleidoscope shards"),
+        VisualizerModeEntry(VisualizerMode.DECORATIVE, VisualizerCategory.APOLLO, "DECO", "Ambient idle sweep"),
+        // --- projectM-visualizer/projectm ---
+        VisualizerModeEntry(
+            VisualizerMode.PROJECTM_PLASMA,
+            VisualizerCategory.PROJECTM,
+            "PMPLAS",
+            "Plasma warp rings (projectM look)"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.PROJECTM_SCOPE,
+            VisualizerCategory.PROJECTM,
+            "PMSCOPE",
+            "Classic waveform scope (projectM look)"
+        ),
+        // --- milkdrop2077/MilkDrop3 ---
+        VisualizerModeEntry(
+            VisualizerMode.BEAT_TUNNEL,
+            VisualizerCategory.MILKDROP,
+            "TUNNEL",
+            "Beat warp rings"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.BEAT_CASCADE,
+            VisualizerCategory.MILKDROP,
+            "DROP",
+            "Cascading beat columns"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.MILKDROP_WAVE,
+            VisualizerCategory.MILKDROP,
+            "MDWAVE",
+            "Oscillating waveform mesh"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.MILKDROP_ROTOR,
+            VisualizerCategory.MILKDROP,
+            "ROTOR",
+            "Spinning spectrum arms"
+        ),
+        // --- gauravk95/audio-visualizer-android (Apache-2.0 ports) ---
+        VisualizerModeEntry(VisualizerMode.AV_BAR, VisualizerCategory.GAURAVK, "AV-BAR", "BarVisualizer port"),
+        VisualizerModeEntry(VisualizerMode.AV_BLAST, VisualizerCategory.GAURAVK, "AV-BLAST", "BlastVisualizer port"),
+        VisualizerModeEntry(VisualizerMode.AV_BLOB, VisualizerCategory.GAURAVK, "AV-BLOB", "BlobVisualizer port"),
+        VisualizerModeEntry(VisualizerMode.AV_WAVE, VisualizerCategory.GAURAVK, "AV-WAVE", "WaveVisualizer port"),
+        VisualizerModeEntry(VisualizerMode.AV_CIRCLE_BARS, VisualizerCategory.GAURAVK, "AV-CIRC", "CircleLineVisualizer port"),
+        VisualizerModeEntry(VisualizerMode.AV_HIFI, VisualizerCategory.GAURAVK, "AV-HIFI", "HiFiVisualizer port"),
+        // --- bradleybauer/music_visualizer ---
+        VisualizerModeEntry(
+            VisualizerMode.BAUER_FOUNTAIN,
+            VisualizerCategory.BAUER,
+            "FOUNT",
+            "Particle fountain"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.BAUER_FFT,
+            VisualizerCategory.BAUER,
+            "B-FFT",
+            "Log-spaced FFT ribbons"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.BAUER_SPEC,
+            VisualizerCategory.BAUER,
+            "B-SPEC",
+            "Scrolling spectrogram"
+        ),
+        // --- harjot-oberai/MusicDNA (CC BY-NC-SA; non-commercial) ---
+        VisualizerModeEntry(
+            VisualizerMode.DNA_SPIRAL,
+            VisualizerCategory.MUSICDNA,
+            "DNA",
+            "Original MusicDNA spiral trail algorithm"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.DNA_HELIX,
+            VisualizerCategory.MUSICDNA,
+            "HELIX",
+            "Double-helix waveform"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.DNA_WAVE,
+            VisualizerCategory.MUSICDNA,
+            "STRAND",
+            "Twisted spectrum ribbon"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.DNA_CIRCLE,
+            VisualizerCategory.MUSICDNA,
+            "DNACIRC",
+            "Circular DNA bars"
+        ),
+        // --- audiospectr ---
         VisualizerModeEntry(
             VisualizerMode.WAVEBARS,
-            VisualizerCategory.SPECTR,
+            VisualizerCategory.AUDIOSPECTR,
             "WBAR",
-            "Symmetric seewav-style bars (audiospectr)"
+            "Symmetric seewav-style bars"
         ),
         VisualizerModeEntry(
             VisualizerMode.MIRROR_BARS,
-            VisualizerCategory.SPECTR,
+            VisualizerCategory.AUDIOSPECTR,
             "MIRR",
-            "Mirrored neon spectrum (audiospectr)"
+            "Mirrored neon spectrum"
         ),
         VisualizerModeEntry(
             VisualizerMode.PULSE,
-            VisualizerCategory.SPECTR,
+            VisualizerCategory.AUDIOSPECTR,
             "PULSE",
-            "Bass rings + spokes (audiospectr)"
+            "Bass rings + spokes"
         ),
         VisualizerModeEntry(
             VisualizerMode.PARTICLES,
-            VisualizerCategory.SPECTR,
+            VisualizerCategory.AUDIOSPECTR,
             "DOTS",
-            "Radial sparks (audiospectr)"
+            "Radial sparks"
         ),
-        VisualizerModeEntry(
-            VisualizerMode.HYPERDRIVE,
-            VisualizerCategory.COSMIC,
-            "WIRE",
-            "Wireframe audio mesh (nixonyh-inspired)"
-        ),
-        VisualizerModeEntry(VisualizerMode.NEBULA, VisualizerCategory.COSMIC, "NEBULA", "Soft gas cloud drift"),
-        VisualizerModeEntry(VisualizerMode.SIGNAL_OCEAN, VisualizerCategory.COSMIC, "OCEAN", "Wave mesh horizon"),
-        VisualizerModeEntry(VisualizerMode.PLASMA_HEART, VisualizerCategory.COSMIC, "PLASMA", "Pulsing reactor core"),
-        VisualizerModeEntry(VisualizerMode.RAVE_CORE, VisualizerCategory.RAVE, "CORE", "Industrial pillar grid"),
-        VisualizerModeEntry(VisualizerMode.FRACTURE, VisualizerCategory.RAVE, "FRACT", "Kaleidoscope shards"),
-        VisualizerModeEntry(VisualizerMode.DECORATIVE, VisualizerCategory.RAVE, "DECO", "Ambient idle sweep"),
+        // --- MusicVisualizerV2 ---
         VisualizerModeEntry(
             VisualizerMode.BASS_NATION,
             VisualizerCategory.MV2,
             "NATION",
-            "Radial HSB bars (MusicVisualizerV2)"
+            "Radial HSB bars"
         ),
         VisualizerModeEntry(
             VisualizerMode.BUBBLE_BASS,
             VisualizerCategory.MV2,
             "BUBBLE",
-            "Floating FFT bubbles (MusicVisualizerV2)"
+            "Floating FFT bubbles"
         ),
         VisualizerModeEntry(
             VisualizerMode.CIRCULAR_PULSE,
             VisualizerCategory.MV2,
             "CPULSE",
-            "Radial spokes + core (MusicVisualizerV2)"
+            "Radial spokes + core"
         ),
         VisualizerModeEntry(
             VisualizerMode.COLOR_SIGNAL,
             VisualizerCategory.MV2,
             "CSIG",
-            "Zigzag color spectrum (MusicVisualizerV2)"
+            "Zigzag color spectrum"
         ),
         VisualizerModeEntry(
             VisualizerMode.DUAL_SIGNAL,
             VisualizerCategory.MV2,
             "DUAL",
-            "Mirrored dual spectrum (MusicVisualizerV2)"
+            "Mirrored dual spectrum"
         ),
         VisualizerModeEntry(
             VisualizerMode.MIXED_WAVE,
             VisualizerCategory.MV2,
             "MIXED",
-            "Sine-warped spectrum (MusicVisualizerV2)"
+            "Sine-warped spectrum"
         ),
         VisualizerModeEntry(
             VisualizerMode.SHAPE_WAVE,
             VisualizerCategory.MV2,
             "SHAPE",
-            "Reactive shape grid (MusicVisualizerV2)"
+            "Reactive shape grid"
         ),
         VisualizerModeEntry(
-            VisualizerMode.STAR_FIELD,
-            VisualizerCategory.MV2,
-            "STARS",
-            "Warp starfield (MusicVisualizerV2)"
+            VisualizerMode.SPACE_WARP,
+            VisualizerCategory.APOLLO,
+            "WARP",
+            "Cosmic reactive hyperspace warp"
         ),
+        // --- nixonyh ---
         VisualizerModeEntry(
-            VisualizerMode.STARS2,
-            VisualizerCategory.MV2,
-            "STARS2",
-            "Streaking FFT stars (mostafa7904-inspired)"
+            VisualizerMode.HYPERDRIVE,
+            VisualizerCategory.NIXON,
+            "WIRE",
+            "Wireframe audio mesh"
         ),
-        VisualizerModeEntry(
-            VisualizerMode.DNA_HELIX,
-            VisualizerCategory.DNA,
-            "HELIX",
-            "Double-helix waveform (MusicDNA-inspired)"
-        ),
-        VisualizerModeEntry(
-            VisualizerMode.DNA_WAVE,
-            VisualizerCategory.DNA,
-            "STRAND",
-            "Twisted spectrum ribbon"
-        ),
-        VisualizerModeEntry(
-            VisualizerMode.BEAT_TUNNEL,
-            VisualizerCategory.DROP,
-            "TUNNEL",
-            "Beat warp rings (MilkDrop-inspired)"
-        ),
-        VisualizerModeEntry(
-            VisualizerMode.BEAT_CASCADE,
-            VisualizerCategory.DROP,
-            "DROP",
-            "Cascading beat columns"
-        ),
+        // --- goxr3plus/XR3Player ---
         VisualizerModeEntry(
             VisualizerMode.XR3_OSCILLO,
             VisualizerCategory.XR3,
             "OSC",
-            "Stereo oscilloscope (XR3-inspired)"
+            "Stereo oscilloscope"
         ),
         VisualizerModeEntry(
             VisualizerMode.XR3_CIRCLE,
             VisualizerCategory.XR3,
             "CIRC",
-            "Circle with lines (XR3-inspired)"
+            "Circle with lines"
         ),
         VisualizerModeEntry(
             VisualizerMode.XR3_POLY,
             VisualizerCategory.XR3,
             "POLY",
-            "Polyspiral / rosette (XR3-inspired)"
+            "Polyspiral / rosette"
         ),
         VisualizerModeEntry(
             VisualizerMode.XR3_BARS,
             VisualizerCategory.XR3,
             "XBARS",
-            "Classic spectrum + peaks (XR3-inspired)"
+            "Classic spectrum + peaks"
         ),
         VisualizerModeEntry(
             VisualizerMode.XR3_VU,
             VisualizerCategory.XR3,
             "XVU",
-            "Dual VU meters (XR3-inspired)"
+            "Dual VU meters"
         ),
-        // XR3_SIERPINSKI retired (broken) — enum kept for prefs compatibility.
         VisualizerModeEntry(
             VisualizerMode.XR3_JULIA,
             VisualizerCategory.XR3,
             "JULIA",
-            "Julia-set point field (XR3-inspired)"
+            "Julia-set point field"
         ),
         VisualizerModeEntry(
             VisualizerMode.XR3_SPRITE,
             VisualizerCategory.XR3,
             "SPHERE",
-            "Wireframe sprite sphere (XR3-inspired)"
+            "Wireframe sprite sphere"
         ),
+        // --- apollo // trance / experimental / fun ---
         VisualizerModeEntry(VisualizerMode.CHROMATIC_PHI, VisualizerCategory.TRANCE, "PHI", "Golden-angle particle bloom"),
         VisualizerModeEntry(VisualizerMode.ECTOPLASM, VisualizerCategory.TRANCE, "SLIME", "Iridescent metaball ectoplasm"),
         VisualizerModeEntry(VisualizerMode.CIRC_INFINITY, VisualizerCategory.TRANCE, "CIRC∞", "Radial spectral infinity"),
-        VisualizerModeEntry(VisualizerMode.PRISM_RAIN, VisualizerCategory.TRANCE, "RAIN", "Onset prism droplets"),
+        // PRISM_RAIN retired — chaotic / hard to read
         VisualizerModeEntry(VisualizerMode.SYNTH_SMOKE, VisualizerCategory.TRANCE, "SMOKE", "Billowing fBm vapor plumes"),
         VisualizerModeEntry(VisualizerMode.NOTE_SWARM, VisualizerCategory.TRANCE, "SWARM", "Per-band particle constellations"),
         VisualizerModeEntry(VisualizerMode.HARMONIC_MANDALA, VisualizerCategory.TRANCE, "MANDALA", "Symmetric harmonic petals"),
         VisualizerModeEntry(VisualizerMode.LIQUID_SPECTRUM, VisualizerCategory.TRANCE, "LIQUID", "Flowing liquid spectrum field"),
+        VisualizerModeEntry(
+            VisualizerMode.TOPO_CONTOUR,
+            VisualizerCategory.TOPO,
+            "TOPO",
+            "Techno topographic contour map"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.WIRE_TERRAIN,
+            VisualizerCategory.TOPO,
+            "TERRAIN",
+            "Perspective wireframe terrain"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.NEON_TOPO,
+            VisualizerCategory.TOPO,
+            "NEOTOPO",
+            "Stacked neon elevation plates"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.PSY_KALEIDO,
+            VisualizerCategory.PSY,
+            "KALEIDO",
+            "Trippy kaleidoscope shards"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.ACID_TUNNEL,
+            VisualizerCategory.PSY,
+            "ACID",
+            "Acid spiral tunnel"
+        ),
         VisualizerModeEntry(VisualizerMode.AUDIBLE_SPIRALS, VisualizerCategory.EXPERIMENTAL, "SPIRAL", "Archimedean audible spirals"),
         VisualizerModeEntry(VisualizerMode.FLUCTUS_FLOW, VisualizerCategory.EXPERIMENTAL, "FLUCTUS", "3D ribbon wave sculpture"),
         VisualizerModeEntry(VisualizerMode.WAVEFORM_VOID, VisualizerCategory.EXPERIMENTAL, "VOID", "Layered waveform landscape"),
         VisualizerModeEntry(VisualizerMode.OBSIDIAN_REACTOR, VisualizerCategory.EXPERIMENTAL, "OBSIDIAN", "Dark crystalline reactor"),
-        VisualizerModeEntry(VisualizerMode.VISSONANCE_MATRIX, VisualizerCategory.EXPERIMENTAL, "VISSON", "Multi-mode spectral matrix")
+        VisualizerModeEntry(VisualizerMode.VISSONANCE_MATRIX, VisualizerCategory.EXPERIMENTAL, "VISSON", "Multi-mode spectral matrix"),
+        VisualizerModeEntry(
+            VisualizerMode.LYRICS_RAINBOW,
+            VisualizerCategory.FUN,
+            "LYRIC",
+            "Rainbow E1D1C lyrics that pulse with the beat"
+        ),
+        VisualizerModeEntry(
+            VisualizerMode.PARTY_MARQUEE,
+            VisualizerCategory.FUN,
+            "SCROLL",
+            "Goofy scrolling messages for Car Mode funsies"
+        )
     )
 
     /** Modes cycled by immersive next / randomizer (skip idle-only / retired). */
@@ -232,10 +378,17 @@ object VisualizerModeCatalog {
         .filter {
             it != VisualizerMode.DECORATIVE &&
                 it != VisualizerMode.MINIMAL &&
-                it != VisualizerMode.XR3_SIERPINSKI
+                it != VisualizerMode.XR3_SIERPINSKI &&
+                it != VisualizerMode.PRISM_RAIN &&
+                it != VisualizerMode.STAR_FIELD &&
+                it != VisualizerMode.STARS2
         }
 
-    fun isRetired(mode: VisualizerMode): Boolean = mode == VisualizerMode.XR3_SIERPINSKI
+    fun isRetired(mode: VisualizerMode): Boolean =
+        mode == VisualizerMode.XR3_SIERPINSKI ||
+            mode == VisualizerMode.PRISM_RAIN ||
+            mode == VisualizerMode.STAR_FIELD ||
+            mode == VisualizerMode.STARS2
 
     fun entry(mode: VisualizerMode): VisualizerModeEntry =
         all.firstOrNull { it.mode == mode } ?: all.first()
@@ -325,11 +478,12 @@ fun VisualizerModeCompactChips(
     enabledModes: Set<VisualizerMode>? = null
 ) {
     val scroll = rememberScrollState()
-    val entries = if (enabledModes == null) {
+    val pack = VisualizerModeCatalog.sourcePackModes
+    val entries = (if (enabledModes == null) {
         VisualizerModeCatalog.all
     } else {
         VisualizerModeCatalog.all.filter { it.mode in enabledModes }
-    }
+    }).sortedBy { if (it.mode in pack) 0 else 1 }
     Row(
         modifier = modifier.horizontalScroll(scroll),
         horizontalArrangement = Arrangement.spacedBy(4.dp)

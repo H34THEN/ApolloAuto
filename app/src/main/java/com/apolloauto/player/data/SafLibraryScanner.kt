@@ -100,7 +100,8 @@ class SafLibraryScanner(
                             sourceKind = source.kind,
                             relativePath = childRel.replace('\\', '/'),
                             lyricsUri = lyricsByBase[base],
-                            available = true
+                            available = true,
+                            dateAddedMs = child.lastModified().coerceAtLeast(0L)
                         )
                     }
                     isPlaylist(name) -> {

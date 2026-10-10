@@ -33,7 +33,7 @@ import com.apolloauto.player.ApolloApp
 import com.apolloauto.player.echohunt.EchoHuntEngineStatus
 import com.apolloauto.player.theme.LocalBodyFont
 import com.apolloauto.player.theme.LocalHudPalette
-import com.apolloauto.player.ui.hud.ApolloHudPanel
+import com.apolloauto.player.ui.hud.ApolloStylePanel
 
 /**
  * Settings → ECHOHUNT — AcoustID application key + library scan controls.
@@ -44,13 +44,14 @@ fun EchoHuntSettingsPanel() {
     val app = ApolloApp.instance
     val p = LocalHudPalette.current
     val body = LocalBodyFont.current
+    val interfaceStyle by app.themeStore.interfaceStyle.collectAsState()
     val storedKey by app.echoHuntCredentials.acoustIdApplicationKey.collectAsState()
     val scan by app.echoHuntScan.state.collectAsState()
     val tracks by app.libraryStore.tracks.collectAsState()
     var draftKey by remember(storedKey) { mutableStateOf(storedKey.orEmpty()) }
     var reveal by remember { mutableStateOf(false) }
 
-    ApolloHudPanel(title = "ECHOHUNT / ACOUSTID") {
+    ApolloStylePanel(title = "ECHOHUNT / ACOUSTID", interfaceStyle = interfaceStyle) {
         Text(
             "Identify local files via Chromaprint fingerprints + AcoustID. " +
                 "Not a Shazam-style mic recognizer.",

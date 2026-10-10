@@ -18,5 +18,7 @@ data class Track(
     val sourceKind: MusicSourceKind = MusicSourceKind.PHONE_MEDIASTORE,
     /** Path relative to the SAF root (forward slashes), used for M3U resolution. */
     val relativePath: String = "",
-    val available: Boolean = true
+    val available: Boolean = true,
+    /** Epoch ms when the file was added (MediaStore DATE_ADDED or DocumentFile lastModified). */
+    val dateAddedMs: Long = 0L
 )

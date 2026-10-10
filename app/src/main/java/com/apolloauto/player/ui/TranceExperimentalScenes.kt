@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import com.apolloauto.player.media.AudioFeatures
 import com.apolloauto.player.media.VizPaletteMode
 import com.apolloauto.player.media.VizQualityTier
+import com.apolloauto.player.media.immersiveViewportDim
 import com.apolloauto.player.theme.HudPalette
 import kotlin.math.PI
 import kotlin.math.cos
@@ -45,7 +46,7 @@ fun DrawScope.drawAudibleSpiralsScene(
         SpiralVariant.FREQ_BANDS -> 5
     }
     val steps = (180 * quality.meshScale).toInt().coerceIn(90, 280)
-    val a = min(size.width, size.height) * (0.012f + features.bass * 0.004f) // Archimedean scale
+    val a = immersiveViewportDim(size.width, size.height) * (0.014f + features.bass * 0.005f)
     for (arm in 0 until turns) {
         val path = Path()
         val dir = if (variant == SpiralVariant.DUAL && arm % 2 == 1) -1f else 1f
@@ -194,7 +195,8 @@ fun DrawScope.drawObsidianReactorScene(
     val cx = size.width / 2f
     val cy = size.height / 2f
     val detail = (8 * quality.meshScale).toInt().coerceIn(5, 12)
-    val scale = min(size.width, size.height) * (0.28f + features.bass * 0.1f + features.subBass * 0.08f) *
+    val scale = immersiveViewportDim(size.width, size.height) *
+        (0.3f + features.bass * 0.12f + features.subBass * 0.1f) *
         (1f + features.onset * 0.2f) * drive
     val edge = when (crystalPreset) {
         "emerald" -> Color(0xFF39FF14)
@@ -297,8 +299,8 @@ fun DrawScope.drawVissonanceMatrixScene(
             val cy = size.height / 2f
             val rings = (5 * quality.meshScale).toInt().coerceIn(3, 8)
             for (r in 0 until rings) {
-                val rad = min(size.width, size.height) * (0.1f + r * 0.07f) *
-                    (1f + features.bass * 0.12f) * drive
+                val rad = immersiveViewportDim(size.width, size.height) * (0.12f + r * 0.08f) *
+                    (1f + features.bass * 0.14f) * drive
                 val steps = 48
                 val path = Path()
                 for (i in 0..steps) {

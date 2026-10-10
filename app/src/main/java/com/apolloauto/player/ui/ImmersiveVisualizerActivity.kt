@@ -95,10 +95,13 @@ private fun ImmersiveVisualizerScreen(onExit: () -> Unit) {
     val body = LocalBodyFont.current
     val controller = remember { PlayerController(context.applicationContext) }
     val playback by controller.state.collectAsState()
-    val mode by app.visualizerController.mode.collectAsState()
+    val modeRaw by app.visualizerController.mode.collectAsState()
+    val mode = com.apolloauto.player.media.resolveVisualizerMode(modeRaw)
     val randomizer by app.themeStore.vizRandomizer.collectAsState()
     val enabledModes by app.themeStore.enabledVisualizerModes.collectAsState()
     val driveMode by app.themeStore.driveMode.collectAsState()
+    val vizSizePresets by app.themeStore.vizSizePresets.collectAsState()
+    val sizePreset = vizSizePresets[mode] ?: com.apolloauto.player.media.VizSizePreset.M
     val libraryTracks by app.libraryStore.tracks.collectAsState()
     val view = LocalView.current
 
@@ -123,6 +126,7 @@ private fun ImmersiveVisualizerScreen(onExit: () -> Unit) {
     var showGallery by remember { mutableStateOf(false) }
     var showBgSheet by remember { mutableStateOf(false) }
     var hudVisible by remember { mutableStateOf(true) }
+    var sizeHint by remember { mutableStateOf<String?>(null) }
     val lyricsAvailable = lyricsDoc != null && lyricsDoc!!.lines.isNotEmpty()
     val autoDjOnTrack by app.themeStore.autoDjOnTrackChange.collectAsState()
 
@@ -139,6 +143,17 @@ private fun ImmersiveVisualizerScreen(onExit: () -> Unit) {
             val idx = pool.indexOf(mode).let { if (it < 0) 0 else it }
             applyMode(pool[(idx + 1) % pool.size])
         }
+    }
+
+    fun cycleSize() {
+        val next = app.themeStore.cycleVizSizePreset(mode)
+        sizeHint = "${VisualizerModeCatalog.compactLabel(mode)} · ${next.shortLabel}"
+    }
+
+    LaunchedEffect(sizeHint) {
+        if (sizeHint == null) return@LaunchedEffect
+        delay(1200)
+        sizeHint = null
     }
 
     val micPermission = rememberLauncherForActivityResult(
@@ -188,8 +203,8 @@ private fun ImmersiveVisualizerScreen(onExit: () -> Unit) {
         }
         val session = app.playbackBridge?.audioSessionId() ?: 0
         if (session != 0) app.visualizerController.attach(session)
-        // Keep analyzer attached while paused — soft decay only (fixes frozen reactivity).
-        app.visualizerController.setEnabled(playback.playing)
+        // Keep capture enabled while Immersive is open so bands stay live (soft idle when paused).
+        app.visualizerController.setEnabled(true)
     }
 
     // Stale-frame recovery loop — does not recreate scenes.
@@ -338,6 +353,15 @@ private fun ImmersiveVisualizerScreen(onExit: () -> Unit) {
                     modifier = Modifier.size(20.dp)
                 )
             }
+            ImmersiveGhostButton(onClick = { cycleSize() }) {
+                Text(
+                    sizePreset.shortLabel,
+                    color = p.accent.copy(alpha = 0.9f),
+                    fontFamily = body,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
             ImmersiveGhostButton(onClick = { cycleNext() }) {
                 Icon(
                     Icons.Default.Refresh,
@@ -430,6 +454,24 @@ private fun ImmersiveVisualizerScreen(onExit: () -> Unit) {
                     .padding(top = 56.dp, end = 12.dp, start = 12.dp)
                     .fillMaxWidth(0.88f)
                     .widthIn(max = 360.dp)
+            )
+        }
+
+        if (sizeHint != null) {
+            Text(
+                sizeHint!!,
+                color = p.accent,
+                fontFamily = body,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(top = 56.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(p.voidBlack.copy(alpha = 0.55f))
+                    .border(1.dp, p.primary.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
             )
         }
 

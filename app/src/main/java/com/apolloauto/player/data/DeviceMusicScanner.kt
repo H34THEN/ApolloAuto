@@ -35,7 +35,8 @@ class DeviceMusicScanner(
                 MediaStore.Audio.Media.DURATION,
                 MediaStore.Audio.Media.BUCKET_DISPLAY_NAME,
                 MediaStore.Audio.Media.DISPLAY_NAME,
-                MediaStore.Audio.Media.RELATIVE_PATH
+                MediaStore.Audio.Media.RELATIVE_PATH,
+                MediaStore.Audio.Media.DATE_ADDED
             )
             // Exclude ringtones / notifications / alarms even if MediaStore source is enabled.
             val selection = buildString {
@@ -58,6 +59,7 @@ class DeviceMusicScanner(
                 val bucketCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.BUCKET_DISPLAY_NAME)
                 val displayCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME)
                 val relCol = cursor.getColumnIndex(MediaStore.Audio.Media.RELATIVE_PATH)
+                val dateCol = cursor.getColumnIndex(MediaStore.Audio.Media.DATE_ADDED)
 
                 while (cursor.moveToNext()) {
                     val id = cursor.getLong(idCol)
@@ -67,6 +69,11 @@ class DeviceMusicScanner(
                     val rawAlbum = cursor.getString(albumCol)?.takeIf { it.isNotBlank() }
                     val displayName = cursor.getString(displayCol)
                     val duration = cursor.getLong(durationCol).coerceAtLeast(0L)
+                    val dateAddedMs = if (dateCol >= 0) {
+                        cursor.getLong(dateCol).coerceAtLeast(0L) * 1000L
+                    } else {
+                        0L
+                    }
                     val folder = cursor.getString(bucketCol)?.takeIf { it.isNotBlank() } ?: "Phone"
                     val relPath = if (relCol >= 0) {
                         val base = cursor.getString(relCol)?.trimEnd('/') ?: ""
@@ -106,7 +113,8 @@ class DeviceMusicScanner(
                         sourceId = MusicSourceStore.PHONE_MEDIASTORE_ID,
                         sourceKind = MusicSourceKind.PHONE_MEDIASTORE,
                         relativePath = relPath,
-                        available = true
+                        available = true,
+                        dateAddedMs = dateAddedMs
                     )
                 }
             }

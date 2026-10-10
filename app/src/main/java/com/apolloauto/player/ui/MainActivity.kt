@@ -68,8 +68,10 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.apolloauto.player.ApolloApp
 import com.apolloauto.player.data.LibrarySource
+import com.apolloauto.player.data.M3uImportPreview
 import com.apolloauto.player.data.Playlist
 import com.apolloauto.player.data.PlaylistStore
+import com.apolloauto.player.data.SmartPlaylistQueries
 import com.apolloauto.player.data.Track
 import com.apolloauto.player.data.displayArtist
 import com.apolloauto.player.data.displaySecondary
@@ -88,6 +90,8 @@ import com.apolloauto.player.ui.home.HomeDestination
 import com.apolloauto.player.ui.home.LibraryCategory
 import com.apolloauto.player.ui.home.LibraryFilterChips
 import com.apolloauto.player.ui.home.NowPlayingCard
+import com.apolloauto.player.ui.hud.ApolloHudButton
+import com.apolloauto.player.ui.hud.useKenneyChrome
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -128,6 +132,10 @@ private fun ApolloHomeScreen() {
     var selectedPlaylistId by remember { mutableStateOf<String?>(null) }
     var addTrackId by remember { mutableStateOf<String?>(null) }
     var addTrackTitle by remember { mutableStateOf("") }
+    var m3uPreview by remember { mutableStateOf<M3uImportPreview?>(null) }
+    val playStats by app.playHistoryStore.stats.collectAsState()
+    val firstSeen by app.trackFirstSeenStore.map.collectAsState()
+    val kenney = useKenneyChrome(interfaceStyle)
 
     val libFilter by app.musicSourceStore.filter.collectAsState()
     val filtered = remember(tracks, query, libFilter) {
@@ -150,6 +158,27 @@ private fun ApolloHomeScreen() {
     val selectedPlaylistTracks = remember(tracks, playlists, selectedPlaylistId, query) {
         val id = selectedPlaylistId ?: return@remember emptyList()
         filterList(app.playlistStore.resolveById(id, tracks), query)
+    }
+    val newTracks = remember(tracks, firstSeen, query) {
+        filterList(SmartPlaylistQueries.recentlyAdded(tracks, firstSeen), query)
+    }
+    val unplayedTracks = remember(tracks, playStats, query) {
+        filterList(SmartPlaylistQueries.unplayed(tracks, playStats), query)
+    }
+
+    val exportM3u = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("audio/x-mpegurl")
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val pl = playlists.find { it.id == selectedPlaylistId } ?: return@rememberLauncherForActivityResult
+        scope.launch {
+            runCatching {
+                app.m3uPlaylistService.exportM3u8(pl, app.libraryStore.tracks.value, uri)
+                app.libraryStore.setStatus("Exported ${pl.name}.m3u8")
+            }.onFailure {
+                app.libraryStore.setStatus("M3U export failed: ${it.message ?: "error"}")
+            }
+        }
     }
 
     DisposableEffect(Unit) {
@@ -376,6 +405,7 @@ private fun ApolloHomeScreen() {
                             Spacer(Modifier.height(ApolloSpace.space8))
                             LibraryFilterChips(
                                 selected = libraryCategory,
+                                interfaceStyle = interfaceStyle,
                                 onSelect = {
                                     libraryCategory = it
                                     selectedPlaylistId = null
@@ -393,6 +423,8 @@ private fun ApolloHomeScreen() {
                                     LibraryCategory.TRACKS -> "LIBRARY // ${filtered.size}"
                                     LibraryCategory.CAR -> "CAR FAVORITES // ${carTracks.size}"
                                     LibraryCategory.PLAYLISTS -> "PLAYLISTS // ${playlists.size}"
+                                    LibraryCategory.NEW -> "RECENTLY ADDED // ${newTracks.size}"
+                                    LibraryCategory.UNPLAYED -> "UNPLAYED // ${unplayedTracks.size}"
                                     LibraryCategory.RECENT -> "RECENT // ${recentTracks.size}"
                                     LibraryCategory.TOP -> "MOST PLAYED // ${topTracks.size}"
                                     LibraryCategory.ARTISTS -> "ARTISTS"
@@ -424,6 +456,34 @@ private fun ApolloHomeScreen() {
                                     playingId = playback.mediaId,
                                     playlistStore = app.playlistStore,
                                     emptyText = "No Car Favorites yet. Save a track to add it here.",
+                                    modifier = Modifier.weight(1f),
+                                    onPlay = { list, index -> controller.playTracks(list, index) },
+                                    onAdd = { track ->
+                                        addTrackId = track.id
+                                        addTrackTitle = track.title
+                                    },
+                                    onToggleCar = { app.playlistStore.toggleCarFavorite(it.id) }
+                                )
+
+                                LibraryCategory.NEW -> TrackList(
+                                    tracks = newTracks,
+                                    playingId = playback.mediaId,
+                                    playlistStore = app.playlistStore,
+                                    emptyText = "No recently added tracks yet. Scan a folder or USB drive.",
+                                    modifier = Modifier.weight(1f),
+                                    onPlay = { list, index -> controller.playTracks(list, index) },
+                                    onAdd = { track ->
+                                        addTrackId = track.id
+                                        addTrackTitle = track.title
+                                    },
+                                    onToggleCar = { app.playlistStore.toggleCarFavorite(it.id) }
+                                )
+
+                                LibraryCategory.UNPLAYED -> TrackList(
+                                    tracks = unplayedTracks,
+                                    playingId = playback.mediaId,
+                                    playlistStore = app.playlistStore,
+                                    emptyText = "Everything has been played. Respect.",
                                     modifier = Modifier.weight(1f),
                                     onPlay = { list, index -> controller.playTracks(list, index) },
                                     onAdd = { track ->
@@ -530,15 +590,10 @@ private fun ApolloHomeScreen() {
                                             onImportM3u = { uri ->
                                                 scope.launch {
                                                     runCatching {
-                                                        val preview = app.m3uPlaylistService.preview(
+                                                        m3uPreview = app.m3uPlaylistService.preview(
                                                             uri,
                                                             app.libraryStore.tracks.value
                                                         )
-                                                        val pl = app.m3uPlaylistService.importConfirmed(preview)
-                                                        app.libraryStore.setStatus(
-                                                            "Imported ${pl.name}: ${preview.resolved}/${preview.totalEntries} resolved"
-                                                        )
-                                                        selectedPlaylistId = pl.id
                                                     }.onFailure {
                                                         app.libraryStore.setStatus(
                                                             "M3U import failed: ${it.message ?: "error"}"
@@ -546,38 +601,27 @@ private fun ApolloHomeScreen() {
                                                     }
                                                 }
                                             },
-                                            onDelete = { id -> app.playlistStore.delete(id) }
+                                            onDelete = { id -> app.playlistStore.delete(id) },
+                                            kenney = kenney
                                         )
                                     } else {
                                         val pl = playlists.find { it.id == selectedPlaylistId }
                                         Column(Modifier.weight(1f)) {
-                                            Row(
-                                                Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Text(
-                                                    "← ${pl?.name ?: "Playlist"}",
-                                                    color = p.primary,
-                                                    fontFamily = body,
-                                                    modifier = Modifier
-                                                        .clickable { selectedPlaylistId = null }
-                                                        .padding(vertical = 6.dp)
-                                                )
-                                                Text(
-                                                    "PLAY ALL",
-                                                    color = p.voidBlack,
-                                                    fontFamily = body,
-                                                    modifier = Modifier
-                                                        .clip(RoundedCornerShape(4.dp))
-                                                        .background(p.accent)
-                                                        .clickable {
-                                                            controller.playTracks(selectedPlaylistTracks, 0)
-                                                        }
-                                                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                                                    fontSize = 12.sp
-                                                )
-                                            }
+                                            PlaylistDetailHeader(
+                                                name = pl?.name ?: "Playlist",
+                                                kenney = kenney,
+                                                onBack = { selectedPlaylistId = null },
+                                                onPlayAll = {
+                                                    if (selectedPlaylistTracks.isNotEmpty()) {
+                                                        controller.playTracks(selectedPlaylistTracks, 0)
+                                                    }
+                                                },
+                                                onExport = {
+                                                    val safe = (pl?.name ?: "playlist")
+                                                        .replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                                                    exportM3u.launch("$safe.m3u8")
+                                                }
+                                            )
                                             TrackList(
                                                 tracks = selectedPlaylistTracks,
                                                 playingId = playback.mediaId,
@@ -610,15 +654,10 @@ private fun ApolloHomeScreen() {
                                     onImportM3u = { uri ->
                                         scope.launch {
                                             runCatching {
-                                                val preview = app.m3uPlaylistService.preview(
+                                                m3uPreview = app.m3uPlaylistService.preview(
                                                     uri,
                                                     app.libraryStore.tracks.value
                                                 )
-                                                val pl = app.m3uPlaylistService.importConfirmed(preview)
-                                                app.libraryStore.setStatus(
-                                                    "Imported ${pl.name}: ${preview.resolved}/${preview.totalEntries} resolved"
-                                                )
-                                                selectedPlaylistId = pl.id
                                             }.onFailure {
                                                 app.libraryStore.setStatus(
                                                     "M3U import failed: ${it.message ?: "error"}"
@@ -626,38 +665,27 @@ private fun ApolloHomeScreen() {
                                             }
                                         }
                                     },
-                                    onDelete = { id -> app.playlistStore.delete(id) }
+                                    onDelete = { id -> app.playlistStore.delete(id) },
+                                    kenney = kenney
                                 )
                             } else {
                                 val pl = playlists.find { it.id == selectedPlaylistId }
                                 Column(Modifier.fillMaxSize()) {
-                                    Row(
-                                        Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            "← ${pl?.name ?: "Playlist"}",
-                                            color = p.primary,
-                                            fontFamily = body,
-                                            modifier = Modifier
-                                                .clickable { selectedPlaylistId = null }
-                                                .padding(vertical = 6.dp)
-                                        )
-                                        Text(
-                                            "PLAY ALL",
-                                            color = p.voidBlack,
-                                            fontFamily = body,
-                                            modifier = Modifier
-                                                .clip(RoundedCornerShape(4.dp))
-                                                .background(p.accent)
-                                                .clickable {
-                                                    controller.playTracks(selectedPlaylistTracks, 0)
-                                                }
-                                                .padding(horizontal = 12.dp, vertical = 8.dp),
-                                            fontSize = 12.sp
-                                        )
-                                    }
+                                    PlaylistDetailHeader(
+                                        name = pl?.name ?: "Playlist",
+                                        kenney = kenney,
+                                        onBack = { selectedPlaylistId = null },
+                                        onPlayAll = {
+                                            if (selectedPlaylistTracks.isNotEmpty()) {
+                                                controller.playTracks(selectedPlaylistTracks, 0)
+                                            }
+                                        },
+                                        onExport = {
+                                            val safe = (pl?.name ?: "playlist")
+                                                .replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                                            exportM3u.launch("$safe.m3u8")
+                                        }
+                                    )
                                     TrackList(
                                         tracks = selectedPlaylistTracks,
                                         playingId = playback.mediaId,
@@ -778,10 +806,92 @@ private fun ApolloHomeScreen() {
                             trackTitle = addTrackTitle,
                             playlists = playlists,
                             playlistStore = app.playlistStore,
+                            interfaceStyle = interfaceStyle,
                             onDismiss = { addTrackId = null }
                         )
                     }
                 }
+            }
+
+            m3uPreview?.let { preview ->
+                M3uImportConfirmDialog(
+                    preview = preview,
+                    onDismiss = { m3uPreview = null },
+                    onConfirm = {
+                        scope.launch {
+                            runCatching {
+                                val pl = app.m3uPlaylistService.importConfirmed(preview)
+                                app.libraryStore.setStatus(
+                                    "Imported ${pl.name}: ${preview.resolved}/${preview.totalEntries} resolved"
+                                )
+                                selectedPlaylistId = pl.id
+                            }.onFailure {
+                                app.libraryStore.setStatus(
+                                    "M3U import failed: ${it.message ?: "error"}"
+                                )
+                            }
+                            m3uPreview = null
+                        }
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlaylistDetailHeader(
+    name: String,
+    kenney: Boolean,
+    onBack: () -> Unit,
+    onPlayAll: () -> Unit,
+    onExport: () -> Unit
+) {
+    val p = LocalHudPalette.current
+    val body = LocalBodyFont.current
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            "← $name",
+            color = p.primary,
+            fontFamily = body,
+            modifier = Modifier
+                .weight(1f)
+                .clickable(onClick = onBack)
+                .padding(vertical = 6.dp),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (kenney) {
+                ApolloHudButton("EXPORT", onClick = onExport, height = 36.dp, fontSize = 11.sp)
+                ApolloHudButton("PLAY ALL", onClick = onPlayAll, height = 36.dp, fontSize = 11.sp)
+            } else {
+                Text(
+                    "EXPORT",
+                    color = p.soft,
+                    fontFamily = body,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .border(1.dp, p.accent.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
+                        .clickable(onClick = onExport)
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    fontSize = 11.sp
+                )
+                Text(
+                    "PLAY ALL",
+                    color = p.voidBlack,
+                    fontFamily = body,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(p.accent)
+                        .clickable(onClick = onPlayAll)
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    fontSize = 12.sp
+                )
             }
         }
     }
@@ -938,8 +1048,10 @@ private fun TrackRow(
 ) {
     val p = LocalHudPalette.current
     val body = LocalBodyFont.current
+    val interfaceStyle by ApolloApp.instance.themeStore.interfaceStyle.collectAsState()
+    val kenney = useKenneyChrome(interfaceStyle)
     var menu by remember { mutableStateOf(false) }
-    val shape = RoundedCornerShape(ApolloSpace.cornerTight)
+    val shape = RoundedCornerShape(if (kenney) 2.dp else ApolloSpace.cornerTight)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -947,11 +1059,13 @@ private fun TrackRow(
             .clip(shape)
             .border(
                 1.dp,
-                if (playing) p.accent.copy(alpha = 0.85f) else p.primary.copy(alpha = 0.22f),
+                if (playing) p.accent.copy(alpha = 0.85f)
+                else p.primary.copy(alpha = if (kenney) 0.4f else 0.22f),
                 shape
             )
             .background(
-                if (playing) p.accent.copy(alpha = 0.08f) else p.panel.copy(alpha = 0.65f)
+                if (playing) p.accent.copy(alpha = if (kenney) 0.12f else 0.08f)
+                else p.panel.copy(alpha = if (kenney) 0.82f else 0.65f)
             )
             .clickable(onClick = onPlay)
             .padding(horizontal = ApolloSpace.space8),
@@ -1023,6 +1137,7 @@ private fun PlaylistBrowser(
     onCreate: () -> Unit,
     onImportM3u: (Uri) -> Unit,
     onDelete: (String) -> Unit,
+    kenney: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val p = LocalHudPalette.current
@@ -1039,6 +1154,17 @@ private fun PlaylistBrowser(
         }
         onImportM3u(uri)
     }
+    fun launchImport() {
+        importM3u.launch(
+            arrayOf(
+                "audio/x-mpegurl",
+                "audio/mpegurl",
+                "application/vnd.apple.mpegurl",
+                "application/x-mpegurl",
+                "text/plain"
+            )
+        )
+    }
     Column(modifier.fillMaxSize()) {
         Row(
             Modifier.fillMaxWidth(),
@@ -1050,42 +1176,39 @@ private fun PlaylistBrowser(
                 color = p.primary,
                 fontFamily = hud,
                 letterSpacing = 1.sp,
-                fontSize = ApolloTypeScale.sectionSp.sp
+                fontSize = ApolloTypeScale.sectionSp.sp,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    "IMPORT M3U",
-                    color = p.soft,
-                    fontFamily = body,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
-                        .border(1.dp, p.accent.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
-                        .clickable {
-                            // MIME hints vary by OEM; acceptance is enforced by extension check.
-                            importM3u.launch(
-                                arrayOf(
-                                    "audio/x-mpegurl",
-                                    "audio/mpegurl",
-                                    "application/vnd.apple.mpegurl",
-                                    "application/x-mpegurl",
-                                    "text/plain"
-                                )
-                            )
-                        }
-                        .padding(horizontal = 10.dp, vertical = 8.dp),
-                    fontSize = 11.sp
-                )
-                Text(
-                    "+ NEW",
-                    color = p.voidBlack,
-                    fontFamily = body,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(p.primary)
-                        .clickable(onClick = onCreate)
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    fontSize = 12.sp
-                )
+                if (kenney) {
+                    ApolloHudButton("IMPORT", onClick = { launchImport() }, height = 36.dp, fontSize = 11.sp)
+                    ApolloHudButton("+ NEW", onClick = onCreate, height = 36.dp, fontSize = 11.sp)
+                } else {
+                    Text(
+                        "IMPORT M3U",
+                        color = p.soft,
+                        fontFamily = body,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .border(1.dp, p.accent.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
+                            .clickable { launchImport() }
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                        fontSize = 11.sp
+                    )
+                    Text(
+                        "+ NEW",
+                        color = p.voidBlack,
+                        fontFamily = body,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(p.primary)
+                            .clickable(onClick = onCreate)
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        fontSize = 12.sp
+                    )
+                }
             }
         }
         Spacer(Modifier.height(ApolloSpace.space8))
@@ -1094,14 +1217,14 @@ private fun PlaylistBrowser(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(ApolloSpace.cornerTight))
+                        .clip(RoundedCornerShape(if (kenney) 2.dp else ApolloSpace.cornerTight))
                         .border(
                             1.dp,
                             if (pl.id == PlaylistStore.CAR_FAVORITES_ID) p.secondary.copy(alpha = 0.7f)
-                            else p.primary.copy(alpha = 0.3f),
-                            RoundedCornerShape(ApolloSpace.cornerTight)
+                            else p.primary.copy(alpha = if (kenney) 0.45f else 0.3f),
+                            RoundedCornerShape(if (kenney) 2.dp else ApolloSpace.cornerTight)
                         )
-                        .background(p.panel.copy(alpha = 0.7f))
+                        .background(p.panel.copy(alpha = if (kenney) 0.85f else 0.7f))
                         .clickable { onOpen(pl.id) }
                         .padding(horizontal = 12.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically

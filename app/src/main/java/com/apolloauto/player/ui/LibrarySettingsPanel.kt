@@ -32,9 +32,7 @@ import com.apolloauto.player.data.MusicSource
 import com.apolloauto.player.data.MusicSourceKind
 import com.apolloauto.player.theme.LocalBodyFont
 import com.apolloauto.player.theme.LocalHudPalette
-import com.apolloauto.player.ui.hud.ApolloHudPanel
-import com.apolloauto.player.ui.hud.ApolloSciFiPanel
-import com.apolloauto.player.ui.hud.useKenneyChrome
+import com.apolloauto.player.ui.hud.ApolloStylePanel
 import java.text.DateFormat
 import java.util.Date
 import kotlinx.coroutines.launch
@@ -48,10 +46,9 @@ fun LibrarySettingsPanel() {
     val scope = rememberCoroutineScope()
     val sources by app.musicSourceStore.sources.collectAsState()
     val errors by app.musicSourceStore.scanErrors.collectAsState()
-    val kenney = useKenneyChrome(app.themeStore.interfaceStyle.value)
+    val interfaceStyle by app.themeStore.interfaceStyle.collectAsState()
     val Panel: @Composable (String, @Composable () -> Unit) -> Unit = { title, content ->
-        if (kenney) ApolloSciFiPanel(title = title) { content() }
-        else ApolloHudPanel(title = title) { content() }
+        ApolloStylePanel(title = title, interfaceStyle = interfaceStyle) { content() }
     }
 
     val openPhoneFolder = rememberLauncherForActivityResult(

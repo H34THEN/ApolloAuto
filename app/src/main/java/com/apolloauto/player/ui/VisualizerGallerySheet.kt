@@ -51,19 +51,24 @@ fun VisualizerGallerySheet(
     val quality by app.themeStore.vizQuality.collectAsState()
     val bgMode by app.themeStore.vizBackgroundMode.collectAsState()
     var query by remember { mutableStateOf("") }
-    var group by remember { mutableStateOf(VisualizerCategory.TRANCE) }
+    var group by remember { mutableStateOf(VisualizerCategory.PROJECTM) }
 
     val galleryGroups = listOf(
-        VisualizerCategory.SIGNAL,
-        VisualizerCategory.COSMIC,
-        VisualizerCategory.TRANCE,
-        VisualizerCategory.EXPERIMENTAL,
-        VisualizerCategory.SPECTR,
+        VisualizerCategory.PROJECTM,
+        VisualizerCategory.MILKDROP,
+        VisualizerCategory.GAURAVK,
+        VisualizerCategory.BAUER,
+        VisualizerCategory.MUSICDNA,
+        VisualizerCategory.FUN,
+        VisualizerCategory.APOLLO,
+        VisualizerCategory.AUDIOSPECTR,
         VisualizerCategory.MV2,
-        VisualizerCategory.DNA,
-        VisualizerCategory.DROP,
+        VisualizerCategory.NIXON,
         VisualizerCategory.XR3,
-        VisualizerCategory.RAVE
+        VisualizerCategory.TOPO,
+        VisualizerCategory.PSY,
+        VisualizerCategory.TRANCE,
+        VisualizerCategory.EXPERIMENTAL
     )
 
     Column(

@@ -20,6 +20,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -28,6 +29,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -35,8 +37,10 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
@@ -53,7 +57,6 @@ import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import androidx.compose.material3.Icon
@@ -99,6 +102,7 @@ import com.apolloauto.player.ui.components.ApolloArtPlaceholder
 import com.apolloauto.player.ui.components.ArtworkThumb
 import com.apolloauto.player.ui.hud.ApolloArtworkFrame
 import com.apolloauto.player.ui.hud.ApolloHudProgress
+import com.apolloauto.player.ui.hud.useKenneyChrome
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
@@ -319,98 +323,124 @@ private fun CarDeckScreen(onExit: () -> Unit) {
                                 .fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(ApolloSpace.space8)
                         ) {
-                            Column(
+                            // Scrollable left deck so transport/play controls are never clipped
+                            // under short landscape heights.
+                            BoxWithConstraints(
                                 Modifier
                                     .weight(1f)
                                     .fillMaxHeight()
                             ) {
-                                Box(
+                                val shortLandscape = maxHeight < 360.dp
+                                val vizHeight = when {
+                                    shortLandscape -> (maxHeight * 0.38f).coerceIn(120.dp, 200.dp)
+                                    else -> (maxHeight * 0.48f).coerceIn(160.dp, 360.dp)
+                                }
+                                Column(
                                     Modifier
-                                        .weight(1f)
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .border(1.dp, p.primary.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
-                                        .background(p.voidBlack.copy(alpha = 0.55f))
+                                        .fillMaxSize()
+                                        .verticalScroll(rememberScrollState())
                                 ) {
-                                    val bgMode by app.themeStore.vizBackgroundMode.collectAsState()
-                                    val albumBlur by app.themeStore.albumBlur.collectAsState()
-                                    val albumDark by app.themeStore.albumDarkness.collectAsState()
-                                    val albumSat by app.themeStore.albumSaturation.collectAsState()
-                                    val sceneBgOverrides by app.themeStore.sceneBgOverrides.collectAsState()
-                                    val sceneOverride = sceneBgOverrides[vizMode]
-                                    val effectiveBg = remember(bgMode, vizMode, sceneOverride) {
-                                        com.apolloauto.player.media.VisualizerBackgroundPolicy.resolve(
-                                            bgMode, vizMode, sceneOverride
+                                    Box(
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .height(vizHeight)
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .border(1.dp, p.primary.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                                            .background(p.voidBlack.copy(alpha = 0.55f))
+                                    ) {
+                                        val bgMode by app.themeStore.vizBackgroundMode.collectAsState()
+                                        val albumBlur by app.themeStore.albumBlur.collectAsState()
+                                        val albumDark by app.themeStore.albumDarkness.collectAsState()
+                                        val albumSat by app.themeStore.albumSaturation.collectAsState()
+                                        val sceneBgOverrides by app.themeStore.sceneBgOverrides.collectAsState()
+                                        val sceneOverride = sceneBgOverrides[vizMode]
+                                        val effectiveBg = remember(bgMode, vizMode, sceneOverride) {
+                                            com.apolloauto.player.media.VisualizerBackgroundPolicy.resolve(
+                                                bgMode, vizMode, sceneOverride
+                                            )
+                                        }
+                                        VisualizerBackgroundLayer(
+                                            effective = effectiveBg,
+                                            artworkUri = playback.artworkUri,
+                                            albumBlur = albumBlur,
+                                            albumDarkness = albumDark,
+                                            albumSaturation = albumSat,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                        ApolloVisualizerSurface(
+                                            playing = playback.playing,
+                                            clearBackdrop = true,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                        Canvas(Modifier.fillMaxSize()) {
+                                            val c = p.accent.copy(alpha = 0.7f)
+                                            val len = 18f
+                                            drawLine(c, Offset(8f, 8f), Offset(8f + len, 8f), 2f)
+                                            drawLine(c, Offset(8f, 8f), Offset(8f, 8f + len), 2f)
+                                            drawLine(
+                                                c,
+                                                Offset(size.width - 8f, 8f),
+                                                Offset(size.width - 8f - len, 8f),
+                                                2f
+                                            )
+                                            drawLine(
+                                                c,
+                                                Offset(size.width - 8f, 8f),
+                                                Offset(size.width - 8f, 8f + len),
+                                                2f
+                                            )
+                                        }
+                                        VisualizerModeCompactChips(
+                                            selected = vizMode,
+                                            enabledModes = enabledVizModes,
+                                            onSelect = { m ->
+                                                app.themeStore.setVisualizerMode(m)
+                                                app.visualizerController.setMode(m)
+                                            },
+                                            modifier = Modifier
+                                                .align(Alignment.TopStart)
+                                                .padding(8.dp)
                                         )
                                     }
-                                    VisualizerBackgroundLayer(
-                                        effective = effectiveBg,
+                                    Spacer(Modifier.height(ApolloSpace.space8))
+                                    CarTransportBar(
+                                        title = metaLines.getOrElse(0) { playback.title },
+                                        artist = metaLines.getOrElse(1) { playback.artist },
                                         artworkUri = playback.artworkUri,
-                                        albumBlur = albumBlur,
-                                        albumDarkness = albumDark,
-                                        albumSaturation = albumSat,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
-                                    ApolloVisualizerSurface(
                                         playing = playback.playing,
-                                        clearBackdrop = true,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
-                                    // Corner tech marks
-                                    Canvas(Modifier.fillMaxSize()) {
-                                        val c = p.accent.copy(alpha = 0.7f)
-                                        val len = 18f
-                                        drawLine(c, Offset(8f, 8f), Offset(8f + len, 8f), 2f)
-                                        drawLine(c, Offset(8f, 8f), Offset(8f, 8f + len), 2f)
-                                        drawLine(c, Offset(size.width - 8f, 8f), Offset(size.width - 8f - len, 8f), 2f)
-                                        drawLine(c, Offset(size.width - 8f, 8f), Offset(size.width - 8f, 8f + len), 2f)
-                                    }
-                                    VisualizerModeCompactChips(
-                                        selected = vizMode,
-                                        enabledModes = enabledVizModes,
-                                        onSelect = { m ->
-                                            app.themeStore.setVisualizerMode(m)
-                                            app.visualizerController.setMode(m)
+                                        shuffle = playback.shuffle,
+                                        repeatMode = playback.repeatMode,
+                                        progress = progress,
+                                        position = playback.positionMs,
+                                        duration = playback.durationMs,
+                                        inCar = inCar,
+                                        compact = shortLandscape,
+                                        onPrev = controller::skipPrevious,
+                                        onToggle = controller::togglePlayPause,
+                                        onNext = controller::skipNext,
+                                        onShuffle = controller::toggleShuffle,
+                                        onRemix = controller::remixShuffle,
+                                        onRepeat = controller::cycleRepeat,
+                                        onHeart = {
+                                            if (playback.mediaId.isNotBlank()) {
+                                                app.playlistStore.toggleCarFavorite(playback.mediaId)
+                                            }
                                         },
-                                        modifier = Modifier
-                                            .align(Alignment.TopStart)
-                                            .padding(8.dp)
+                                        onAdd = { if (playback.mediaId.isNotBlank()) addSheet = true }
                                     )
-                                }
-                                Spacer(Modifier.height(ApolloSpace.space8))
-                                CarTransportBar(
-                                    title = metaLines.getOrElse(0) { playback.title },
-                                    artist = metaLines.getOrElse(1) { playback.artist },
-                                    artworkUri = playback.artworkUri,
-                                    playing = playback.playing,
-                                    shuffle = playback.shuffle,
-                                    repeatMode = playback.repeatMode,
-                                    progress = progress,
-                                    position = playback.positionMs,
-                                    duration = playback.durationMs,
-                                    inCar = inCar,
-                                    onPrev = controller::skipPrevious,
-                                    onToggle = controller::togglePlayPause,
-                                    onNext = controller::skipNext,
-                                    onShuffle = controller::toggleShuffle,
-                                    onRemix = controller::remixShuffle,
-                                    onRepeat = controller::cycleRepeat,
-                                    onHeart = {
-                                        if (playback.mediaId.isNotBlank()) {
-                                            app.playlistStore.toggleCarFavorite(playback.mediaId)
-                                        }
-                                    },
-                                    onAdd = { if (playback.mediaId.isNotBlank()) addSheet = true }
-                                )
-                                if (status.isNotBlank()) {
-                                    Text(
-                                        status,
-                                        color = p.dim,
-                                        fontFamily = body,
-                                        fontSize = 11.sp,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
+                                    if (status.isNotBlank()) {
+                                        Text(
+                                            status,
+                                            color = p.dim,
+                                            fontFamily = body,
+                                            fontSize = 11.sp,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.padding(top = 4.dp)
+                                        )
+                                    }
+                                    // Scroll slack so the play row clears the nav gesture bar.
+                                    Spacer(Modifier.height(12.dp))
                                 }
                             }
 
@@ -699,6 +729,7 @@ private fun CarTransportBar(
     position: Long,
     duration: Long,
     inCar: Boolean,
+    compact: Boolean = false,
     onPrev: () -> Unit,
     onToggle: () -> Unit,
     onNext: () -> Unit,
@@ -711,16 +742,18 @@ private fun CarTransportBar(
     val p = LocalHudPalette.current
     val body = LocalBodyFont.current
     val heartScale by animateFloatAsState(if (inCar) 1.12f else 1f, label = "heart")
+    val artSize = if (compact) 44.dp else 56.dp
+    val pad = if (compact) 8.dp else 10.dp
     Column(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(6.dp))
             .border(1.dp, p.primary.copy(alpha = 0.35f), RoundedCornerShape(6.dp))
             .background(p.panel.copy(alpha = 0.88f))
-            .padding(10.dp)
+            .padding(pad)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            ApolloArtworkFrame(Modifier.size(56.dp)) {
+            ApolloArtworkFrame(Modifier.size(artSize)) {
                 if (artworkUri != null) {
                     AsyncImage(
                         model = artworkUri,
@@ -954,6 +987,10 @@ private fun CarBrowsePanel(
 private fun ModeChip(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val p = LocalHudPalette.current
     val body = LocalBodyFont.current
+    val kenney = useKenneyChrome(
+        ApolloApp.instance.themeStore.interfaceStyle.collectAsState().value
+    )
+    val shape = RoundedCornerShape(if (kenney) 2.dp else 3.dp)
     Text(
         label,
         color = if (selected) p.soft else p.dim,
@@ -962,9 +999,13 @@ private fun ModeChip(label: String, selected: Boolean, modifier: Modifier = Modi
         fontSize = 10.sp,
         maxLines = 1,
         modifier = modifier
-            .clip(RoundedCornerShape(3.dp))
-            .border(1.dp, if (selected) p.accent else p.dim.copy(alpha = 0.35f), RoundedCornerShape(3.dp))
-            .background(if (selected) p.accent.copy(alpha = 0.16f) else Color.Transparent)
+            .clip(shape)
+            .border(
+                1.dp,
+                if (selected) p.accent else p.primary.copy(alpha = if (kenney) 0.4f else 0.25f),
+                shape
+            )
+            .background(if (selected) p.accent.copy(alpha = if (kenney) 0.22f else 0.16f) else Color.Transparent)
             .clickable(onClick = onClick)
             .padding(vertical = 7.dp)
     )

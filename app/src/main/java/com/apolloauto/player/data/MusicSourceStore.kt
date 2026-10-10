@@ -14,7 +14,8 @@ import org.json.JSONObject
  */
 class MusicSourceStore(
     context: Context,
-    private val libraryStore: LibraryStore
+    private val libraryStore: LibraryStore,
+    private val firstSeenStore: TrackFirstSeenStore
 ) {
     private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
     private val catalogCache = LibraryCatalogCache(context)
@@ -178,6 +179,7 @@ class MusicSourceStore(
         tracksBySource[sourceId] = tracks
         playlistFilesBySource[sourceId] = playlistFiles
         catalogCache.save(sourceId, tracks)
+        firstSeenStore.noteSeen(tracks.map { it.id })
         val errMap = _scanErrors.value.toMutableMap()
         if (error.isNullOrBlank()) errMap.remove(sourceId) else errMap[sourceId] = error
         _scanErrors.value = errMap
@@ -249,6 +251,7 @@ class MusicSourceStore(
             .values
             .flatten()
             .distinctBy { it.id }
+        firstSeenStore.noteSeen(merged.map { it.id })
         libraryStore.setTracks(merged)
         val preferred = _sources.value.find { it.preferred && it.enabled }
             ?: _sources.value.find { it.enabled }

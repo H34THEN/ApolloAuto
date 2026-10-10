@@ -10,7 +10,10 @@ import com.apolloauto.player.media.VisualizerBackgroundMode
 import com.apolloauto.player.media.VisualizerMode
 import com.apolloauto.player.media.VizPaletteMode
 import com.apolloauto.player.media.VizQualityTier
+import com.apolloauto.player.media.VizSizePreset
+import com.apolloauto.player.media.resolveVisualizerMode
 import com.apolloauto.player.ui.SpiralVariant
+import com.apolloauto.player.ui.VisualizerModeCatalog
 import com.apolloauto.player.ui.VissonanceSubmode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -101,10 +104,27 @@ class ThemeStore(context: Context) {
     )
     val hudFont: StateFlow<HudFontOption> = _hudFont.asStateFlow()
 
+    /** Scales all UI `.sp` text (Home / Library / Settings). 1f = default. */
+    private val _uiFontScale = MutableStateFlow(
+        prefs.getFloat(KEY_UI_FONT_SCALE, 1f).coerceIn(0.8f, 1.45f)
+    )
+    val uiFontScale: StateFlow<Float> = _uiFontScale.asStateFlow()
+
+    private val _partyScrollFontSp = MutableStateFlow(
+        prefs.getFloat(KEY_PARTY_FONT_SP, 40f).coerceIn(22f, 72f)
+    )
+    val partyScrollFontSp: StateFlow<Float> = _partyScrollFontSp.asStateFlow()
+
+    private val _lyricsFontSp = MutableStateFlow(
+        prefs.getFloat(KEY_LYRICS_FONT_SP, 34f).coerceIn(18f, 64f)
+    )
+    val lyricsFontSp: StateFlow<Float> = _lyricsFontSp.asStateFlow()
+
     private val _visualizerMode = MutableStateFlow(
         runCatching {
-            val raw = VisualizerMode.valueOf(prefs.getString(KEY_VIZ_MODE, VisualizerMode.SPECTRUM.name)!!)
-            if (raw == VisualizerMode.XR3_SIERPINSKI) VisualizerMode.XR3_POLY else raw
+            resolveVisualizerMode(
+                VisualizerMode.valueOf(prefs.getString(KEY_VIZ_MODE, VisualizerMode.SPECTRUM.name)!!)
+            )
         }.getOrDefault(VisualizerMode.SPECTRUM)
     )
     val visualizerMode: StateFlow<VisualizerMode> = _visualizerMode.asStateFlow()
@@ -280,10 +300,34 @@ class ThemeStore(context: Context) {
     )
     val visualIntensity: StateFlow<VisualIntensity> = _visualIntensity.asStateFlow()
 
+    /** Per-mode Immersive/Settings size preset (default Medium). */
+    private val _vizSizePresets = MutableStateFlow(loadVizSizePresets())
+    val vizSizePresets: StateFlow<Map<VisualizerMode, VizSizePreset>> =
+        _vizSizePresets.asStateFlow()
+
     /** Optional per-scene background override (null = use global). */
     private val _sceneBgOverrides = MutableStateFlow(loadSceneBgOverrides())
     val sceneBgOverrides: StateFlow<Map<VisualizerMode, VisualizerBackgroundMode>> =
         _sceneBgOverrides.asStateFlow()
+
+    /** Newline-separated goofy marquee lines for PARTY_MARQUEE. */
+    private val _partyMarqueeText = MutableStateFlow(
+        prefs.getString(KEY_PARTY_MARQUEE, DEFAULT_PARTY_MARQUEE) ?: DEFAULT_PARTY_MARQUEE
+    )
+    val partyMarqueeText: StateFlow<String> = _partyMarqueeText.asStateFlow()
+
+    fun partyMarqueeLines(): List<String> =
+        _partyMarqueeText.value
+            .lineSequence()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .toList()
+            .ifEmpty { DEFAULT_PARTY_MARQUEE.lines().map { it.trim() }.filter { it.isNotEmpty() } }
+
+    fun setPartyMarqueeText(value: String) {
+        _partyMarqueeText.value = value
+        prefs.edit().putString(KEY_PARTY_MARQUEE, value).apply()
+    }
 
     fun activePalette(): HudPalette =
         paletteFor(_themeId.value, _custom.value.toPalette(), _glow.value)
@@ -319,10 +363,52 @@ class ThemeStore(context: Context) {
         prefs.edit().putString(KEY_FONT, option.name).apply()
     }
 
+    fun setUiFontScale(value: Float) {
+        _uiFontScale.value = value.coerceIn(0.8f, 1.45f)
+        prefs.edit().putFloat(KEY_UI_FONT_SCALE, _uiFontScale.value).apply()
+    }
+
+    fun setPartyScrollFontSp(value: Float) {
+        _partyScrollFontSp.value = value.coerceIn(22f, 72f)
+        prefs.edit().putFloat(KEY_PARTY_FONT_SP, _partyScrollFontSp.value).apply()
+    }
+
+    fun setLyricsFontSp(value: Float) {
+        _lyricsFontSp.value = value.coerceIn(18f, 64f)
+        prefs.edit().putFloat(KEY_LYRICS_FONT_SP, _lyricsFontSp.value).apply()
+    }
+
+    /** Force-enable GitHub source-pack modes so they appear in Car Mode chips. */
+    fun ensureSourcePackModesEnabled() {
+        val pack = VisualizerModeCatalog.sourcePackModes
+        val merged = _enabledVisualizerModes.value + pack
+        if (merged != _enabledVisualizerModes.value) {
+            persistEnabledModes(merged)
+        }
+    }
+
     fun setVisualizerMode(mode: VisualizerMode) {
-        val resolved = if (mode == VisualizerMode.XR3_SIERPINSKI) VisualizerMode.XR3_POLY else mode
+        val resolved = resolveVisualizerMode(mode)
         _visualizerMode.value = resolved
         prefs.edit().putString(KEY_VIZ_MODE, resolved.name).apply()
+    }
+
+    fun vizSizeFor(mode: VisualizerMode): VizSizePreset =
+        _vizSizePresets.value[resolveVisualizerMode(mode)] ?: VizSizePreset.M
+
+    fun setVizSizePreset(mode: VisualizerMode, preset: VizSizePreset) {
+        val key = resolveVisualizerMode(mode)
+        val next = _vizSizePresets.value.toMutableMap()
+        next[key] = preset
+        _vizSizePresets.value = next
+        persistVizSizePresets(next)
+    }
+
+    /** Cycle XS→S→M→L→XL for the given mode; returns the new preset. */
+    fun cycleVizSizePreset(mode: VisualizerMode): VizSizePreset {
+        val next = vizSizeFor(mode).next()
+        setVizSizePreset(mode, next)
+        return next
     }
 
     fun setVizBackgroundMode(mode: VisualizerBackgroundMode) {
@@ -438,6 +524,27 @@ class ThemeStore(context: Context) {
         prefs.edit().putString(KEY_VIZ_INTENSITY, level.name).apply()
     }
 
+    private fun loadVizSizePresets(): Map<VisualizerMode, VizSizePreset> {
+        val raw = prefs.getString(KEY_VIZ_SIZES, null) ?: return emptyMap()
+        return raw.split(';')
+            .mapNotNull { pair ->
+                val parts = pair.split(':')
+                if (parts.size != 2) return@mapNotNull null
+                val mode = runCatching {
+                    resolveVisualizerMode(VisualizerMode.valueOf(parts[0]))
+                }.getOrNull() ?: return@mapNotNull null
+                val size = runCatching { VizSizePreset.valueOf(parts[1]) }.getOrNull()
+                    ?: return@mapNotNull null
+                mode to size
+            }
+            .toMap()
+    }
+
+    private fun persistVizSizePresets(map: Map<VisualizerMode, VizSizePreset>) {
+        val raw = map.entries.joinToString(";") { "${it.key.name}:${it.value.name}" }
+        prefs.edit().putString(KEY_VIZ_SIZES, raw).apply()
+    }
+
     fun smokeControls(): com.apolloauto.player.ui.SmokeControls =
         com.apolloauto.player.ui.SmokeControls(
             density = _smokeDensity.value,
@@ -497,7 +604,11 @@ class ThemeStore(context: Context) {
     }
 
     fun setEnabledVisualizerModes(modes: Set<VisualizerMode>) {
-        val next = modes.ifEmpty { setOf(VisualizerMode.SPECTRUM) }
+        val next = modes
+            .map { resolveVisualizerMode(it) }
+            .filterNot { VisualizerModeCatalog.isRetired(it) }
+            .toSet()
+            .ifEmpty { setOf(VisualizerMode.SPECTRUM) }
         persistEnabledModes(next)
         if (_visualizerMode.value !in next) {
             setVisualizerMode(next.first())
@@ -505,7 +616,12 @@ class ThemeStore(context: Context) {
     }
 
     fun enableAllVisualizerModes() {
-        setEnabledVisualizerModes(VisualizerMode.entries.toSet())
+        setEnabledVisualizerModes(
+            VisualizerMode.entries
+                .map { resolveVisualizerMode(it) }
+                .filterNot { VisualizerModeCatalog.isRetired(it) }
+                .toSet()
+        )
     }
 
     fun setDriveMode(enabled: Boolean) {
@@ -735,8 +851,14 @@ class ThemeStore(context: Context) {
                 .toSet()
                 .ifEmpty { all }
         }
-        // Drop retired scenes from enabled pool (SIER).
-        val merged = (base + newlyAdded) - VisualizerMode.XR3_SIERPINSKI
+        // Drop retired scenes; migrate Stars → Space Warp.
+        val migrated = (base + newlyAdded).map { resolveVisualizerMode(it) }.toSet()
+        val merged = migrated -
+            VisualizerMode.XR3_SIERPINSKI -
+            VisualizerMode.PRISM_RAIN -
+            VisualizerMode.STAR_FIELD -
+            VisualizerMode.STARS2 +
+            VisualizerMode.SPACE_WARP
         prefs.edit()
             .putString(KEY_VIZ_KNOWN, all.joinToString(",") { it.name })
             .putString(KEY_VIZ_ENABLED, merged.joinToString(",") { it.name })
@@ -786,6 +908,9 @@ class ThemeStore(context: Context) {
         private const val KEY_INTERFACE = "interface_style"
         private const val KEY_PLAYER_LAYOUT = "player_layout"
         private const val KEY_FONT = "hud_font"
+        private const val KEY_UI_FONT_SCALE = "ui_font_scale"
+        private const val KEY_PARTY_FONT_SP = "party_scroll_font_sp"
+        private const val KEY_LYRICS_FONT_SP = "lyrics_font_sp"
         private const val KEY_VIZ_MODE = "visualizer_mode"
         private const val KEY_VIZ_RANDOM = "viz_randomizer"
         private const val KEY_VIZ_ENABLED = "viz_enabled_modes"
@@ -832,6 +957,30 @@ class ThemeStore(context: Context) {
         private const val KEY_POLY_CX = "poly_center_x"
         private const val KEY_POLY_CY = "poly_center_y"
         private const val KEY_VIZ_INTENSITY = "visual_intensity"
+        private const val KEY_VIZ_SIZES = "viz_size_presets"
         private const val KEY_SCENE_BG = "scene_bg_overrides"
+        private const val KEY_PARTY_MARQUEE = "party_marquee_text"
+
+        val DEFAULT_PARTY_MARQUEE: String = """
+            APOLLO II // CRUISE MODE ENGAGED
+            PLEASE KEEP HANDS INSIDE THE VEHICLE AT ALL TIMES
+            BASS DROP INCOMING // HOLD ONTO YOUR CUPHOLDER
+            THIS MESSAGE IS LONGER THAN YOUR COMMUTE
+            NO MAPS. ONLY VIBES.
+            ANDROID AUTO? MORE LIKE ANDROID PARTY.
+        """.trimIndent()
+
+        val SNARKY_MUSIC_MARQUEE: String = """
+            YOUR PLAYLIST CALLED — IT WANTS BETTER TASTE
+            THIS DROP HIT HARDER THAN YOUR LAST RELATIONSHIP
+            SKIPPING THIS TRACK WOULD BE A CRIME AGAINST BASS
+            VOLUME UP — YOUR NEIGHBORS ALREADY HATE YOU
+            IF THIS IS BACKGROUND MUSIC, YOUR FOREGROUND NEEDS HELP
+            SHUFFLE SAID "TRUST ME" AND LOOK WHERE WE ARE
+            YOU DIDN'T COME FOR SUBTLETY. NEITHER DID THIS MIX
+            THAT BUILDUP LIED TO YOU. THE DROP DIDN'T.
+            AUX CORD ENERGY WITH MAIN-STAGE DELUSIONS
+            YOUR BPM IS FINE. YOUR TASTE IS UNDER REVIEW.
+        """.trimIndent()
     }
 }

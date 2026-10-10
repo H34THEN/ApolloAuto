@@ -7,6 +7,7 @@ import com.apolloauto.player.media.AudioFeatures
 import com.apolloauto.player.media.BandDrive
 import com.apolloauto.player.media.VisualIntensity
 import com.apolloauto.player.media.VisualResponseMapper
+import com.apolloauto.player.media.immersiveViewportDim
 import com.apolloauto.player.theme.HudPalette
 import kotlin.math.cos
 import kotlin.math.max
@@ -141,7 +142,8 @@ private object Stars2Field {
             )
         }
         if (playing && kick > 0.45f) {
-            val r = (min(size.width, size.height) * (0.1f + kick * 0.18f)).coerceIn(4f, 400f)
+            val r = (immersiveViewportDim(size.width, size.height) * (0.12f + kick * 0.22f))
+                .coerceIn(4f, 520f)
             drawCircle(
                 color = palette.accent.copy(alpha = (0.1f + kick * 0.18f).coerceAtMost(0.35f)),
                 radius = r,

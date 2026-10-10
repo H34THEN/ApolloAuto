@@ -75,6 +75,7 @@ class LibraryCatalogCache(context: Context) {
         .put("sourceKind", t.sourceKind.name)
         .put("relativePath", t.relativePath)
         .put("available", t.available)
+        .put("dateAddedMs", t.dateAddedMs)
 
     private fun parseTrack(o: JSONObject): Track? = runCatching {
         val uriStr = o.getString("uri")
@@ -94,7 +95,8 @@ class LibraryCatalogCache(context: Context) {
                 MusicSourceKind.valueOf(o.optString("sourceKind", MusicSourceKind.PHONE_MEDIASTORE.name))
             }.getOrDefault(MusicSourceKind.PHONE_MEDIASTORE),
             relativePath = o.optString("relativePath", ""),
-            available = o.optBoolean("available", true)
+            available = o.optBoolean("available", true),
+            dateAddedMs = o.optLong("dateAddedMs", 0L)
         )
     }.getOrNull()
 }

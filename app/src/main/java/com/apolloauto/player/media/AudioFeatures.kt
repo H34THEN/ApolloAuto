@@ -50,6 +50,28 @@ data class AudioFeatures(
             onset = (onset * m.transient).coerceIn(0f, 1f)
         )
     }
+
+    /**
+     * Apply Settings → Visual Intensity relative to the REACTIVE baseline
+     * (scenes already assume REACTIVE bandDrive, so REACTIVE ≈ no change).
+     */
+    fun withIntensity(intensity: VisualIntensity): AudioFeatures {
+        val g = intensity.gain / VisualIntensity.REACTIVE.gain
+        return copy(
+            subBass = (subBass * g).coerceIn(0f, 1.5f),
+            bass = (bass * g).coerceIn(0f, 1.5f),
+            lowMid = (lowMid * g).coerceIn(0f, 1.5f),
+            upperMid = (upperMid * g).coerceIn(0f, 1.5f),
+            presence = (presence * g).coerceIn(0f, 1.5f),
+            treble = (treble * g).coerceIn(0f, 1.5f),
+            mid = (mid * g).coerceIn(0f, 1.5f),
+            high = (high * g).coerceIn(0f, 1.5f),
+            rms = (rms * g).coerceIn(0f, 1.5f),
+            peak = (peak * g).coerceIn(0f, 1.5f),
+            spectralFlux = (spectralFlux * g).coerceIn(0f, 1.5f),
+            onset = (onset * g).coerceIn(0f, 1.5f)
+        )
+    }
 }
 
 data class BandMultipliers(

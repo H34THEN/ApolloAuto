@@ -13,6 +13,7 @@ import com.apolloauto.player.media.AudioFeatures
 import com.apolloauto.player.media.SpiralFillMode
 import com.apolloauto.player.media.VisualIntensity
 import com.apolloauto.player.media.VisualResponseMapper
+import com.apolloauto.player.media.immersiveViewportDim
 import com.apolloauto.player.media.spiralViewportDim
 import com.apolloauto.player.theme.HudPalette
 import kotlin.math.PI
@@ -75,7 +76,7 @@ fun DrawScope.drawXr3CircleScene(
     val drive = if (playing) 1f else 0.35f
     val cx = size.width / 2f
     val cy = size.height / 2f
-    val radius = min(size.width, size.height) * (0.22f + features.bass * 0.04f)
+    val radius = immersiveViewportDim(size.width, size.height) * (0.24f + features.bass * 0.05f)
     val spokes = 72
     var prevEnd: Offset? = null
     for (i in 0 until spokes) {
@@ -184,7 +185,7 @@ fun DrawScope.drawXr3BarsScene(
     }
     drawCircle(
         palette.primary.copy(alpha = 0.08f + features.bass * 0.12f),
-        radius = min(size.width, size.height) * (0.2f + features.rms * 0.1f),
+        radius = immersiveViewportDim(size.width, size.height) * (0.22f + features.rms * 0.12f),
         center = Offset(size.width / 2f, size.height / 2f)
     )
 }
@@ -245,7 +246,7 @@ fun DrawScope.drawXr3SierpinskiScene(
     val breath = 1f + kick * 0.22f + d.sub * 0.12f
     val top = size.height * (0.10f - d.bass * 0.03f)
     val baseY = size.height * (0.90f + d.sub * 0.02f)
-    val half = min(size.width, size.height) * (0.42f + d.bass * 0.18f) * breath
+    val half = immersiveViewportDim(size.width, size.height) * (0.42f + d.bass * 0.18f) * breath
     val depth = (3 + (d.rms * 2.5f + d.lowMid).toInt()).coerceIn(3, 6)
     val midShift = d.upperMid * 18f + d.lowMid * 12f
     fun tri(ax: Float, ay: Float, bx: Float, by: Float, cx2: Float, cy2: Float, level: Int) {
@@ -333,7 +334,7 @@ fun DrawScope.drawXr3JuliaScene(
                 Color.Transparent
             )
         ),
-        radius = min(size.width, size.height) * (0.25f + features.bass * 0.15f),
+        radius = immersiveViewportDim(size.width, size.height) * (0.28f + features.bass * 0.18f),
         center = Offset(size.width / 2f, size.height / 2f)
     )
 }
@@ -350,7 +351,7 @@ fun DrawScope.drawXr3SpriteScene(
     val drive = if (playing) 1f else 0.4f
     val cx = size.width / 2f
     val cy = size.height / 2f
-    val r = min(size.width, size.height) * (0.28f + features.bass * 0.08f) * drive
+    val r = immersiveViewportDim(size.width, size.height) * (0.32f + features.bass * 0.1f) * drive
     val lat = 10
     val lon = 16
     for (i in 0..lat) {
