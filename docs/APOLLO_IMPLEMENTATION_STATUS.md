@@ -3,7 +3,7 @@
 **Codename:** APOLLO // AUDIO COMMAND SYSTEM  
 **Workspace:** `/Users/Gengar/Desktop/local-github/ApolloAuto`  
 **Package:** `com.apolloauto.player` (debug: `com.apolloauto.player.debug`)  
-**Last updated:** 2026-10-09 (Phase V2 visualizers / library sources / M3U)
+**Last updated:** 2026-10-09 (Trance Reactor V4 — TR01–TR13 Compose scenes)
 
 ## Phase A — Existing Application Audit
 
@@ -53,8 +53,10 @@
 - UX branch: `feature/apollo-hud-ux-refinement`
 - Active fix branch: `fix/apollo-metadata-car-controls-shuffle` @ `cf50bb1` checkpoint
 - V2 branch: `feature/apollo-v2-visualizers-library`
+- V4 tip tag: `apollo-pre-trance-v4` @ `0be111d`
+- V4 branch: `feature/apollo-trance-reactor-v4`
 - Device: `00021157P002695` (authorized)
-- Rollback: `docs/V2_ROLLBACK.md` (+ UI/HUD rollback docs)
+- Rollback: `docs/TRANCE_V4_ROLLBACK.md` (+ `docs/V2_ROLLBACK.md`)
 
 ---
 
@@ -166,3 +168,24 @@
 
 **Verified:** unit tests + debug install (device).  
 **Unverified:** Android Auto NEXT parity, process-death shuffle restore.
+
+
+### Phase Trance Reactor V4
+**Branch:** `feature/apollo-trance-reactor-v4` (not merged)  
+**Docs:** `docs/TRANCE_V4_ROLLBACK.md`, `docs/TRANCE_V4_REFERENCE_AUDIT.md`, `docs/TRANCE_V4_SCENE_MATRIX.md`
+
+**Features completed (code):**
+- Expanded `AudioFeatures` bands + flux/peak; `TranceResponseProfile` multipliers
+- TR01–TR08 Trance Reactor Compose scenes
+- TR09–TR13 Experimental Compose scenes (spirals / fluctus / void / obsidian / vissonance)
+- Gallery sheet, favorites, palette/quality/glow, Auto DJ interval + track boundary
+- Photosensitive default caps beat flash
+- Band unit tests (`AudioFeaturesBandsTest`)
+
+**Honest gaps:**
+- No OpenGL ES / AGSL engine this pass
+- No chromagram / tempo / microphone path
+- Physical device scene FPS + landscape screenshot matrix not verified
+- Do not label TR scenes "Verified" until device QA
+
+**Next:** Device landscape QA, optional GPU path, merge approval gate

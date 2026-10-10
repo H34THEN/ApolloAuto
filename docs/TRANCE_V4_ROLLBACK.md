@@ -9,7 +9,8 @@
 |---|---|
 | Pre-WIP commit | `f632822` — `feat(v2): music sources, M3U engine, cosmic visualizers, immersive player` |
 | Branch before V4 tip | `feature/apollo-v2-visualizers-library` |
-| Tag | `apollo-pre-trance-v4` (points at tip commit that includes all WIP up to V4 start) |
+| Tip commit | `0be111d` — `checkpoint: pre-trance-v4 tip with library cache, XR3/DNA/MV2 viz, lyrics` |
+| Tag | `apollo-pre-trance-v4` → `0be111d` |
 | Feature branch | `feature/apollo-trance-reactor-v4` |
 
 ## What the tip commit preserves

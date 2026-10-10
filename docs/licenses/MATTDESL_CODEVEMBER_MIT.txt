@@ -1,0 +1,5 @@
+codevember — https://github.com/mattdesl/codevember
+License: MIT (repository metadata)
+
+Apollo II does not vendor codevember. TR11 WAVEFORM_VOID is an original
+Compose Canvas interpretation of layered audio-reactive wave landscapes.

@@ -33,7 +33,9 @@ enum class VisualizerCategory(val title: String) {
     MV2("MV2"),
     DNA("DNA"),
     DROP("DROP"),
-    XR3("XR3")
+    XR3("XR3"),
+    TRANCE("TRANCE"),
+    EXPERIMENTAL("EXPERIMENTAL")
 }
 
 data class VisualizerModeEntry(
@@ -213,7 +215,20 @@ object VisualizerModeCatalog {
             VisualizerCategory.XR3,
             "SPHERE",
             "Wireframe sprite sphere (XR3-inspired)"
-        )
+        ),
+        VisualizerModeEntry(VisualizerMode.CHROMATIC_PHI, VisualizerCategory.TRANCE, "PHI", "Golden-angle particle bloom"),
+        VisualizerModeEntry(VisualizerMode.ECTOPLASM, VisualizerCategory.TRANCE, "SLIME", "Iridescent metaball ectoplasm"),
+        VisualizerModeEntry(VisualizerMode.CIRC_INFINITY, VisualizerCategory.TRANCE, "CIRC∞", "Radial spectral infinity"),
+        VisualizerModeEntry(VisualizerMode.PRISM_RAIN, VisualizerCategory.TRANCE, "RAIN", "Onset prism droplets"),
+        VisualizerModeEntry(VisualizerMode.SYNTH_SMOKE, VisualizerCategory.TRANCE, "SMOKE", "Chromatic vapor layers"),
+        VisualizerModeEntry(VisualizerMode.NOTE_SWARM, VisualizerCategory.TRANCE, "SWARM", "Per-band particle constellations"),
+        VisualizerModeEntry(VisualizerMode.HARMONIC_MANDALA, VisualizerCategory.TRANCE, "MANDALA", "Symmetric harmonic petals"),
+        VisualizerModeEntry(VisualizerMode.LIQUID_SPECTRUM, VisualizerCategory.TRANCE, "LIQUID", "Flowing liquid spectrum field"),
+        VisualizerModeEntry(VisualizerMode.AUDIBLE_SPIRALS, VisualizerCategory.EXPERIMENTAL, "SPIRAL", "Archimedean audible spirals"),
+        VisualizerModeEntry(VisualizerMode.FLUCTUS_FLOW, VisualizerCategory.EXPERIMENTAL, "FLUCTUS", "3D ribbon wave sculpture"),
+        VisualizerModeEntry(VisualizerMode.WAVEFORM_VOID, VisualizerCategory.EXPERIMENTAL, "VOID", "Layered waveform landscape"),
+        VisualizerModeEntry(VisualizerMode.OBSIDIAN_REACTOR, VisualizerCategory.EXPERIMENTAL, "OBSIDIAN", "Dark crystalline reactor"),
+        VisualizerModeEntry(VisualizerMode.VISSONANCE_MATRIX, VisualizerCategory.EXPERIMENTAL, "VISSON", "Multi-mode spectral matrix")
     )
 
     /** Modes cycled by immersive next / randomizer (skip idle-only variants). */

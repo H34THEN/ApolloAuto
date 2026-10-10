@@ -72,7 +72,22 @@ enum class VisualizerMode {
     /** XR3Player-inspired Julia-set point field */
     XR3_JULIA,
     /** XR3Player-inspired wireframe 3D sphere sprite */
-    XR3_SPRITE
+    XR3_SPRITE,
+    // --- Trance Reactor TR01–TR08 ---
+    CHROMATIC_PHI,
+    ECTOPLASM,
+    CIRC_INFINITY,
+    PRISM_RAIN,
+    SYNTH_SMOKE,
+    NOTE_SWARM,
+    HARMONIC_MANDALA,
+    LIQUID_SPECTRUM,
+    // --- Experimental Labs TR09–TR13 ---
+    AUDIBLE_SPIRALS,
+    FLUCTUS_FLOW,
+    WAVEFORM_VOID,
+    OBSIDIAN_REACTOR,
+    VISSONANCE_MATRIX
 }
 
 /**
@@ -87,14 +102,23 @@ class AudioVisualizerController {
     private val wavePoints = 96
     private val smoothedFft = FloatArray(bands)
     private val smoothedWave = FloatArray(wavePoints)
+    private var prevFft: FloatArray? = null
     private var smoothedLevel = 0f
+    private var smoothedSubBass = 0f
     private var smoothedBass = 0f
+    private var smoothedLowMid = 0f
+    private var smoothedUpperMid = 0f
+    private var smoothedPresence = 0f
+    private var smoothedTreble = 0f
     private var smoothedMid = 0f
     private var smoothedHigh = 0f
     private var smoothedRms = 0f
+    private var smoothedPeak = 0f
+    private var smoothedFlux = 0f
     private var smoothedOnset = 0f
     private var smoothedSilence = 1f
     private var prevEnergy = 0f
+    private var wavePeak = 0f
 
     private val _fft = MutableStateFlow(FloatArray(bands))
     val fft: StateFlow<FloatArray> = _fft.asStateFlow()
@@ -166,6 +190,7 @@ class AudioVisualizerController {
                         } else {
                             smoothedLevel * 0.82f + instant * 0.18f
                         }
+                        wavePeak = smoothToward(wavePeak, peak.coerceIn(0f, 1f), attack = 0.7f, release = 0.2f)
                         for (i in out.indices) {
                             smoothedWave[i] = smoothedWave[i] * 0.45f + out[i] * 0.55f
                         }
@@ -217,28 +242,18 @@ class AudioVisualizerController {
                                 smoothedFft[i] * 0.78f + target * 0.22f
                             }
                         }
-                        var bassSum = 0f
-                        val bassBands = (bands * 0.18f).toInt().coerceAtLeast(3)
-                        for (i in 0 until bassBands) bassSum += smoothedFft[i]
-                        val bassInstant = (bassSum / bassBands).coerceIn(0f, 1f)
-                        smoothedBass = if (bassInstant > smoothedBass) {
-                            smoothedBass * 0.3f + bassInstant * 0.7f
-                        } else {
-                            smoothedBass * 0.85f + bassInstant * 0.15f
-                        }
-                        val midStart = bassBands
-                        val midEnd = (bands * 0.55f).toInt().coerceAtMost(bands)
-                        var midSum = 0f
-                        for (i in midStart until midEnd) midSum += smoothedFft[i]
-                        val midCount = (midEnd - midStart).coerceAtLeast(1)
-                        val midInstant = (midSum / midCount).coerceIn(0f, 1f)
-                        smoothedMid = smoothToward(smoothedMid, midInstant, attack = 0.55f, release = 0.22f)
-
-                        var highSum = 0f
-                        for (i in midEnd until bands) highSum += smoothedFft[i]
-                        val highCount = (bands - midEnd).coerceAtLeast(1)
-                        val highInstant = (highSum / highCount).coerceIn(0f, 1f)
-                        smoothedHigh = smoothToward(smoothedHigh, highInstant, attack = 0.5f, release = 0.2f)
+                        val extracted = SpectralBandExtractor.extract(smoothedFft)
+                        smoothedSubBass = smoothToward(smoothedSubBass, extracted.subBass, 0.65f, 0.18f)
+                        smoothedBass = smoothToward(smoothedBass, extracted.bass, 0.7f, 0.15f)
+                        smoothedLowMid = smoothToward(smoothedLowMid, extracted.lowMid, 0.55f, 0.2f)
+                        smoothedUpperMid = smoothToward(smoothedUpperMid, extracted.upperMid, 0.55f, 0.2f)
+                        smoothedPresence = smoothToward(smoothedPresence, extracted.presence, 0.5f, 0.2f)
+                        smoothedTreble = smoothToward(smoothedTreble, extracted.treble, 0.5f, 0.2f)
+                        smoothedMid = smoothToward(smoothedMid, extracted.mid, 0.55f, 0.22f)
+                        smoothedHigh = smoothToward(smoothedHigh, extracted.high, 0.5f, 0.2f)
+                        val fluxInstant = SpectralBandExtractor.flux(prevFft, smoothedFft)
+                        smoothedFlux = smoothToward(smoothedFlux, fluxInstant, 0.7f, 0.22f)
+                        prevFft = smoothedFft.copyOf()
 
                         _fft.value = smoothedFft.copyOf()
                         _bass.value = smoothedBass
@@ -269,10 +284,17 @@ class AudioVisualizerController {
         if (!enabled) {
             // Soft decay instead of hard zero so pause doesn't look dead.
             smoothedLevel *= 0.35f
+            smoothedSubBass *= 0.35f
             smoothedBass *= 0.35f
+            smoothedLowMid *= 0.35f
+            smoothedUpperMid *= 0.35f
+            smoothedPresence *= 0.35f
+            smoothedTreble *= 0.35f
             smoothedMid *= 0.35f
             smoothedHigh *= 0.35f
             smoothedRms *= 0.35f
+            smoothedPeak *= 0.35f
+            smoothedFlux *= 0.35f
             for (i in smoothedFft.indices) smoothedFft[i] *= 0.4f
             _level.value = smoothedLevel
             _bass.value = smoothedBass
@@ -301,17 +323,31 @@ class AudioVisualizerController {
 
     private fun publishFeatures(rms: Float? = null) {
         rms?.let { smoothedRms = smoothToward(smoothedRms, it, attack = 0.6f, release = 0.25f) }
-        val energy = (smoothedLevel * 0.45f + smoothedBass * 0.35f + smoothedRms * 0.2f).coerceIn(0f, 1f)
+        smoothedPeak = smoothToward(smoothedPeak, max(wavePeak, smoothedLevel), attack = 0.65f, release = 0.2f)
+        val energy = (
+            smoothedLevel * 0.35f +
+                smoothedBass * 0.25f +
+                smoothedRms * 0.2f +
+                smoothedFlux * 0.2f
+            ).coerceIn(0f, 1f)
         val spike = (energy - prevEnergy).coerceAtLeast(0f)
         prevEnergy = energy * 0.92f + prevEnergy * 0.08f
-        smoothedOnset = smoothToward(smoothedOnset, spike * 2.2f, attack = 0.72f, release = 0.18f)
+        val onsetTarget = (spike * 2.0f + smoothedFlux * 0.55f).coerceIn(0f, 1f)
+        smoothedOnset = smoothToward(smoothedOnset, onsetTarget, attack = 0.72f, release = 0.18f)
         val silenceTarget = (1f - energy * 1.15f).coerceIn(0f, 1f)
         smoothedSilence = smoothToward(smoothedSilence, silenceTarget, attack = 0.12f, release = 0.08f)
         _features.value = AudioFeatures(
+            subBass = smoothedSubBass.coerceIn(0f, 1f),
             bass = smoothedBass.coerceIn(0f, 1f),
+            lowMid = smoothedLowMid.coerceIn(0f, 1f),
+            upperMid = smoothedUpperMid.coerceIn(0f, 1f),
+            presence = smoothedPresence.coerceIn(0f, 1f),
+            treble = smoothedTreble.coerceIn(0f, 1f),
             mid = smoothedMid.coerceIn(0f, 1f),
             high = smoothedHigh.coerceIn(0f, 1f),
             rms = smoothedRms.coerceIn(0f, 1f),
+            peak = smoothedPeak.coerceIn(0f, 1f),
+            spectralFlux = smoothedFlux.coerceIn(0f, 1f),
             onset = smoothedOnset.coerceIn(0f, 1f),
             silence = smoothedSilence.coerceIn(0f, 1f)
         )

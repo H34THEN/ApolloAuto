@@ -1,0 +1,5 @@
+Fluctus — https://jojo.ninja/fluctus/ (Jordan Machado)
+
+License for the demo/source was not verified as redistributable in the V4 audit.
+Apollo II treats Fluctus as visual inspiration only.
+TR10 FLUCTUS_FLOW is an original Compose Canvas scene (no source port).

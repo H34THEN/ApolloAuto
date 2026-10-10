@@ -1,0 +1,5 @@
+Audible Visuals — https://github.com/soniaboller/audible-visuals
+License: Apache License 2.0
+
+Apollo II does not vendor this repository. TR09 AUDIBLE_SPIRALS is an original
+Compose Canvas scene inspired by Archimedean spiral visualization ideas.

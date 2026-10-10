@@ -1,0 +1,6 @@
+Vissonance — https://github.com/tariqksoliman/Vissonance
+License: MIT (Copyright 2020 Tariq Soliman) — LICENSE file verified.
+
+Apollo II does not embed the WebGL application.
+TR13 VISSONANCE_MATRIX is an original Compose multi-submode scene
+inspired by Vissonance’s spectral geometry concepts.

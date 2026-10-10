@@ -26,12 +26,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.apolloauto.player.ApolloApp
 import com.apolloauto.player.companion.CompanionVoice
+import com.apolloauto.player.media.TranceResponseProfile
 import com.apolloauto.player.media.VisualizerMode
+import com.apolloauto.player.media.VizPaletteMode
+import com.apolloauto.player.media.VizQualityTier
 import com.apolloauto.player.theme.LocalBodyFont
 import com.apolloauto.player.theme.LocalHudPalette
 import com.apolloauto.player.ui.hud.ApolloHudPanel
 import com.apolloauto.player.ui.hud.ApolloSciFiPanel
 import com.apolloauto.player.ui.hud.useKenneyChrome
+// SpiralVariant is in this package
 
 @Composable
 fun VisualizerSettingsPanel() {
@@ -47,6 +51,14 @@ fun VisualizerSettingsPanel() {
     val cinematic by app.themeStore.cinematicViz.collectAsState()
     val capturing by app.visualizerController.capturing.collectAsState()
     val interfaceStyle by app.themeStore.interfaceStyle.collectAsState()
+    val tranceProfile by app.themeStore.tranceProfile.collectAsState()
+    val paletteMode by app.themeStore.vizPaletteMode.collectAsState()
+    val quality by app.themeStore.vizQuality.collectAsState()
+    val vizSat by app.themeStore.vizSaturation.collectAsState()
+    val vizGlow by app.themeStore.vizGlow.collectAsState()
+    val photosensitive by app.themeStore.photosensitiveMode.collectAsState()
+    val autoDjSec by app.themeStore.autoDjIntervalSec.collectAsState()
+    val autoDjTrack by app.themeStore.autoDjOnTrackChange.collectAsState()
     val kenney = useKenneyChrome(interfaceStyle)
 
     val Panel: @Composable (String, @Composable () -> Unit) -> Unit = { title, content ->
@@ -116,16 +128,16 @@ fun VisualizerSettingsPanel() {
         }
     }
 
-    Panel("RANDOMIZER") {
+    Panel("AUTO DJ") {
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(Modifier.weight(1f)) {
-                Text("Scene shuffle", color = p.soft, fontFamily = body, fontSize = 14.sp)
+                Text("Scene rotation", color = p.soft, fontFamily = body, fontSize = 14.sp)
                 Text(
-                    "Cycles only enabled visuals in immersive (8–28s)",
+                    "Favorites pool first · interval ${autoDjSec}s",
                     color = p.dim,
                     fontFamily = body,
                     fontSize = 11.sp
@@ -141,6 +153,138 @@ fun VisualizerSettingsPanel() {
                     uncheckedTrackColor = p.dim.copy(alpha = 0.35f)
                 )
             )
+        }
+        Text("Rotate interval", color = p.soft, fontFamily = body, fontSize = 12.sp)
+        Slider(
+            value = autoDjSec.toFloat(),
+            onValueChange = { app.themeStore.setAutoDjIntervalSec(it.toInt()) },
+            valueRange = 10f..180f,
+            colors = SliderDefaults.colors(
+                thumbColor = p.accent,
+                activeTrackColor = p.primary,
+                inactiveTrackColor = p.dim.copy(alpha = 0.35f)
+            )
+        )
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Change on track boundary", color = p.soft, fontFamily = body, fontSize = 13.sp)
+            Switch(
+                checked = autoDjTrack,
+                onCheckedChange = { app.themeStore.setAutoDjOnTrackChange(it) },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = p.accent,
+                    checkedTrackColor = p.accent.copy(alpha = 0.45f),
+                    uncheckedThumbColor = p.dim,
+                    uncheckedTrackColor = p.dim.copy(alpha = 0.35f)
+                )
+            )
+        }
+    }
+
+    Panel("TRANCE REACTOR") {
+        Text("Response profile", color = p.soft, fontFamily = body, fontSize = 13.sp)
+        Spacer(Modifier.height(4.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            TranceResponseProfile.entries.take(4).forEach { profile ->
+                QuickFilterChip(profile.name.take(6)) {
+                    app.themeStore.setTranceProfile(profile)
+                }
+            }
+        }
+        Spacer(Modifier.height(4.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            TranceResponseProfile.entries.drop(4).forEach { profile ->
+                QuickFilterChip(profile.name.take(8)) {
+                    app.themeStore.setTranceProfile(profile)
+                }
+            }
+        }
+        Text(
+            "Active: ${tranceProfile.title}",
+            color = p.accent,
+            fontFamily = body,
+            fontSize = 11.sp,
+            modifier = Modifier.padding(top = 6.dp)
+        )
+        Spacer(Modifier.height(8.dp))
+        Text("Palette", color = p.soft, fontFamily = body, fontSize = 13.sp)
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            VizPaletteMode.entries.forEach { m ->
+                QuickFilterChip(m.name.take(6)) { app.themeStore.setVizPaletteMode(m) }
+            }
+        }
+        Text("Active: ${paletteMode.name}", color = p.dim, fontFamily = body, fontSize = 11.sp)
+        Spacer(Modifier.height(6.dp))
+        Text("Quality", color = p.soft, fontFamily = body, fontSize = 13.sp)
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            VizQualityTier.entries.forEach { q ->
+                QuickFilterChip(q.name) { app.themeStore.setVizQuality(q) }
+            }
+        }
+        Text("Active: ${quality.name}", color = p.dim, fontFamily = body, fontSize = 11.sp)
+        Text("Saturation", color = p.soft, fontFamily = body, fontSize = 12.sp)
+        Slider(
+            value = vizSat,
+            onValueChange = { app.themeStore.setVizSaturation(it) },
+            valueRange = 0.2f..1.4f,
+            colors = SliderDefaults.colors(
+                thumbColor = p.accent,
+                activeTrackColor = p.primary,
+                inactiveTrackColor = p.dim.copy(alpha = 0.35f)
+            )
+        )
+        Text("Scene glow", color = p.soft, fontFamily = body, fontSize = 12.sp)
+        Slider(
+            value = vizGlow,
+            onValueChange = { app.themeStore.setVizGlow(it) },
+            valueRange = 0.2f..1.6f,
+            colors = SliderDefaults.colors(
+                thumbColor = p.accent,
+                activeTrackColor = p.primary,
+                inactiveTrackColor = p.dim.copy(alpha = 0.35f)
+            )
+        )
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Photosensitive mode", color = p.soft, fontFamily = body, fontSize = 13.sp)
+                Text("Caps beat flash · default on", color = p.dim, fontFamily = body, fontSize = 11.sp)
+            }
+            Switch(
+                checked = photosensitive,
+                onCheckedChange = { app.themeStore.setPhotosensitiveMode(it) },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = p.accent,
+                    checkedTrackColor = p.accent.copy(alpha = 0.45f),
+                    uncheckedThumbColor = p.dim,
+                    uncheckedTrackColor = p.dim.copy(alpha = 0.35f)
+                )
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            QuickFilterChip("SPIRAL+") {
+                val vals = SpiralVariant.entries
+                val idx = vals.indexOf(app.themeStore.spiralVariant.value)
+                app.themeStore.setSpiralVariant(vals[(idx + 1) % vals.size])
+            }
+            QuickFilterChip("VISSON+") { app.themeStore.cycleVissonanceSubmode() }
+            QuickFilterChip("TRANCE") {
+                app.themeStore.enableVisualizerCategory {
+                    VisualizerModeCatalog.entry(it).category == VisualizerCategory.TRANCE
+                }
+            }
+            QuickFilterChip("XPER") {
+                app.themeStore.enableVisualizerCategory {
+                    VisualizerModeCatalog.entry(it).category == VisualizerCategory.EXPERIMENTAL
+                }
+            }
         }
     }
 
@@ -238,6 +382,16 @@ fun VisualizerSettingsPanel() {
             QuickFilterChip("XR3") {
                 app.themeStore.enableVisualizerCategory {
                     VisualizerModeCatalog.entry(it).category == VisualizerCategory.XR3
+                }
+            }
+            QuickFilterChip("TRANCE") {
+                app.themeStore.enableVisualizerCategory {
+                    VisualizerModeCatalog.entry(it).category == VisualizerCategory.TRANCE
+                }
+            }
+            QuickFilterChip("XPER") {
+                app.themeStore.enableVisualizerCategory {
+                    VisualizerModeCatalog.entry(it).category == VisualizerCategory.EXPERIMENTAL
                 }
             }
         }

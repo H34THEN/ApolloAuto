@@ -27,6 +27,11 @@ WIRE (HYPERDRIVE id; nixonyh-inspired wireframe sphere) · NEBULA · SIGNAL OCEA
 
 **XR3 (XR3Player-inspired, LGPL note):** OSC · CIRC · POLY · XBARS · XVU · SIER · JULIA · SPHERE — original Compose scenes inspired by goxr3plus/XR3Player display modes (not a JavaFX port). See `docs/licenses/GOXR3PLUS_XR3PLAYER_LGPL_NOTE.txt`.
 
+**TRANCE (TR01–TR08):** PHI · SLIME · CIRC∞ · RAIN · SMOKE · SWARM · MANDALA · LIQUID — original Compose trance reactor scenes.
+
+**EXPERIMENTAL (TR09–TR13):** SPIRAL · FLUCTUS · VOID · OBSIDIAN · VISSON — reference-inspired Compose engines (Audible Visuals / Fluctus / Wave / Obsidian / Vissonance). See `docs/TRANCE_V4_REFERENCE_AUDIT.md`.
+
+
 ## Customizer
 - Enable/disable individual modes; quick filters ALL / SIGNAL / SPECTR / COSMIC / MV2
 - Selectors, immersive next, and randomizer only use enabled modes

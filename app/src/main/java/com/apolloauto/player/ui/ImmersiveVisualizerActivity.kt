@@ -76,7 +76,6 @@ import com.apolloauto.player.media.PlayerController
 import com.apolloauto.player.theme.ApolloCyberTheme
 import com.apolloauto.player.theme.LocalBodyFont
 import com.apolloauto.player.theme.LocalHudPalette
-import kotlin.random.Random
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
@@ -124,7 +123,11 @@ private fun ImmersiveVisualizerScreen(onExit: () -> Unit) {
 
     var lyricsDoc by remember { mutableStateOf<LrcDocument?>(null) }
     var showLyrics by remember { mutableStateOf(false) }
+    var showGallery by remember { mutableStateOf(false) }
+    var hudVisible by remember { mutableStateOf(true) }
     val lyricsAvailable = lyricsDoc != null && lyricsDoc!!.lines.isNotEmpty()
+    val autoDjInterval by app.themeStore.autoDjIntervalSec.collectAsState()
+    val autoDjOnTrack by app.themeStore.autoDjOnTrackChange.collectAsState()
 
     fun applyMode(next: com.apolloauto.player.media.VisualizerMode) {
         app.themeStore.setVisualizerMode(next)
@@ -132,7 +135,13 @@ private fun ImmersiveVisualizerScreen(onExit: () -> Unit) {
     }
 
     fun cycleNext() {
-        applyMode(VisualizerModeCatalog.nextMode(mode, enabledModes))
+        val pool = app.themeStore.autoDjPool()
+        if (pool.isEmpty()) {
+            applyMode(VisualizerModeCatalog.nextMode(mode, enabledModes))
+        } else {
+            val idx = pool.indexOf(mode).let { if (it < 0) 0 else it }
+            applyMode(pool[(idx + 1) % pool.size])
+        }
     }
 
     val micPermission = rememberLauncherForActivityResult(
@@ -188,15 +197,37 @@ private fun ImmersiveVisualizerScreen(onExit: () -> Unit) {
         }
     }
 
-    LaunchedEffect(randomizer, playback.playing) {
+    LaunchedEffect(randomizer, playback.playing, autoDjInterval) {
         if (!randomizer) return@LaunchedEffect
         while (isActive && app.themeStore.vizRandomizer.value) {
-            val waitMs = Random.nextLong(8_000L, 28_001L)
+            val waitMs = (app.themeStore.autoDjIntervalSec.value * 1000L)
+                .coerceIn(10_000L, 300_000L)
             delay(waitMs)
             if (!app.themeStore.vizRandomizer.value) break
             val current = app.visualizerController.mode.value
-            val enabled = app.themeStore.enabledVisualizerModes.value
-            applyMode(VisualizerModeCatalog.randomMode(excluding = current, enabled = enabled))
+            val pool = app.themeStore.autoDjPool().filter { it != current }.ifEmpty {
+                app.themeStore.autoDjPool()
+            }
+            if (pool.isNotEmpty()) applyMode(pool.random())
+        }
+    }
+
+    LaunchedEffect(playback.mediaId, autoDjOnTrack, randomizer) {
+        if (!randomizer || !autoDjOnTrack) return@LaunchedEffect
+        // Skip first composition — only rotate when mediaId changes after load.
+        var lastId = playback.mediaId
+        while (isActive) {
+            delay(500)
+            val id = controller.state.value.mediaId
+            if (id.isNotBlank() && id != lastId) {
+                lastId = id
+                if (app.themeStore.vizRandomizer.value && app.themeStore.autoDjOnTrackChange.value) {
+                    val current = app.visualizerController.mode.value
+                    val pool = app.themeStore.autoDjPool().filter { it != current }
+                        .ifEmpty { app.themeStore.autoDjPool() }
+                    if (pool.isNotEmpty()) applyMode(pool.random())
+                }
+            }
         }
     }
 
@@ -229,27 +260,34 @@ private fun ImmersiveVisualizerScreen(onExit: () -> Unit) {
         ApolloVisualizerSurface(
             playing = playback.playing,
             clearBackdrop = true,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) { hudVisible = !hudVisible }
         )
 
         // Very light edge fade — keeps chrome readable without eating the art.
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            p.voidBlack.copy(alpha = 0.22f),
-                            Color.Transparent,
-                            Color.Transparent,
-                            p.voidBlack.copy(alpha = 0.28f)
+        if (hudVisible) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                p.voidBlack.copy(alpha = 0.22f),
+                                Color.Transparent,
+                                Color.Transparent,
+                                p.voidBlack.copy(alpha = 0.28f)
+                            )
                         )
                     )
-                )
-        )
+            )
+        }
 
-        // Top-right tools: viz cycle, randomizer, lyrics, exit.
-        Row(
+        // Top-right tools: viz cycle, gallery, randomizer, lyrics, exit.
+        if (hudVisible) Row(
             Modifier
                 .align(Alignment.TopEnd)
                 .statusBarsPadding()
@@ -257,6 +295,17 @@ private fun ImmersiveVisualizerScreen(onExit: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            ImmersiveGhostButton(
+                selected = showGallery,
+                onClick = { showGallery = !showGallery }
+            ) {
+                Text(
+                    "GAL",
+                    color = if (showGallery) p.accent else p.soft.copy(alpha = 0.55f),
+                    fontFamily = body,
+                    fontSize = 10.sp
+                )
+            }
             ImmersiveGhostButton(onClick = { cycleNext() }) {
                 Icon(
                     Icons.Default.Refresh,
@@ -325,6 +374,20 @@ private fun ImmersiveVisualizerScreen(onExit: () -> Unit) {
             }
         }
 
+        if (showGallery && hudVisible) {
+            VisualizerGallerySheet(
+                onSelect = {
+                    applyMode(it)
+                    showGallery = false
+                },
+                onClose = { showGallery = false },
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .fillMaxWidth(0.92f)
+                    .padding(16.dp)
+            )
+        }
+
         if (showLyrics && lyricsAvailable) {
             KaraokeLyricsOverlay(
                 document = lyricsDoc!!,
@@ -338,7 +401,7 @@ private fun ImmersiveVisualizerScreen(onExit: () -> Unit) {
         }
 
         // Driving-safe cluster: transport + title, bottom-left, low opacity.
-        Column(
+        if (hudVisible) Column(
             Modifier
                 .align(Alignment.BottomStart)
                 .navigationBarsPadding()

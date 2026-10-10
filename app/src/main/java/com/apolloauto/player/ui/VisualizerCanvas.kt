@@ -51,8 +51,19 @@ fun ApolloVisualizerSurface(
     val app = ApolloApp.instance
     val artTint by app.albumArtColors.tint.collectAsState()
     val artLock by app.themeStore.artColorLock.collectAsState()
-    val beatFlash by app.themeStore.beatFlash.collectAsState()
+    val beatFlashRaw by app.themeStore.beatFlash.collectAsState()
+    val photosensitive by app.themeStore.photosensitiveMode.collectAsState()
+    val beatFlash = if (photosensitive) beatFlashRaw.coerceAtMost(0.35f) else beatFlashRaw
     val cinematic by app.themeStore.cinematicViz.collectAsState()
+    val tranceProfile by app.themeStore.tranceProfile.collectAsState()
+    val paletteMode by app.themeStore.vizPaletteMode.collectAsState()
+    val quality by app.themeStore.vizQuality.collectAsState()
+    val vizSat by app.themeStore.vizSaturation.collectAsState()
+    val vizGlow by app.themeStore.vizGlow.collectAsState()
+    val spiralVariant by app.themeStore.spiralVariant.collectAsState()
+    val spiralColor by app.themeStore.spiralColorPreset.collectAsState()
+    val obsidianPreset by app.themeStore.obsidianPreset.collectAsState()
+    val vissonSub by app.themeStore.vissonanceSubmode.collectAsState()
     app.albumArtColors.colorLock = artLock
     val p = artTint?.applyTo(themePalette) ?: themePalette
     val motion = LocalMotionProfile.current
@@ -61,7 +72,8 @@ fun ApolloVisualizerSurface(
     val wave by viz.waveform.collectAsState()
     val level by viz.level.collectAsState()
     val bass by viz.bass.collectAsState()
-    val features by viz.features.collectAsState()
+    val featuresRaw by viz.features.collectAsState()
+    val features = featuresRaw.withProfile(tranceProfile)
     val capturing by viz.capturing.collectAsState()
     val mode by viz.mode.collectAsState()
     val animate = motion != MotionProfile.STATIC
@@ -130,7 +142,20 @@ fun ApolloVisualizerSurface(
                 VisualizerMode.XR3_VU,
                 VisualizerMode.XR3_SIERPINSKI,
                 VisualizerMode.XR3_JULIA,
-                VisualizerMode.XR3_SPRITE -> true
+                VisualizerMode.XR3_SPRITE,
+                VisualizerMode.CHROMATIC_PHI,
+                VisualizerMode.ECTOPLASM,
+                VisualizerMode.CIRC_INFINITY,
+                VisualizerMode.PRISM_RAIN,
+                VisualizerMode.SYNTH_SMOKE,
+                VisualizerMode.NOTE_SWARM,
+                VisualizerMode.HARMONIC_MANDALA,
+                VisualizerMode.LIQUID_SPECTRUM,
+                VisualizerMode.AUDIBLE_SPIRALS,
+                VisualizerMode.FLUCTUS_FLOW,
+                VisualizerMode.WAVEFORM_VOID,
+                VisualizerMode.OBSIDIAN_REACTOR,
+                VisualizerMode.VISSONANCE_MATRIX -> true
                 else -> false
             }
             if (!cosmicScene && !clearBackdrop) {
@@ -173,10 +198,17 @@ fun ApolloVisualizerSurface(
                 features
             } else {
                 AudioFeatures(
+                    subBass = bassLvl * 0.8f,
                     bass = bassLvl,
+                    lowMid = energy * 0.55f,
+                    upperMid = energy * 0.5f,
+                    presence = energy * 0.4f,
+                    treble = energy * 0.45f,
                     mid = energy * 0.65f,
                     high = energy * 0.45f,
                     rms = lvl,
+                    peak = lvl,
+                    spectralFlux = 0f,
                     onset = 0f,
                     silence = 1f - energy
                 )
@@ -703,6 +735,63 @@ fun ApolloVisualizerSurface(
                     phase = fastPhase,
                     playing = playing,
                     clearBackdrop = clearBackdrop
+                )
+
+                VisualizerMode.CHROMATIC_PHI -> drawChromaticPhiScene(
+                    liveFeatures, p, spectrum, fastPhase, playing, clearBackdrop,
+                    paletteMode, quality, vizSat, vizGlow
+                )
+                VisualizerMode.ECTOPLASM -> drawEctoplasmScene(
+                    liveFeatures, p, fastPhase, playing, clearBackdrop,
+                    paletteMode, quality, vizSat, vizGlow
+                )
+                VisualizerMode.CIRC_INFINITY -> drawCircInfinityScene(
+                    liveFeatures, p, spectrum, fastPhase, playing, clearBackdrop,
+                    paletteMode, quality, vizSat, vizGlow
+                )
+                VisualizerMode.PRISM_RAIN -> drawPrismRainScene(
+                    liveFeatures, p, spectrum, fastPhase, playing, clearBackdrop,
+                    paletteMode, quality, vizSat, vizGlow
+                )
+                VisualizerMode.SYNTH_SMOKE -> drawSynthSmokeScene(
+                    liveFeatures, p, fastPhase, playing, clearBackdrop,
+                    paletteMode, quality, vizSat, vizGlow
+                )
+                VisualizerMode.NOTE_SWARM -> drawNoteSwarmScene(
+                    liveFeatures, p, spectrum, fastPhase, playing, clearBackdrop,
+                    paletteMode, quality, vizSat, vizGlow
+                )
+                VisualizerMode.HARMONIC_MANDALA -> drawHarmonicMandalaScene(
+                    liveFeatures, p, spectrum, fastPhase, playing, clearBackdrop,
+                    paletteMode, quality, vizSat, vizGlow
+                )
+                VisualizerMode.LIQUID_SPECTRUM -> drawLiquidSpectrumScene(
+                    liveFeatures, p, spectrum, fastPhase, playing, clearBackdrop,
+                    paletteMode, quality, vizSat, vizGlow
+                )
+                VisualizerMode.AUDIBLE_SPIRALS -> drawAudibleSpiralsScene(
+                    liveFeatures, p, spectrum, fastPhase, playing, clearBackdrop,
+                    paletteMode, quality, vizSat, vizGlow,
+                    variant = spiralVariant,
+                    spiralPreset = spiralColor
+                )
+                VisualizerMode.FLUCTUS_FLOW -> drawFluctusFlowScene(
+                    liveFeatures, p, spectrum, fastPhase, playing, clearBackdrop,
+                    paletteMode, quality, vizSat, vizGlow
+                )
+                VisualizerMode.WAVEFORM_VOID -> drawWaveformVoidScene(
+                    liveFeatures, p, spectrum, waveData, fastPhase, playing, clearBackdrop,
+                    paletteMode, quality, vizSat, vizGlow
+                )
+                VisualizerMode.OBSIDIAN_REACTOR -> drawObsidianReactorScene(
+                    liveFeatures, p, spectrum, fastPhase, playing, clearBackdrop,
+                    paletteMode, quality, vizSat, vizGlow,
+                    crystalPreset = obsidianPreset
+                )
+                VisualizerMode.VISSONANCE_MATRIX -> drawVissonanceMatrixScene(
+                    liveFeatures, p, spectrum, fastPhase, playing, clearBackdrop,
+                    paletteMode, quality, vizSat, vizGlow,
+                    submode = vissonSub
                 )
             }
         }

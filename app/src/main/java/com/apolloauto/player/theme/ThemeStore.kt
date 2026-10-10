@@ -3,7 +3,12 @@ package com.apolloauto.player.theme
 import android.content.Context
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import com.apolloauto.player.media.TranceResponseProfile
 import com.apolloauto.player.media.VisualizerMode
+import com.apolloauto.player.media.VizPaletteMode
+import com.apolloauto.player.media.VizQualityTier
+import com.apolloauto.player.ui.SpiralVariant
+import com.apolloauto.player.ui.VissonanceSubmode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -129,6 +134,69 @@ class ThemeStore(context: Context) {
 
     private val _companionLine = MutableStateFlow("Deck standing by.")
     val companionLine: StateFlow<String> = _companionLine.asStateFlow()
+
+    private val _tranceProfile = MutableStateFlow(
+        runCatching {
+            TranceResponseProfile.valueOf(
+                prefs.getString(KEY_TRANCE_PROFILE, TranceResponseProfile.UPLIFTING.name)!!
+            )
+        }.getOrDefault(TranceResponseProfile.UPLIFTING)
+    )
+    val tranceProfile: StateFlow<TranceResponseProfile> = _tranceProfile.asStateFlow()
+
+    private val _vizPaletteMode = MutableStateFlow(
+        runCatching {
+            VizPaletteMode.valueOf(prefs.getString(KEY_VIZ_PALETTE, VizPaletteMode.RAINBOW.name)!!)
+        }.getOrDefault(VizPaletteMode.RAINBOW)
+    )
+    val vizPaletteMode: StateFlow<VizPaletteMode> = _vizPaletteMode.asStateFlow()
+
+    private val _vizQuality = MutableStateFlow(
+        runCatching {
+            VizQualityTier.valueOf(prefs.getString(KEY_VIZ_QUALITY, VizQualityTier.BALANCED.name)!!)
+        }.getOrDefault(VizQualityTier.BALANCED)
+    )
+    val vizQuality: StateFlow<VizQualityTier> = _vizQuality.asStateFlow()
+
+    private val _vizSaturation = MutableStateFlow(prefs.getFloat(KEY_VIZ_SAT, 1f))
+    val vizSaturation: StateFlow<Float> = _vizSaturation.asStateFlow()
+
+    private val _vizGlow = MutableStateFlow(prefs.getFloat(KEY_VIZ_GLOW, 1f))
+    val vizGlow: StateFlow<Float> = _vizGlow.asStateFlow()
+
+    private val _photosensitive = MutableStateFlow(prefs.getBoolean(KEY_PHOTOSENSE, true))
+    val photosensitiveMode: StateFlow<Boolean> = _photosensitive.asStateFlow()
+
+    private val _autoDjIntervalSec = MutableStateFlow(prefs.getInt(KEY_AUTODJ_SEC, 45))
+    val autoDjIntervalSec: StateFlow<Int> = _autoDjIntervalSec.asStateFlow()
+
+    private val _autoDjOnTrackChange = MutableStateFlow(prefs.getBoolean(KEY_AUTODJ_TRACK, true))
+    val autoDjOnTrackChange: StateFlow<Boolean> = _autoDjOnTrackChange.asStateFlow()
+
+    private val _favoriteVizModes = MutableStateFlow(loadFavoriteModes())
+    val favoriteVizModes: StateFlow<Set<VisualizerMode>> = _favoriteVizModes.asStateFlow()
+
+    private val _vissonanceSubmode = MutableStateFlow(
+        runCatching {
+            VissonanceSubmode.valueOf(
+                prefs.getString(KEY_VISSON_SUB, VissonanceSubmode.SPECTRAL_ARCHITECTURE.name)!!
+            )
+        }.getOrDefault(VissonanceSubmode.SPECTRAL_ARCHITECTURE)
+    )
+    val vissonanceSubmode: StateFlow<VissonanceSubmode> = _vissonanceSubmode.asStateFlow()
+
+    private val _spiralVariant = MutableStateFlow(
+        runCatching {
+            SpiralVariant.valueOf(prefs.getString(KEY_SPIRAL_VAR, SpiralVariant.INTERWOVEN.name)!!)
+        }.getOrDefault(SpiralVariant.INTERWOVEN)
+    )
+    val spiralVariant: StateFlow<SpiralVariant> = _spiralVariant.asStateFlow()
+
+    private val _spiralColorPreset = MutableStateFlow(prefs.getString(KEY_SPIRAL_COLOR, "rainbow") ?: "rainbow")
+    val spiralColorPreset: StateFlow<String> = _spiralColorPreset.asStateFlow()
+
+    private val _obsidianPreset = MutableStateFlow(prefs.getString(KEY_OBSIDIAN, "violet") ?: "violet")
+    val obsidianPreset: StateFlow<String> = _obsidianPreset.asStateFlow()
 
     fun activePalette(): HudPalette =
         paletteFor(_themeId.value, _custom.value.toPalette(), _glow.value)
@@ -263,6 +331,100 @@ class ThemeStore(context: Context) {
         _companionLine.value = line
     }
 
+    fun setTranceProfile(profile: TranceResponseProfile) {
+        _tranceProfile.value = profile
+        prefs.edit().putString(KEY_TRANCE_PROFILE, profile.name).apply()
+    }
+
+    fun setVizPaletteMode(mode: VizPaletteMode) {
+        _vizPaletteMode.value = mode
+        prefs.edit().putString(KEY_VIZ_PALETTE, mode.name).apply()
+    }
+
+    fun setVizQuality(tier: VizQualityTier) {
+        _vizQuality.value = tier
+        prefs.edit().putString(KEY_VIZ_QUALITY, tier.name).apply()
+    }
+
+    fun setVizSaturation(value: Float) {
+        val v = value.coerceIn(0.2f, 1.4f)
+        _vizSaturation.value = v
+        prefs.edit().putFloat(KEY_VIZ_SAT, v).apply()
+    }
+
+    fun setVizGlow(value: Float) {
+        val v = value.coerceIn(0.2f, 1.6f)
+        _vizGlow.value = v
+        prefs.edit().putFloat(KEY_VIZ_GLOW, v).apply()
+    }
+
+    fun setPhotosensitiveMode(enabled: Boolean) {
+        _photosensitive.value = enabled
+        prefs.edit().putBoolean(KEY_PHOTOSENSE, enabled).apply()
+        if (enabled) {
+            setBeatFlash(_beatFlash.value.coerceAtMost(0.35f))
+        }
+    }
+
+    fun setAutoDjIntervalSec(sec: Int) {
+        val v = sec.coerceIn(10, 300)
+        _autoDjIntervalSec.value = v
+        prefs.edit().putInt(KEY_AUTODJ_SEC, v).apply()
+    }
+
+    fun setAutoDjOnTrackChange(enabled: Boolean) {
+        _autoDjOnTrackChange.value = enabled
+        prefs.edit().putBoolean(KEY_AUTODJ_TRACK, enabled).apply()
+    }
+
+    fun toggleFavoriteViz(mode: VisualizerMode) {
+        val next = _favoriteVizModes.value.toMutableSet()
+        if (!next.add(mode)) next.remove(mode)
+        _favoriteVizModes.value = next
+        prefs.edit().putString(KEY_VIZ_FAVES, next.joinToString(",") { it.name }).apply()
+    }
+
+    fun isFavoriteViz(mode: VisualizerMode): Boolean = mode in _favoriteVizModes.value
+
+    fun autoDjPool(): List<VisualizerMode> {
+        val favs = _favoriteVizModes.value.filter { it in _enabledVisualizerModes.value }
+        if (favs.isNotEmpty()) return favs
+        val enabled = _enabledVisualizerModes.value
+        return VisualizerMode.entries
+            .filter {
+                it in enabled &&
+                    it != VisualizerMode.MINIMAL &&
+                    it != VisualizerMode.DECORATIVE
+            }
+            .ifEmpty { listOf(VisualizerMode.SPECTRUM) }
+    }
+
+    fun setVissonanceSubmode(mode: VissonanceSubmode) {
+        _vissonanceSubmode.value = mode
+        prefs.edit().putString(KEY_VISSON_SUB, mode.name).apply()
+    }
+
+    fun cycleVissonanceSubmode() {
+        val vals = VissonanceSubmode.entries
+        val idx = vals.indexOf(_vissonanceSubmode.value)
+        setVissonanceSubmode(vals[(idx + 1) % vals.size])
+    }
+
+    fun setSpiralVariant(variant: SpiralVariant) {
+        _spiralVariant.value = variant
+        prefs.edit().putString(KEY_SPIRAL_VAR, variant.name).apply()
+    }
+
+    fun setSpiralColorPreset(name: String) {
+        _spiralColorPreset.value = name
+        prefs.edit().putString(KEY_SPIRAL_COLOR, name).apply()
+    }
+
+    fun setObsidianPreset(name: String) {
+        _obsidianPreset.value = name
+        prefs.edit().putString(KEY_OBSIDIAN, name).apply()
+    }
+
     fun enableVisualizerCategory(predicate: (VisualizerMode) -> Boolean) {
         val matched = VisualizerMode.entries.filter(predicate).toSet()
         setEnabledVisualizerModes(matched.ifEmpty { setOf(VisualizerMode.SPECTRUM) })
@@ -359,6 +521,13 @@ class ThemeStore(context: Context) {
             .apply()
     }
 
+    private fun loadFavoriteModes(): Set<VisualizerMode> {
+        val raw = prefs.getString(KEY_VIZ_FAVES, null) ?: return emptySet()
+        return raw.split(',')
+            .mapNotNull { name -> runCatching { VisualizerMode.valueOf(name.trim()) }.getOrNull() }
+            .toSet()
+    }
+
     companion object {
         private const val PREFS = "apollo_theme"
         private const val KEY_THEME = "hud_theme"
@@ -379,5 +548,18 @@ class ThemeStore(context: Context) {
         private const val KEY_PHONE_GAIN = "phone_gain"
         private const val KEY_USB_GAIN = "usb_gain"
         private const val KEY_CROSSFADE = "crossfade_ms"
+        private const val KEY_TRANCE_PROFILE = "trance_profile"
+        private const val KEY_VIZ_PALETTE = "viz_palette_mode"
+        private const val KEY_VIZ_QUALITY = "viz_quality"
+        private const val KEY_VIZ_SAT = "viz_saturation"
+        private const val KEY_VIZ_GLOW = "viz_scene_glow"
+        private const val KEY_PHOTOSENSE = "photosensitive"
+        private const val KEY_AUTODJ_SEC = "autodj_interval_sec"
+        private const val KEY_AUTODJ_TRACK = "autodj_on_track"
+        private const val KEY_VIZ_FAVES = "viz_favorites"
+        private const val KEY_VISSON_SUB = "vissonance_submode"
+        private const val KEY_SPIRAL_VAR = "spiral_variant"
+        private const val KEY_SPIRAL_COLOR = "spiral_color_preset"
+        private const val KEY_OBSIDIAN = "obsidian_preset"
     }
 }
