@@ -11,7 +11,7 @@
 - [x] DHU re-capture proving Next advances (`05_after_next.png`)
 - [x] Uninstall debug package conflict documented
 - [ ] Owner Sobalai retest
-- [ ] GitHub Release `v1.0.0-beta.3` published
+- [x] GitHub Release `v1.0.0-beta.3` published (pre-release)
 
 ## Carry-forward
 
